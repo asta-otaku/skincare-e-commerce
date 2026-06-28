@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { getProduct, products } from "@/lib/products"
 import { ProductDetail } from "@/components/product-detail"
+import { ProductReviews } from "@/components/product-reviews"
 import { RelatedProducts } from "@/components/related-products"
 
 export function generateStaticParams() {
@@ -34,6 +35,7 @@ export default async function ProductPage({
   return (
     <>
       <ProductDetail product={product} />
+      <ProductReviews productId={product.id} />
       <RelatedProducts currentId={product.id} />
     </>
   )

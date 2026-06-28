@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Search, ShoppingBag, User, Menu, X } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
+import { useSearch } from "@/components/search-modal"
 import { cn } from "@/lib/utils"
 
 const links = [
@@ -15,7 +16,8 @@ const links = [
 ]
 
 export function SiteNavbar() {
-  const { count } = useCart()
+  const { count, openCart } = useCart()
+  const { openSearch } = useSearch()
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
 
@@ -29,7 +31,7 @@ export function SiteNavbar() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full border-b transition-all duration-500",
+        "sticky top-0 z-40 w-full border-b transition-all duration-500",
         scrolled
           ? "border-border bg-background/85 backdrop-blur-md"
           : "border-transparent bg-background",
@@ -75,20 +77,22 @@ export function SiteNavbar() {
         <div className="flex flex-1 items-center justify-end gap-4 md:gap-5">
           <button
             type="button"
+            onClick={openSearch}
             aria-label="Search"
             className="hidden text-foreground/80 transition-colors hover:text-gold sm:block"
           >
             <Search className="size-[18px]" />
           </button>
-          <button
-            type="button"
+          <Link
+            href="/account"
             aria-label="Account"
             className="hidden text-foreground/80 transition-colors hover:text-gold sm:block"
           >
             <User className="size-[18px]" />
-          </button>
+          </Link>
           <button
             type="button"
+            onClick={openCart}
             aria-label={`Cart, ${count} items`}
             className="relative text-foreground/80 transition-colors hover:text-gold"
           >
@@ -106,7 +110,7 @@ export function SiteNavbar() {
       <div
         className={cn(
           "overflow-hidden border-t border-border bg-background transition-all duration-300 lg:hidden",
-          open ? "max-h-80" : "max-h-0 border-t-0",
+          open ? "max-h-96" : "max-h-0 border-t-0",
         )}
       >
         <nav className="flex flex-col px-5 py-2">
@@ -120,6 +124,13 @@ export function SiteNavbar() {
               {link.label}
             </Link>
           ))}
+          <button
+            type="button"
+            onClick={() => { setOpen(false); openSearch() }}
+            className="flex items-center gap-2 border-b border-border/60 py-3 text-xs font-light uppercase tracking-[0.18em] text-foreground/80 last:border-0"
+          >
+            <Search className="size-3.5" /> Search
+          </button>
         </nav>
       </div>
     </header>

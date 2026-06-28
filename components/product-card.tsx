@@ -3,14 +3,17 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Check, Plus } from "lucide-react"
+import { Check, Plus, Heart } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
+import { useFavorites } from "@/components/favorites-provider"
 import { formatPrice, type Product } from "@/lib/products"
 import { cn } from "@/lib/utils"
 
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
   const { addItem } = useCart()
+  const { isFavorited, toggleFavorite } = useFavorites()
   const [added, setAdded] = useState(false)
+  const favorited = isFavorited(product.id)
 
   function handleAdd(e: React.MouseEvent) {
     e.preventDefault()
@@ -19,15 +22,17 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
     window.setTimeout(() => setAdded(false), 1600)
   }
 
+  function handleFavorite(e: React.MouseEvent) {
+    e.preventDefault()
+    toggleFavorite(product)
+  }
+
   return (
-    <article
-      className="group flex flex-col"
-      style={{ animationDelay: `${index * 90}ms` }}
-    >
+    <article className="group flex flex-col" style={{ animationDelay: `${index * 90}ms` }}>
       <Link
         href={`/product/${product.id}`}
         aria-label={`View ${product.name}`}
-        className="relative aspect-[4/5] overflow-hidden border border-border bg-muted/40 transition-colors duration-500 group-hover:border-gold/60"
+        className="relative aspect-4/5 overflow-hidden border border-border bg-muted/40 transition-colors duration-500 group-hover:border-gold/60"
       >
         {product.tag && (
           <span
@@ -41,6 +46,21 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
             {product.tag}
           </span>
         )}
+
+        {/* Favorite button */}
+        <button
+          type="button"
+          onClick={handleFavorite}
+          aria-label={favorited ? `Remove ${product.name} from favorites` : `Add ${product.name} to favorites`}
+          className={cn(
+            "absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-full border backdrop-blur-sm transition-all duration-300",
+            favorited
+              ? "border-gold/40 bg-gold/20 text-gold opacity-100"
+              : "border-background/30 bg-background/60 text-foreground/60 opacity-0 group-hover:opacity-100 hover:border-gold/40 hover:text-gold",
+          )}
+        >
+          <Heart className={cn("size-3.5 transition-all", favorited && "fill-gold")} />
+        </button>
 
         <Image
           src={product.image || "/placeholder.svg"}
@@ -64,32 +84,23 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
             )}
           >
             {added ? (
-              <>
-                <Check className="size-3.5" /> Added
-              </>
+              <><Check className="size-3.5" /> Added</>
             ) : (
-              <>
-                <Plus className="size-3.5" /> Add to Cart
-              </>
+              <><Plus className="size-3.5" /> Add to Cart</>
             )}
           </button>
         </div>
       </Link>
 
-      {/* Details */}
       <div className="flex flex-1 flex-col items-center px-1 pt-5 text-center">
-        <p className="text-[10px] font-light uppercase tracking-[0.22em] text-gold">
-          {product.category}
-        </p>
+        <p className="text-[10px] font-light uppercase tracking-[0.22em] text-gold">{product.category}</p>
         <h3 className="mt-2 font-serif text-xl font-medium leading-snug text-foreground">
           <Link href={`/product/${product.id}`} className="transition-colors hover:text-gold">
             {product.name}
           </Link>
         </h3>
         <p className="mt-1 text-sm font-light text-muted-foreground">{product.tagline}</p>
-        <p className="mt-3 text-sm font-light tracking-wide text-foreground">
-          {formatPrice(product.price)}
-        </p>
+        <p className="mt-3 text-sm font-light tracking-wide text-foreground">{formatPrice(product.price)}</p>
       </div>
     </article>
   )

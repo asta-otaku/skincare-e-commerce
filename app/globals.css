@@ -204,4 +204,17 @@
   .animate-fade-in {
     animation: fade-in 1.2s ease both;
   }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@layer components {
+  .input-field {
+    @apply w-full border border-border bg-background px-4 py-3 text-sm font-light outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground/40;
+  }
 }

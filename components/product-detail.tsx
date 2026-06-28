@@ -3,15 +3,18 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Check, Minus, Plus, ChevronRight } from "lucide-react"
+import { Check, Minus, Plus, ChevronRight, Heart } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
+import { useFavorites } from "@/components/favorites-provider"
 import { formatPrice, type Product } from "@/lib/products"
 import { cn } from "@/lib/utils"
 
 export function ProductDetail({ product }: { product: Product }) {
   const { addItem } = useCart()
+  const { isFavorited, toggleFavorite } = useFavorites()
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
+  const favorited = isFavorited(product.id)
 
   function handleAdd() {
     for (let i = 0; i < qty; i++) addItem(product)
@@ -88,6 +91,19 @@ export function ProductDetail({ product }: { product: Product }) {
           </ul>
 
           <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-stretch">
+            <button
+              type="button"
+              onClick={() => toggleFavorite(product)}
+              aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
+              className={cn(
+                "hidden sm:flex items-center justify-center size-12 border transition-all duration-300",
+                favorited
+                  ? "border-gold bg-gold/10 text-gold"
+                  : "border-border text-muted-foreground hover:border-gold hover:text-gold",
+              )}
+            >
+              <Heart className={cn("size-5 transition-all", favorited && "fill-gold")} />
+            </button>
             <div className="flex items-center justify-between border border-border sm:w-32">
               <button
                 type="button"
