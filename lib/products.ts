@@ -1,106 +1,282 @@
 export type Product = {
   id: string
   name: string
+  brand: string
   tagline: string
-  price: number
-  image: string
-  category: string
-  tag?: string
-  bestseller?: boolean
   description: string
+  price: number
+  /** Primary image — always present */
+  image: string
+  /** Additional gallery images; falls back to [image] if empty */
+  images?: string[]
+  category: string
+  tag?: "Bestseller" | "New" | "Sale" | "Low Stock"
   benefits: string[]
-  ingredients: string
+  ingredients: string[]
+  concerns: string[]
+  stock: number
+  rating: number
+  reviewCount: number
+  size?: string
+  variants?: { label: string; price: number }[]
 }
+
+export const BRANDS = [
+  { id: "cerave",        name: "CeraVe",          tagline: "Developed with dermatologists" },
+  { id: "the-ordinary",  name: "The Ordinary",     tagline: "Clinical formulations with integrity" },
+  { id: "la-roche-posay",name: "La Roche-Posay",   tagline: "Recommended by dermatologists worldwide" },
+  { id: "cosrx",         name: "COSRX",            tagline: "Korean skincare essentials" },
+  { id: "neutrogena",    name: "Neutrogena",        tagline: "Dermatologist recommended" },
+  { id: "paulas-choice", name: "Paula's Choice",   tagline: "Ingredient-focused formulas" },
+  { id: "cetaphil",      name: "Cetaphil",          tagline: "Gentle care for all skin types" },
+  { id: "bioderma",      name: "Bioderma",          tagline: "Pioneering dermocosmetics" },
+  { id: "vichy",         name: "Vichy",             tagline: "Volcanic mineralising water" },
+  { id: "hayda",         name: "HAYDA",             tagline: "Curated by HAYDA SKINCo." },
+]
 
 export const products: Product[] = [
   {
-    id: "radiance-serum",
-    name: "Radiance Renewal Serum",
-    tagline: "Vitamin C + Hyaluronic Acid",
-    price: 128,
+    id: "cerave-hydrating-cleanser",
+    name: "Hydrating Facial Cleanser",
+    brand: "CeraVe",
+    tagline: "Gentle daily cleanser for normal to dry skin",
+    description: "This gentle non-foaming cleanser is formulated with three essential ceramides and hyaluronic acid to help maintain the skin's natural protective barrier while effectively removing dirt and makeup.",
+    price: 5500,
+    image: "/product-cleanser.png",
+    images: ["/product-cleanser.png", "/product-cream.png", "/product-toner.png"],
+    category: "Cleansers",
+    tag: "Bestseller",
+    benefits: ["Cleanses without stripping", "Maintains moisture barrier", "Non-comedogenic", "Fragrance-free"],
+    ingredients: ["Ceramides", "Hyaluronic Acid", "Glycerin"],
+    concerns: ["Dry Skin", "Sensitive Skin"],
+    stock: 48,
+    rating: 4.8,
+    reviewCount: 342,
+    size: "237ml",
+    variants: [
+      { label: "237ml", price: 5500 },
+      { label: "473ml", price: 9200 },
+      { label: "1L", price: 16500 },
+    ],
+  },
+  {
+    id: "ordinary-niacinamide",
+    name: "Niacinamide 10% + Zinc 1%",
+    brand: "The Ordinary",
+    tagline: "High-strength vitamin and mineral blemish formula",
+    description: "A high-strength vitamin and mineral blemish formula that visibly addresses uneven skin tone, blemishes, and enlarged pores. Contains 10% niacinamide and 1% zinc PCA.",
+    price: 3800,
     image: "/product-serum.png",
+    images: ["/product-serum.png", "/product-toner.png", "/product-oil.png"],
     category: "Serums",
     tag: "Bestseller",
-    bestseller: true,
-    description:
-      "A featherlight serum that brightens, firms, and floods skin with moisture. Stabilized Vitamin C works alongside triple-weight hyaluronic acid to reveal a luminous, even complexion.",
-    benefits: ["Visibly brightens tone", "Plumps fine lines", "Antioxidant defense"],
-    ingredients: "15% Vitamin C, Hyaluronic Acid, Ferulic Acid, Marula Oil",
+    benefits: ["Reduces blemishes", "Minimises pore appearance", "Evens skin tone", "Regulates sebum"],
+    ingredients: ["Niacinamide", "Zinc PCA"],
+    concerns: ["Acne", "Oily Skin", "Hyperpigmentation"],
+    stock: 65,
+    rating: 4.7,
+    reviewCount: 512,
+    size: "30ml",
   },
   {
-    id: "gold-oil",
-    name: "Gold Infusion Face Oil",
-    tagline: "24k Gold + Marula Botanicals",
-    price: 156,
-    image: "/product-oil.png",
-    category: "Oils",
-    tag: "New",
-    description:
-      "A precious dry oil suspended with flecks of 24k gold and cold-pressed marula. Melts into skin for a cushioned, radiant glow without a trace of grease.",
-    benefits: ["Nourishes & restores", "Imparts a lit-from-within glow", "Strengthens moisture barrier"],
-    ingredients: "24k Gold, Marula Oil, Squalane, Sea Buckthorn",
+    id: "ordinary-vitamin-c",
+    name: "Vitamin C Suspension 23% + HA 2%",
+    brand: "The Ordinary",
+    tagline: "Potent antioxidant brightening serum",
+    description: "A potent brightening formula with 23% L-Ascorbic Acid and 2% Hyaluronic Acid Spheres to brighten the complexion and combat oxidative stress.",
+    price: 3600,
+    image: "/product-serum.png",
+    images: ["/product-serum.png", "/product-oil.png"],
+    category: "Serums",
+    tag: "Sale",
+    benefits: ["Brightens complexion", "Antioxidant protection", "Reduces dark spots", "Anti-ageing"],
+    ingredients: ["Vitamin C", "Hyaluronic Acid"],
+    concerns: ["Hyperpigmentation", "Anti-Ageing"],
+    stock: 30,
+    rating: 4.5,
+    reviewCount: 289,
+    size: "30ml",
   },
   {
-    id: "velvet-cream",
-    name: "Velvet Hydration Cream",
-    tagline: "Ceramides + Squalane",
-    price: 94,
+    id: "lrp-toleriane-moisturiser",
+    name: "Toleriane Double Repair Moisturiser",
+    brand: "La Roche-Posay",
+    tagline: "Prebiotic moisturiser restores skin barrier",
+    description: "Formulated with a prebiotic formula and niacinamide, this moisturiser instantly hydrates and repairs the skin's natural barrier for up to 48 hours.",
+    price: 12500,
     image: "/product-cream.png",
-    category: "Moisturizers",
-    bestseller: true,
-    description:
-      "A whipped, velvety cream that seals in moisture for a soft, supple finish. Ceramides and squalane reinforce the skin barrier through the day and overnight.",
-    benefits: ["24-hour hydration", "Reinforces barrier", "Soft matte finish"],
-    ingredients: "Ceramides, Squalane, Shea Butter, Panthenol",
+    images: ["/product-cream.png", "/product-serum.png", "/product-toner.png"],
+    category: "Moisturisers",
+    tag: "Bestseller",
+    benefits: ["48-hour hydration", "Repairs skin barrier", "Prebiotic formula", "Fragrance-free"],
+    ingredients: ["Niacinamide", "Ceramides", "Glycerin"],
+    concerns: ["Dry Skin", "Sensitive Skin"],
+    stock: 22,
+    rating: 4.9,
+    reviewCount: 198,
+    size: "75ml",
   },
   {
-    id: "lavender-toner",
-    name: "Lavender Calm Toner",
-    tagline: "Soothing Floral Essence",
-    price: 68,
+    id: "cosrx-snail-mucin",
+    name: "Advanced Snail 96 Mucin Power Essence",
+    brand: "COSRX",
+    tagline: "96% snail secretion filtrate essence",
+    description: "This essence contains 96% Snail Secretion Filtrate to heal blemishes and boost radiance. Lightweight formula absorbs quickly, improving moisture and elasticity.",
+    price: 8900,
+    image: "/product-serum.png",
+    images: ["/product-serum.png", "/product-toner.png"],
+    category: "Serums",
+    benefits: ["Heals blemishes", "Boosts radiance", "Improves elasticity", "Lightweight"],
+    ingredients: ["Snail Secretion Filtrate", "Hyaluronic Acid"],
+    concerns: ["Acne", "Dry Skin", "Anti-Ageing"],
+    stock: 35,
+    rating: 4.8,
+    reviewCount: 467,
+    size: "100ml",
+  },
+  {
+    id: "paulas-bha",
+    name: "Skin Perfecting 2% BHA Liquid Exfoliant",
+    brand: "Paula's Choice",
+    tagline: "Leave-on exfoliant for blackheads & pores",
+    description: "This leave-on exfoliant with 2% salicylic acid gently unclogs and minimises enlarged pores, removes dead skin on the surface and inside the pore, and smooths the skin.",
+    price: 18500,
     image: "/product-toner.png",
-    category: "Toners",
-    tag: "Limited",
-    description:
-      "A calming floral essence that tones, balances, and preps skin for the rituals to follow. French lavender soothes while gentle PHAs refine texture.",
-    benefits: ["Calms & balances", "Refines texture", "Preps for serums"],
-    ingredients: "French Lavender, PHA, Glycerin, Aloe",
+    images: ["/product-toner.png", "/product-serum.png", "/product-cleanser.png"],
+    category: "Treatments",
+    tag: "Bestseller",
+    benefits: ["Unclogs pores", "Smooths skin texture", "Reduces blackheads", "Anti-inflammatory"],
+    ingredients: ["AHA/BHA", "Salicylic Acid", "Methylpropanediol"],
+    concerns: ["Acne", "Oily Skin"],
+    stock: 18,
+    rating: 4.9,
+    reviewCount: 623,
+    size: "118ml",
   },
   {
-    id: "eye-concentrate",
-    name: "Illuminating Eye Concentrate",
-    tagline: "Peptides + Caffeine",
-    price: 112,
+    id: "lrp-anthelios-spf50",
+    name: "Anthelios UVMune 400 SPF 50+",
+    brand: "La Roche-Posay",
+    tagline: "Invisible fluid broad-spectrum SPF 50+",
+    description: "Lightweight invisible fluid sun protection with Mexoryl 400 technology providing exceptional UVA protection. Suitable for sensitive skin.",
+    price: 16000,
+    image: "/product-cream.png",
+    images: ["/product-cream.png", "/product-oil.png"],
+    category: "Sunscreen",
+    tag: "Bestseller",
+    benefits: ["SPF 50+ protection", "UVA/UVB broad spectrum", "Lightweight invisible", "Water resistant"],
+    ingredients: ["SPF", "Mexoryl 400", "Tinosorb S"],
+    concerns: ["Anti-Ageing", "Sensitive Skin"],
+    stock: 40,
+    rating: 4.7,
+    reviewCount: 334,
+    size: "50ml",
+  },
+  {
+    id: "neutrogena-retinol",
+    name: "Rapid Wrinkle Repair Retinol Serum",
+    brand: "Neutrogena",
+    tagline: "Accelerated retinol SA for visibly smoother skin",
+    description: "An accelerated retinol formula with hyaluronic acid and glycerin that visibly reduces the look of fine lines and wrinkles in just one week.",
+    price: 11500,
+    image: "/product-serum.png",
+    images: ["/product-serum.png", "/product-oil.png", "/product-cream.png"],
+    category: "Serums",
+    tag: "Sale",
+    benefits: ["Reduces fine lines", "Smooths texture", "Deep hydration", "Clinically proven"],
+    ingredients: ["Retinol", "Hyaluronic Acid", "Glycerin"],
+    concerns: ["Anti-Ageing"],
+    stock: 25,
+    rating: 4.5,
+    reviewCount: 278,
+    size: "30ml",
+  },
+  {
+    id: "cerave-eye-repair",
+    name: "Eye Repair Cream",
+    brand: "CeraVe",
+    tagline: "Gentle eye cream for dark circles & puffiness",
+    description: "Formulated with ceramides and niacinamide to reduce the appearance of dark circles and puffiness around the delicate eye area.",
+    price: 5800,
+    tag: "Sale",
     image: "/product-eye.png",
+    images: ["/product-eye.png", "/product-cream.png"],
     category: "Eye Care",
-    description:
-      "A cooling concentrate that depuffs, brightens, and smooths the delicate eye area. Peptides and caffeine awaken tired eyes for a refreshed, rested look.",
-    benefits: ["Depuffs & cools", "Brightens dark circles", "Smooths fine lines"],
-    ingredients: "Peptides, Caffeine, Niacinamide, Cucumber",
+    benefits: ["Reduces dark circles", "Minimises puffiness", "Ceramide-rich", "Fragrance-free"],
+    ingredients: ["Ceramides", "Niacinamide", "Hyaluronic Acid"],
+    concerns: ["Anti-Ageing", "Dry Skin"],
+    stock: 30,
+    rating: 4.6,
+    reviewCount: 189,
+    size: "14.2g",
   },
   {
-    id: "gentle-cleanser",
-    name: "Gentle Resurfacing Cleanser",
-    tagline: "PHA + Rose Water",
-    price: 56,
+    id: "bioderma-sensibio",
+    name: "Sensibio H2O Micellar Water",
+    brand: "Bioderma",
+    tagline: "Original micellar cleansing water for sensitive skin",
+    description: "The original micellar water that gently removes makeup, cleanses, and soothes even the most sensitive skin without rinsing.",
+    price: 9500,
     image: "/product-cleanser.png",
+    images: ["/product-cleanser.png", "/product-toner.png", "/product-serum.png"],
     category: "Cleansers",
-    bestseller: true,
-    description:
-      "A silky gel cleanser that gently resurfaces while preserving the skin barrier. PHAs sweep away impurities as rose water soothes and softens.",
-    benefits: ["Gently resurfaces", "Non-stripping", "Leaves skin soft"],
-    ingredients: "PHA, Rose Water, Glycerin, Green Tea",
+    tag: "Bestseller",
+    benefits: ["Removes all makeup", "Soothes sensitive skin", "No rinse needed", "pH-balanced"],
+    ingredients: ["Cucumber Extract", "Fructooligosaccharides"],
+    concerns: ["Sensitive Skin"],
+    stock: 55,
+    rating: 4.8,
+    reviewCount: 445,
+    size: "500ml",
+  },
+  {
+    id: "ordinary-aha-bha",
+    name: "AHA 30% + BHA 2% Peeling Solution",
+    brand: "The Ordinary",
+    tagline: "10-minute exfoliating facial mask",
+    description: "An exfoliating solution with 30% alpha hydroxy acids (AHA) and 2% beta hydroxy acid (BHA) to help visibly improve skin radiance and texture in just 10 minutes.",
+    price: 4800,
+    image: "/product-toner.png",
+    images: ["/product-toner.png", "/product-serum.png"],
+    tag: "New",
+    category: "Treatments",
+    benefits: ["Deep exfoliation", "Improved radiance", "Reduced texture", "Targets dark spots"],
+    ingredients: ["AHA/BHA", "Glycolic Acid", "Salicylic Acid", "Vitamin C"],
+    concerns: ["Hyperpigmentation", "Acne", "Anti-Ageing"],
+    stock: 42,
+    rating: 4.6,
+    reviewCount: 512,
+    size: "30ml",
+  },
+  {
+    id: "cerave-moisturising-cream",
+    name: "Moisturising Cream",
+    brand: "CeraVe",
+    tagline: "Rich 24-hour barrier cream for dry to very dry skin",
+    description: "Rich, non-greasy cream with three essential ceramides and MVE technology for 24-hour hydration. Restores and maintains the skin's natural barrier.",
+    price: 8900,
+    image: "/product-cream.png",
+    images: ["/product-cream.png", "/product-cleanser.png", "/product-serum.png"],
+    category: "Moisturisers",
+    benefits: ["24-hour hydration", "Restores skin barrier", "Non-greasy", "Suitable for face & body"],
+    ingredients: ["Ceramides", "Hyaluronic Acid", "Petrolatum"],
+    concerns: ["Dry Skin", "Sensitive Skin"],
+    stock: 60,
+    rating: 4.9,
+    reviewCount: 789,
+    size: "454g",
+    tag: "Bestseller",
   },
 ]
 
 export function getProduct(id: string) {
-  return products.find((product) => product.id === id)
+  return products.find(p => p.id === id)
 }
 
-export function formatPrice(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-  }).format(value)
+export function formatPrice(price: number) {
+  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(price)
 }
+
+export const ALL_CONCERNS = ["Acne", "Hyperpigmentation", "Anti-Ageing", "Dry Skin", "Oily Skin", "Sensitive Skin"]
+export const ALL_INGREDIENTS = ["Vitamin C", "Retinol", "Niacinamide", "AHA/BHA", "Hyaluronic Acid", "SPF", "Ceramides"]
+export const ALL_CATEGORIES = ["Cleansers", "Toners", "Serums", "Moisturisers", "Sunscreen", "Eye Care", "Treatments"]

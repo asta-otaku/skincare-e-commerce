@@ -255,10 +255,10 @@ export default function AccountSettingsPage() {
             <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.18em]">Email Notifications</h3>
             <div className="space-y-3">
               {([
-                { key: "newsletter",    label: "Newsletter & editorial",   desc: "Skincare tips, rituals, and Aurelia stories" },
+                { key: "newsletter",    label: "Newsletter & editorial",   desc: "Skincare tips, guides, and HAYDA SKINCo. news" },
                 { key: "orderUpdates",  label: "Order updates",            desc: "Shipping confirmations and delivery status" },
                 { key: "newProducts",   label: "New product launches",     desc: "Be first to know about new arrivals" },
-                { key: "saleAlerts",    label: "Promotions & offers",      desc: "Exclusive offers for Aurelia members" },
+                { key: "saleAlerts",    label: "Promotions & offers",      desc: "Exclusive offers for HAYDA SKINCo. members" },
               ] as const).map(({ key, label, desc }) => (
                 <label key={key} className="flex cursor-pointer items-start justify-between gap-4 border border-border p-4 hover:bg-muted/20 transition-colors">
                   <div>

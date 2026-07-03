@@ -1,9 +1,9 @@
 "use client"
 
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
-  LayoutDashboard, ShoppingBag, Heart, Star, Settings, ChevronRight,
+  LayoutDashboard, ShoppingBag, Heart, Star, Settings, ChevronRight, LogOut, Gift,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -11,6 +11,7 @@ const NAV = [
   { label: "Overview",  href: "/account",          icon: LayoutDashboard },
   { label: "Orders",    href: "/account/orders",    icon: ShoppingBag },
   { label: "Favorites", href: "/account/favorites", icon: Heart },
+  { label: "Rewards",   href: "/account/rewards",   icon: Gift },
   { label: "Reviews",   href: "/account/reviews",   icon: Star },
   { label: "Settings",  href: "/account/settings",  icon: Settings },
 ]
@@ -19,7 +20,13 @@ const AUTH_PATHS = ["/account/login", "/account/register"]
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
   const isAuthPage = AUTH_PATHS.some(p => pathname === p)
+
+  function handleSignOut() {
+    // Auth state will be cleared by Supabase when integrated
+    router.push("/account/login")
+  }
 
   if (isAuthPage) return <>{children}</>
 
@@ -57,6 +64,14 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                 </Link>
               )
             })}
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="group flex w-full items-center gap-2.5 rounded-sm px-3 py-2.5 text-sm font-light text-muted-foreground transition-all hover:bg-red-50 hover:text-destructive"
+            >
+              <LogOut className="size-4 text-muted-foreground group-hover:text-destructive" />
+              Sign Out
+            </button>
           </nav>
 
           {/* Mobile horizontal scroll nav */}
@@ -79,6 +94,13 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                 </Link>
               )
             })}
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="shrink-0 flex items-center gap-1.5 border border-border px-3 py-2 text-[11px] font-light uppercase tracking-[0.12em] text-muted-foreground transition-all hover:border-destructive hover:text-destructive"
+            >
+              <LogOut className="size-3.5" /> Sign Out
+            </button>
           </nav>
         </aside>
 

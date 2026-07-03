@@ -1,65 +1,214 @@
-import Link from "next/link"
+"use client"
 
-const columns = [
+import { useState } from "react"
+import Link from "next/link"
+import Image from "next/image"
+import { Check } from "lucide-react"
+
+const COLUMNS = [
   {
     title: "Shop",
     links: [
       { label: "All Products", href: "/shop" },
-      { label: "Serums", href: "/shop" },
-      { label: "Face Oils", href: "/shop" },
-      { label: "Moisturizers", href: "/shop" },
-      { label: "Cleansers", href: "/shop" },
+      { label: "Face", href: "/shop?category=face" },
+      { label: "Bath & Body", href: "/shop?category=bath-body" },
+      { label: "Fragrance", href: "/shop?category=fragrance" },
+      { label: "Makeup", href: "/shop?category=makeup" },
+      { label: "Combo Deals", href: "/deals" },
+      { label: "Wholesale", href: "/wholesale" },
     ],
   },
   {
-    title: "About",
+    title: "Discover",
     links: [
-      { label: "Our Story", href: "/about" },
-      { label: "Ingredients", href: "/about" },
-      { label: "Sustainability", href: "/about" },
-      { label: "Journal", href: "/journal" },
+      { label: "Brands", href: "/brands" },
+      { label: "Shop by Concern", href: "/shop?filter=concerns" },
+      { label: "Shop by Ingredient", href: "/shop?filter=ingredients" },
+      { label: "Skin Blog", href: "/journal" },
+      { label: "Offers & Sales", href: "/shop?sale=true" },
     ],
   },
   {
-    title: "Support",
+    title: "Help",
     links: [
-      { label: "Contact", href: "/contact" },
-      { label: "Shipping", href: "/contact" },
-      { label: "Returns", href: "/contact" },
-      { label: "FAQ", href: "/contact" },
+      { label: "Contact Us", href: "/contact" },
+      { label: "FAQs", href: "/contact" },
+      { label: "Shipping & Delivery", href: "/contact" },
+      { label: "Returns Policy", href: "/contact" },
+      { label: "Track My Order", href: "/account/orders" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About HAYDA", href: "/about" },
+      { label: "Wholesale", href: "/wholesale" },
+      { label: "Privacy Policy", href: "#" },
+      { label: "Terms of Use", href: "#" },
     ],
   },
 ]
 
+function IconInstagram({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+function IconFacebook({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+      <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" />
+    </svg>
+  )
+}
+function IconTikTok({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+      <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.5a8.17 8.17 0 004.78 1.52V6.56a4.85 4.85 0 01-1.01.13z" />
+    </svg>
+  )
+}
+
+const SOCIALS = [
+  { label: "Instagram", icon: IconInstagram, href: "#" },
+  { label: "Facebook", icon: IconFacebook, href: "#" },
+  { label: "TikTok", icon: IconTikTok, href: "#" },
+]
+
+/* Inline payment brand SVGs */
+function PaystackIcon() {
+  return (
+    <svg viewBox="0 0 80 24" className="h-5 w-auto" aria-label="Paystack">
+      <text x="0" y="18" fontFamily="system-ui, sans-serif" fontSize="14" fontWeight="700" fill="currentColor">Paystack</text>
+    </svg>
+  )
+}
+function VisaIcon() {
+  return (
+    <svg viewBox="0 0 48 16" className="h-4 w-auto" aria-label="Visa">
+      <rect width="48" height="16" rx="3" fill="#1A1F71"/>
+      <text x="8" y="12" fontFamily="Georgia, serif" fontSize="12" fontWeight="700" fontStyle="italic" fill="#fff">VISA</text>
+    </svg>
+  )
+}
+function MastercardIcon() {
+  return (
+    <svg viewBox="0 0 38 24" className="h-5 w-auto" aria-label="Mastercard">
+      <circle cx="14" cy="12" r="10" fill="#EB001B"/>
+      <circle cx="24" cy="12" r="10" fill="#F79E1B"/>
+      <path d="M19 5.3a10 10 0 0 1 0 13.4A10 10 0 0 1 19 5.3z" fill="#FF5F00"/>
+    </svg>
+  )
+}
+function VerveIcon() {
+  return (
+    <svg viewBox="0 0 60 20" className="h-4 w-auto" aria-label="Verve">
+      <rect width="60" height="20" rx="3" fill="#004B87"/>
+      <text x="6" y="14" fontFamily="system-ui, sans-serif" fontSize="11" fontWeight="700" fill="#fff">VERVE</text>
+    </svg>
+  )
+}
+function FlutterwaveIcon() {
+  return (
+    <svg viewBox="0 0 90 20" className="h-4 w-auto" aria-label="Flutterwave">
+      <text x="0" y="15" fontFamily="system-ui, sans-serif" fontSize="12" fontWeight="700" fill="#F5A623">Flutterwave</text>
+    </svg>
+  )
+}
+
 export function SiteFooter() {
+  const [email, setEmail] = useState("")
+  const [subscribed, setSubscribed] = useState(false)
+
+  function handleSubscribe(e: React.FormEvent) {
+    e.preventDefault()
+    if (!email) return
+    setSubscribed(true)
+    setEmail("")
+    setTimeout(() => setSubscribed(false), 4000)
+  }
+
   return (
     <footer className="border-t border-border bg-background">
-      <div className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
-        <div className="grid gap-12 lg:grid-cols-[1.5fr_repeat(3,1fr)]">
+      {/* Newsletter band */}
+      <div className="border-b border-border bg-muted/40">
+        <div className="mx-auto max-w-7xl px-5 py-10 lg:px-8">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="font-serif text-2xl font-medium">Join the HAYDA community</h3>
+              <p className="mt-1 text-sm font-light text-muted-foreground">
+                Get skincare tips, early access to deals, and new arrivals straight to your inbox.
+              </p>
+            </div>
+            <form onSubmit={handleSubscribe} className="flex w-full max-w-sm gap-2 shrink-0">
+              <input
+                type="email"
+                placeholder="Your email address"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                className="flex-1 border border-border bg-background px-4 py-3 text-sm font-light outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground/50"
+              />
+              <button
+                type="submit"
+                className="shrink-0 bg-foreground px-5 py-3 text-xs font-medium uppercase tracking-[0.15em] text-background transition-colors hover:bg-gold hover:text-gold-foreground"
+              >
+                {subscribed ? <Check className="size-4" /> : "Subscribe"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {/* Main footer */}
+      <div className="mx-auto max-w-7xl px-5 py-14 lg:px-8">
+        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
+          {/* Brand column */}
           <div>
-            <Link
-              href="/"
-              className="font-serif text-2xl font-medium tracking-[0.25em] text-foreground"
-            >
-              AURELIA
+            <Link href="/" className="inline-flex items-center gap-2.5">
+              <Image
+                src="/logo.png"
+                alt="HAYDA SKINCo. logo"
+                width={0}
+                height={0}
+                className="size-10 md:size-16 object-contain"
+              />
             </Link>
-            <p className="mt-5 max-w-xs text-pretty text-sm font-light leading-relaxed text-muted-foreground">
-              Elevated skincare rituals crafted with rare botanicals and clinically proven actives.
+            <p className="mt-3 max-w-xs text-sm font-light leading-relaxed text-muted-foreground">
+              Nigeria's hub for premium skincare. We stock trusted brands and deliver nationwide.
             </p>
+            <p className="mt-4 text-sm font-light text-muted-foreground">
+              📍 Lagos, Nigeria<br />
+              📞 <a href="tel:+2348000000000" className="hover:text-gold transition-colors">+234 800 000 0000</a><br />
+              ✉️ <a href="mailto:hello@haydaskinco.com" className="hover:text-gold transition-colors">hello@haydaskinco.com</a>
+            </p>
+            {/* Social */}
+            <div className="mt-5 flex gap-3">
+              {SOCIALS.map(s => (
+                <a
+                  key={s.label}
+                  href={s.href}
+                  aria-label={s.label}
+                  className="flex size-8 items-center justify-center border border-border text-muted-foreground transition-all hover:border-gold hover:text-gold"
+                >
+                  <s.icon className="size-3.5" />
+                </a>
+              ))}
+            </div>
           </div>
 
-          {columns.map((column) => (
-            <div key={column.title}>
-              <h3 className="text-[11px] font-medium uppercase tracking-[0.2em] text-foreground">
-                {column.title}
-              </h3>
-              <ul className="mt-5 space-y-3">
-                {column.links.map((link) => (
+          {/* Link columns */}
+          {COLUMNS.map(col => (
+            <div key={col.title}>
+              <h4 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground">{col.title}</h4>
+              <ul className="mt-4 space-y-2.5">
+                {col.links.map(link => (
                   <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-sm font-light text-muted-foreground transition-colors hover:text-gold"
-                    >
+                    <Link href={link.href} className="text-sm font-light text-muted-foreground transition-colors hover:text-gold">
                       {link.label}
                     </Link>
                   </li>
@@ -69,18 +218,25 @@ export function SiteFooter() {
           ))}
         </div>
 
-        <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 text-center md:flex-row md:text-left">
+        {/* Bottom bar */}
+        <div className="mt-12 flex flex-col items-center justify-between gap-5 border-t border-border pt-8 md:flex-row">
           <p className="text-xs font-light text-muted-foreground">
-            © {new Date().getFullYear()} Aurelia Skincare. All rights reserved.
+            © {new Date().getFullYear()} HAYDA SKINCo. All rights reserved.
           </p>
-          <div className="flex gap-6">
-            {["Privacy", "Terms", "Accessibility"].map((link) => (
-              <a
-                key={link}
-                href="#"
-                className="text-xs font-light text-muted-foreground transition-colors hover:text-gold"
-              >
-                {link}
+
+          {/* Payment icons */}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {[PaystackIcon, FlutterwaveIcon, VisaIcon, MastercardIcon, VerveIcon].map((Icon, i) => (
+              <span key={i} className="flex items-center justify-center border border-border px-2.5 py-1.5 text-foreground/60">
+                <Icon />
+              </span>
+            ))}
+          </div>
+
+          <div className="flex gap-5">
+            {["Privacy", "Terms", "Accessibility"].map(l => (
+              <a key={l} href="#" className="text-xs font-light text-muted-foreground transition-colors hover:text-gold">
+                {l}
               </a>
             ))}
           </div>

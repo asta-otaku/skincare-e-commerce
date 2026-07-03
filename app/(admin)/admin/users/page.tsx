@@ -32,7 +32,7 @@ const MOCK_USERS: User[] = [
   { id: "u6", name: "Clara Rossi", email: "clara.r@example.com", role: "customer", status: "pending", joinedAt: "2024-05-01", orders: 0, totalSpent: 0, lastSeen: "Just joined", avatar: "CR" },
   { id: "u7", name: "Aisha Diallo", email: "aisha@example.com", role: "customer", status: "active", joinedAt: "2024-05-15", orders: 6, totalSpent: 768, lastSeen: "Yesterday", avatar: "AD" },
   { id: "u8", name: "Luna Torres", email: "luna.torres@example.com", role: "customer", status: "active", joinedAt: "2024-06-02", orders: 4, totalSpent: 452, lastSeen: "4 hours ago", avatar: "LT" },
-  { id: "u9", name: "Admin User", email: "admin@aurelia.com", role: "admin", status: "active", joinedAt: "2023-11-01", orders: 0, totalSpent: 0, lastSeen: "Now", avatar: "A" },
+  { id: "u9", name: "Admin User", email: "admin@haydaskinco.com", role: "admin", status: "active", joinedAt: "2023-11-01", orders: 0, totalSpent: 0, lastSeen: "Now", avatar: "A" },
   { id: "u10", name: "Fatima Al-Hassan", email: "fatima@example.com", role: "customer", status: "active", joinedAt: "2024-06-18", orders: 1, totalSpent: 128, lastSeen: "1 hour ago", avatar: "FA" },
 ]
 

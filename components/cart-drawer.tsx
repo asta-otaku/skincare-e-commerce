@@ -106,35 +106,45 @@ export function CartDrawer() {
               <ul className="divide-y divide-border">
                 {items.map((item) => (
                   <li key={item.id} className="flex gap-4 py-5">
-                    {/* Image */}
-                    <Link
-                      href={`/product/${item.id}`}
-                      onClick={closeCart}
-                      className="relative size-20 shrink-0 overflow-hidden border border-border bg-muted/40"
-                    >
-                      <Image
-                        src={item.image || "/placeholder.svg"}
-                        alt={item.name}
-                        fill
-                        sizes="80px"
-                        className="object-cover"
-                      />
-                    </Link>
+                    {/* Image — bundles show a gift icon tile instead of broken product link */}
+                    {item.id.startsWith("deal__") ? (
+                      <div className="relative flex size-20 shrink-0 items-center justify-center border border-gold/30 bg-gold/5">
+                        <ShoppingBag className="size-7 text-gold/60" />
+                      </div>
+                    ) : (
+                      <Link
+                        href={`/product/${item.id}`}
+                        onClick={closeCart}
+                        className="relative size-20 shrink-0 overflow-hidden border border-border bg-muted/40"
+                      >
+                        <Image
+                          src={item.image || "/placeholder.svg"}
+                          alt={item.name}
+                          fill
+                          sizes="80px"
+                          className="object-contain mix-blend-multiply"
+                        />
+                      </Link>
+                    )}
 
                     {/* Info */}
                     <div className="flex flex-1 flex-col gap-1.5">
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-[10px] font-light uppercase tracking-[0.18em] text-gold">
-                            {item.category}
+                            {item.id.startsWith("deal__") ? "Bundle Deal" : item.category}
                           </p>
-                          <Link
-                            href={`/product/${item.id}`}
-                            onClick={closeCart}
-                            className="text-sm font-medium leading-snug transition-colors hover:text-gold"
-                          >
-                            {item.name}
-                          </Link>
+                          {item.id.startsWith("deal__") ? (
+                            <span className="text-sm font-medium leading-snug">{item.name}</span>
+                          ) : (
+                            <Link
+                              href={`/product/${item.id}`}
+                              onClick={closeCart}
+                              className="text-sm font-medium leading-snug transition-colors hover:text-gold"
+                            >
+                              {item.name}
+                            </Link>
+                          )}
                         </div>
                         <button
                           type="button"

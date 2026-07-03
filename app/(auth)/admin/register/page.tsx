@@ -41,11 +41,11 @@ export default function AdminRegisterPage() {
       {/* Left: brand panel */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between bg-foreground p-12 text-background">
         <Link href="/" className="font-serif text-2xl font-medium tracking-[0.25em]">
-          AURELIA
+          HAYDA SKINCo.
         </Link>
         <div>
           <h2 className="font-serif text-3xl font-light leading-relaxed text-background/90">
-            Join the Aurelia team
+            Join the HAYDA team
           </h2>
           <p className="mt-4 text-sm font-light text-background/50">
             Create an admin account to manage products, content, and analytics.
@@ -60,14 +60,14 @@ export default function AdminRegisterPage() {
       <div className="flex flex-1 flex-col items-center justify-center px-5 py-12 md:px-12">
         <div className="w-full max-w-md">
           <Link href="/" className="mb-10 block font-serif text-2xl font-medium tracking-[0.25em] lg:hidden">
-            AURELIA
+            HAYDA SKINCo.
           </Link>
 
           <div className="mb-8">
             <p className="text-[11px] font-light uppercase tracking-[0.25em] text-gold mb-2">Admin Portal</p>
             <h1 className="font-serif text-3xl font-medium">Create account</h1>
             <p className="mt-2 text-sm font-light text-muted-foreground">
-              Set up your admin access to manage Aurelia.
+              Set up your admin access to manage HAYDA SKINCo.
             </p>
           </div>
 
@@ -95,7 +95,7 @@ export default function AdminRegisterPage() {
                   type="email"
                   value={form.email}
                   onChange={set("email")}
-                  placeholder="you@aurelia.com"
+                  placeholder="you@haydaskinco.com"
                   required
                   className="w-full border border-border bg-background py-3 pl-11 pr-4 text-sm font-light outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground/40"
                 />

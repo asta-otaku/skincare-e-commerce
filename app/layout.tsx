@@ -1,8 +1,12 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono, Cormorant_Garamond, Jost } from 'next/font/google'
+import { DM_Sans, Cormorant_Garamond, Geist_Mono } from 'next/font/google'
 import './globals.css'
 
-const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
+const dmSans = DM_Sans({
+  variable: '--font-dm-sans',
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600'],
+})
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
@@ -12,23 +16,15 @@ const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600'],
 })
-const jost = Jost({
-  variable: '--font-jost',
-  subsets: ['latin'],
-  weight: ['300', '400', '500'],
-})
 
 export const metadata: Metadata = {
-  title: 'Aurelia — Luxury Skincare, Reimagined',
+  title: 'HAYDA SKINCo. — Hub for all your skin needs',
   description:
-    'Aurelia crafts elevated skincare rituals with gold-infused serums, botanical oils, and dermatologist-formulated essentials for radiant, luminous skin.',
+    'HAYDA SKINCo. is your one-stop destination for premium skincare in Nigeria. Shop trusted brands, serums, moisturisers, sunscreens, and more — delivered nationwide.',
   icons: {
-    icon: [
-      { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
-      { url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
-    ],
-    apple: '/apple-icon.png',
+    icon: '/logo.png',
+    apple: '/logo.png',
+    shortcut: '/logo.png',
   },
 }
 
@@ -41,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`light bg-background ${geistSans.variable} ${geistMono.variable} ${cormorant.variable} ${jost.variable}`}
+      className={`light bg-background ${dmSans.variable} ${geistMono.variable} ${cormorant.variable}`}
     >
       <body className="font-sans antialiased">{children}</body>
     </html>

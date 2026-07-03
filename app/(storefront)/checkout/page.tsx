@@ -79,21 +79,44 @@ const SHIPPING_METHODS = [
   { id: "express" as const, label: "Express Shipping", desc: "2–3 business days", price: 18, priceLabel: "$18" },
 ]
 
+const PROMO_CODES: Record<string, number> = {
+  "HAYDA10": 0.10,
+  "WELCOME15": 0.15,
+  "SKINCARE20": 0.20,
+}
+
 export default function CheckoutPage() {
   const { items, subtotal, clearCart } = useCart()
   const [step, setStep] = useState<Step>("shipping")
 
   const [shipping, setShipping] = useState<ShippingData>({
     firstName: "", lastName: "", email: "", phone: "",
-    address: "", apartment: "", city: "", state: "", zip: "", country: "United States",
+    address: "", apartment: "", city: "", state: "", zip: "", country: "Nigeria",
     shippingMethod: "standard",
   })
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card")
 
-  const shippingCost = shipping.shippingMethod === "express" ? 18 : 0
-  const tax = subtotal * 0.08
-  const total = subtotal + shippingCost + tax
+  // Promo code
+  const [promoInput, setPromoInput] = useState("")
+  const [appliedPromo, setAppliedPromo] = useState<string | null>(null)
+  const [promoError, setPromoError] = useState("")
+
+  function applyPromo() {
+    const code = promoInput.trim().toUpperCase()
+    if (PROMO_CODES[code]) {
+      setAppliedPromo(code)
+      setPromoError("")
+    } else {
+      setPromoError("Invalid promo code. Try HAYDA10, WELCOME15, or SKINCARE20.")
+      setAppliedPromo(null)
+    }
+  }
+
+  const discount = appliedPromo ? subtotal * PROMO_CODES[appliedPromo] : 0
+  const shippingCost = shipping.shippingMethod === "express" ? 3000 : 0
+  const tax = subtotal * 0.075
+  const total = subtotal - discount + shippingCost + tax
 
   function handleConfirm() {
     clearCart()
@@ -109,7 +132,7 @@ export default function CheckoutPage() {
         <p className="text-[11px] font-light uppercase tracking-[0.25em] text-gold mb-3">Order Confirmed</p>
         <h1 className="font-serif text-4xl font-medium text-foreground mb-4">Thank you for your order</h1>
         <p className="max-w-md text-sm font-light text-muted-foreground leading-relaxed mb-2">
-          Your Aurelia ritual is on its way. A confirmation email has been sent to{" "}
+          Your HAYDA SKINCo. order is on its way. A confirmation email has been sent to{" "}
           <span className="font-medium text-foreground">{shipping.email}</span>.
         </p>
         <p className="mb-8 text-[11px] font-light uppercase tracking-[0.18em] text-muted-foreground">
@@ -150,8 +173,8 @@ export default function CheckoutPage() {
       {/* Header */}
       <div className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 md:px-8">
-          <Link href="/" className="font-serif text-2xl font-medium tracking-[0.25em]">
-            AURELIA
+          <Link href="/" className="font-serif text-xl font-medium tracking-[0.15em]">
+            HAYDA <span className="text-gold">SKINCo.</span>
           </Link>
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <Lock className="size-3" /> Secure checkout
@@ -205,7 +228,19 @@ export default function CheckoutPage() {
           </div>
 
           {/* Right: Order summary */}
-          <OrderSummary items={items} subtotal={subtotal} shippingCost={shippingCost} tax={tax} total={total} />
+          <OrderSummary
+            items={items}
+            subtotal={subtotal}
+            discount={discount}
+            appliedPromo={appliedPromo}
+            promoInput={promoInput}
+            setPromoInput={setPromoInput}
+            applyPromo={applyPromo}
+            promoError={promoError}
+            shippingCost={shippingCost}
+            tax={tax}
+            total={total}
+          />
         </div>
       </div>
     </div>
@@ -525,10 +560,16 @@ function ReviewStep({
 
 /* ─── Order Summary Sidebar ─────────────────────────────────── */
 function OrderSummary({
-  items, subtotal, shippingCost, tax, total,
+  items, subtotal, discount, appliedPromo, promoInput, setPromoInput, applyPromo, promoError, shippingCost, tax, total,
 }: {
   items: ReturnType<typeof useCart>["items"]
   subtotal: number
+  discount: number
+  appliedPromo: string | null
+  promoInput: string
+  setPromoInput: (v: string) => void
+  applyPromo: () => void
+  promoError: string
   shippingCost: number
   tax: number
   total: number
@@ -554,10 +595,36 @@ function OrderSummary({
             </li>
           ))}
         </ul>
+
+        {/* Promo code */}
+        <div className="mb-4">
+          <p className="mb-1.5 text-[11px] font-light uppercase tracking-[0.15em] text-muted-foreground">Promo Code</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Enter code…"
+              value={promoInput}
+              onChange={e => setPromoInput(e.target.value.toUpperCase())}
+              onKeyDown={e => e.key === "Enter" && applyPromo()}
+              className="flex-1 border border-border bg-background px-3 py-2.5 text-xs font-light outline-none focus:border-foreground transition-colors uppercase placeholder:normal-case placeholder:text-muted-foreground/50"
+            />
+            <button
+              type="button"
+              onClick={applyPromo}
+              className="shrink-0 border border-border px-3 py-2.5 text-[11px] font-medium uppercase tracking-[0.1em] hover:border-foreground transition-colors"
+            >
+              Apply
+            </button>
+          </div>
+          {promoError && <p className="mt-1.5 text-[11px] font-light text-destructive">{promoError}</p>}
+          {appliedPromo && <p className="mt-1.5 text-[11px] font-light text-green-700">✓ Code <strong>{appliedPromo}</strong> applied!</p>}
+        </div>
+
         <div className="space-y-2 border-t border-border pt-4">
           <LineItem label="Subtotal" value={formatPrice(subtotal)} small />
+          {discount > 0 && <LineItem label={`Discount (${appliedPromo})`} value={`-${formatPrice(discount)}`} small className="text-green-700" />}
           <LineItem label="Shipping" value={shippingCost === 0 ? "Free" : formatPrice(shippingCost)} small />
-          <LineItem label="Tax (est.)" value={formatPrice(tax)} small />
+          <LineItem label="VAT (7.5%)" value={formatPrice(tax)} small />
           <div className="border-t border-border pt-2 mt-2">
             <LineItem label="Total" value={formatPrice(total)} bold />
           </div>
@@ -605,13 +672,13 @@ function FormField({
   )
 }
 
-function LineItem({ label, value, bold, small }: { label: string; value: string; bold?: boolean; small?: boolean }) {
+function LineItem({ label, value, bold, small, className }: { label: string; value: string; bold?: boolean; small?: boolean; className?: string }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className={cn("flex items-center justify-between", className)}>
       <span className={cn("font-light text-muted-foreground", small ? "text-[11px]" : "text-xs uppercase tracking-[0.12em]")}>
         {label}
       </span>
-      <span className={cn(bold ? "font-serif text-lg font-medium" : small ? "text-xs" : "text-sm")}>
+      <span className={cn(bold ? "font-serif text-lg font-medium" : small ? "text-xs" : "text-sm", className)}>
         {value}
       </span>
     </div>

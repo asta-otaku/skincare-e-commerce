@@ -8,7 +8,7 @@ export function BrandStory() {
           <div className="relative aspect-[4/3] w-full overflow-hidden lg:aspect-[5/6]">
             <Image
               src="/brand-story.png"
-              alt="Hands gently holding an Aurelia skincare bottle"
+              alt="HAYDA SKINCo. curated skincare products"
               fill
               sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"
@@ -23,7 +23,7 @@ export function BrandStory() {
             Skincare as a quiet, golden ritual
           </h2>
           <p className="mt-6 text-pretty text-base font-light leading-relaxed text-muted-foreground">
-            Aurelia was born from a belief that true luxury lies in restraint. Every formula is a
+            HAYDA SKINCo. was built to make premium skincare genuinely accessible in Nigeria. Every product is
             careful balance of clinically proven actives and rare botanicals, crafted in small
             batches and finished by hand.
           </p>

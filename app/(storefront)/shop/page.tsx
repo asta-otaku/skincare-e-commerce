@@ -1,22 +1,25 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import { PageHeader } from "@/components/page-header"
 import { ShopGrid } from "@/components/shop-grid"
 
 export const metadata: Metadata = {
-  title: "Shop — Aurelia",
+  title: "Shop — HAYDA SKINCo.",
   description:
-    "Explore the complete Aurelia collection of serums, face oils, moisturizers, and clinically formulated skincare essentials.",
+    "Browse all skincare products stocked by HAYDA SKINCo. — CeraVe, The Ordinary, La Roche-Posay, COSRX, Paula's Choice, and more. Delivered nationwide.",
 }
 
 export default function ShopPage() {
   return (
     <>
       <PageHeader
-        eyebrow="The Collection"
-        title="Shop All Rituals"
-        description="Each formula is crafted in small batches with rare botanicals and clinically proven actives — a complete wardrobe for luminous skin."
+        eyebrow="All Products"
+        title="Shop All Skincare"
+        description="Trusted brands. Authentic products. Delivered anywhere in Nigeria."
       />
-      <ShopGrid />
+      <Suspense>
+        <ShopGrid />
+      </Suspense>
     </>
   )
 }

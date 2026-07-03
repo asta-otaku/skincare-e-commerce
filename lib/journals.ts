@@ -26,7 +26,7 @@ export const journals: Journal[] = [
 
 When it comes to skincare layering, the golden rule is to work from lightest to heaviest texture. This ensures each formula penetrates effectively without being blocked by heavier occlusive ingredients.
 
-## The Aurelia Method
+## The HAYDA Method
 
 **Step 1: Cleanse**
 Begin with our Gentle Resurfacing Cleanser to remove impurities while maintaining your skin's delicate moisture barrier. Massage in circular motions for 60 seconds.
@@ -48,7 +48,7 @@ Finish with the Velvet Hydration Cream to lock in moisture and smooth the surfac
 
 *Allow 30 seconds between layers for optimal absorption.*`,
     category: "Rituals",
-    author: "Aurelia Editorial",
+    author: "HAYDA Editorial",
     publishedAt: "2024-11-15",
     image: "/journal-ritual.png",
     readTime: 6,
@@ -67,7 +67,7 @@ Finish with the Velvet Hydration Cream to lock in moisture and smooth the surfac
 
 Ascorbic acid — the pure form of Vitamin C — is notoriously unstable. Exposed to light, heat, or oxygen, it oxidises rapidly, turning orange and losing its efficacy. This is why so many Vitamin C serums fail to deliver visible results.
 
-## How Aurelia Stabilises
+## How HAYDA SKINCo. Sources Vitamin C
 
 Our Radiance Renewal Serum uses a patented stabilisation method that encapsulates the ascorbic acid molecules until they come into contact with skin. This ensures maximum potency at the moment of application.
 
@@ -106,7 +106,7 @@ Today, we understand that gold nanoparticles can penetrate the dermis and stimul
 
 Our Gold Infusion Face Oil suspends genuine 24k gold flakes in a base of cold-pressed marula and squalane. The result is a dry oil that delivers a lit-from-within glow while supporting barrier function overnight.`,
     category: "Ingredients",
-    author: "Aurelia Editorial",
+    author: "HAYDA Editorial",
     publishedAt: "2024-09-12",
     image: "/journal-gold.png",
     readTime: 5,

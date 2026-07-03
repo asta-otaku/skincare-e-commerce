@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Check, Plus, Heart } from "lucide-react"
+import { Check, Plus, Heart, Star } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
 import { useFavorites } from "@/components/favorites-provider"
 import { formatPrice, type Product } from "@/lib/products"
@@ -67,7 +67,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           alt={product.name}
           fill
           sizes="(max-width: 768px) 50vw, 25vw"
-          className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+          className="object-contain mix-blend-multiply transition-transform duration-700 ease-out group-hover:scale-105"
         />
 
         {/* Quick add to cart */}
@@ -93,14 +93,38 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
       </Link>
 
       <div className="flex flex-1 flex-col items-center px-1 pt-5 text-center">
-        <p className="text-[10px] font-light uppercase tracking-[0.22em] text-gold">{product.category}</p>
+        <p className="text-[10px] font-light uppercase tracking-[0.22em] text-gold">{product.brand}</p>
         <h3 className="mt-2 font-serif text-xl font-medium leading-snug text-foreground">
           <Link href={`/product/${product.id}`} className="transition-colors hover:text-gold">
             {product.name}
           </Link>
         </h3>
-        <p className="mt-1 text-sm font-light text-muted-foreground">{product.tagline}</p>
-        <p className="mt-3 text-sm font-light tracking-wide text-foreground">{formatPrice(product.price)}</p>
+        <p className="mt-1 text-xs font-light text-muted-foreground">{product.tagline}</p>
+
+        {/* Stars + review count */}
+        {product.reviewCount > 0 && (
+          <div className="mt-2 flex items-center gap-1.5">
+            <div className="flex items-center gap-0.5">
+              {[1,2,3,4,5].map(i => (
+                <Star key={i} className={cn(
+                  "size-3",
+                  product.rating >= i ? "fill-gold text-gold" : "fill-muted text-border",
+                )} />
+              ))}
+            </div>
+            <span className="text-[10px] font-light text-muted-foreground">({product.reviewCount})</span>
+          </div>
+        )}
+
+        <div className="mt-3 flex items-center gap-2">
+          <p className="text-sm font-light tracking-wide text-foreground">{formatPrice(product.price)}</p>
+          {product.stock <= 10 && product.stock > 0 && (
+            <span className="text-[10px] font-light text-amber-600">Low stock</span>
+          )}
+          {product.stock === 0 && (
+            <span className="text-[10px] font-light text-destructive">Out of stock</span>
+          )}
+        </div>
       </div>
     </article>
   )

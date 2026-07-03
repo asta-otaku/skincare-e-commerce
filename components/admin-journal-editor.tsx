@@ -31,7 +31,7 @@ function toFormState(journal?: Journal): FormState {
     excerpt: journal?.excerpt ?? "",
     content: journal?.content ?? "",
     category: journal?.category ?? "Rituals",
-    author: journal?.author ?? "Aurelia Editorial",
+    author: journal?.author ?? "HAYDA Editorial",
     publishedAt: journal?.publishedAt ?? new Date().toISOString().split("T")[0],
     image: journal?.image ?? "",
     readTime: journal ? String(journal.readTime) : "5",

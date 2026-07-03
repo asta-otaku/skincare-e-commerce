@@ -6,9 +6,9 @@ import { journals } from "@/lib/journals"
 import { ArrowRight, Clock } from "lucide-react"
 
 export const metadata: Metadata = {
-  title: "Journal — Aurelia",
+  title: "Skin Blog — HAYDA SKINCo.",
   description:
-    "Rituals, ingredient stories, and skincare wisdom from the Aurelia atelier — thoughtful reading for a more luminous routine.",
+    "Skincare tips, ingredient deep-dives, and product guides from the HAYDA SKINCo. team — everything you need for a better routine.",
 }
 
 const published = journals.filter(j => j.status === "published")
@@ -20,7 +20,7 @@ export default function JournalPage() {
       <PageHeader
         eyebrow="The Journal"
         title="Notes on Beauty & Ritual"
-        description="Ingredient stories, skincare wisdom, and quiet rituals from the Aurelia atelier."
+        description="Skincare guides, ingredient explainers, and routine tips from the HAYDA SKINCo. team."
       />
 
       <div className="mx-auto max-w-7xl px-5 py-16 md:py-20 lg:px-8">

@@ -5,31 +5,31 @@ import { Leaf, FlaskConical, Sparkles, Heart } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 
 export const metadata: Metadata = {
-  title: "Our Story — Aurelia",
+  title: "Our Story — HAYDA SKINCo.",
   description:
-    "Discover the philosophy behind Aurelia — clean, gold-infused skincare crafted in small batches with rare botanicals and clinically proven actives.",
+    "Discover the story behind HAYDA SKINCo. — Nigeria's hub for premium skincare, stocking trusted brands and delivering nationwide.",
 }
 
 const values = [
   {
     icon: Leaf,
-    title: "Clean by Conviction",
-    body: "Every formula is free from parabens, sulfates, and synthetic fragrance — only what your skin truly needs.",
+    title: "100% Authentic",
+    body: "Every product is sourced directly from authorised distributors. No fakes, no grey-market imports — ever.",
   },
   {
     icon: FlaskConical,
-    title: "Clinically Proven",
-    body: "We pair rare botanicals with dermatologist-validated actives, tested for real, visible results.",
+    title: "Dermatologist-Approved",
+    body: "We stock only clinically-backed, proven brands recommended by dermatologists worldwide.",
   },
   {
     icon: Sparkles,
-    title: "Crafted in Small Batches",
-    body: "Each product is blended in limited quantities and finished by hand to preserve potency.",
+    title: "Curated for Nigeria",
+    body: "Our selection is tailored for Nigerian skin types, climate, and lifestyles — from Lagos heat to harmattan.",
   },
   {
     icon: Heart,
-    title: "Kind to All",
-    body: "100% cruelty-free and thoughtfully packaged with recyclable, responsibly sourced materials.",
+    title: "Nationwide Delivery",
+    body: "Order from anywhere in Nigeria and receive your skincare fast, safely packaged and tracked.",
   },
 ]
 
@@ -38,8 +38,8 @@ export default function AboutPage() {
     <>
       <PageHeader
         eyebrow="Our Story"
-        title="Skincare as a quiet, golden ritual"
-        description="Aurelia was born from a belief that true luxury lies in restraint — in doing less, but doing it exquisitely well."
+        title="Nigeria's hub for all your skin needs"
+        description="HAYDA SKINCo. was built to make premium skincare accessible — no fakes, no guesswork, just authentic products delivered to your door."
       />
 
       {/* Intro split */}
@@ -47,7 +47,7 @@ export default function AboutPage() {
         <div className="relative aspect-[4/5] w-full overflow-hidden">
           <Image
             src="/brand-story.png"
-            alt="Hands gently holding an Aurelia skincare bottle"
+            alt="HAYDA SKINCo. curated skincare products"
             fill
             sizes="(max-width: 1024px) 100vw, 50vw"
             className="object-cover"
@@ -55,20 +55,15 @@ export default function AboutPage() {
           <span className="pointer-events-none absolute inset-3 border border-gold/40" />
         </div>
         <div>
-          <p className="text-xs font-light uppercase tracking-[0.3em] text-gold">Est. 2019</p>
+          <p className="text-xs font-light uppercase tracking-[0.3em] text-gold">Lagos, Nigeria</p>
           <h2 className="mt-5 text-balance font-serif text-3xl font-medium leading-tight text-foreground md:text-4xl">
-            A devotion to the essential
+            Premium skincare, finally accessible
           </h2>
           <p className="mt-6 text-pretty text-base font-light leading-relaxed text-muted-foreground">
-            Founded in a small atelier, Aurelia began with a single serum and an uncompromising
-            standard. We were tired of excess — of crowded shelves and empty promises. So we
-            stripped everything back to what matters: efficacy, purity, and a sensorial ritual
-            worth savoring.
+            HAYDA SKINCo. was born from a simple frustration: finding authentic, dermatologist-trusted skincare in Nigeria was unnecessarily hard. Products were overpriced, often counterfeit, and always scattered across multiple stores.
           </p>
           <p className="mt-4 text-pretty text-base font-light leading-relaxed text-muted-foreground">
-            Today, every Aurelia formula is still made in small batches, infused with 24k gold and
-            rare botanicals, and finished by hand. No shortcuts. No excess. Only what your skin
-            truly needs to glow.
+            We built HAYDA to fix that. One destination, only verified brands — CeraVe, The Ordinary, La Roche-Posay, COSRX, Paula's Choice, and more — curated for every skin type, concern, and budget, with nationwide delivery from Lagos.
           </p>
         </div>
       </section>

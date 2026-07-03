@@ -19,10 +19,10 @@ export default function AdminLoginPage() {
     setError("")
     setLoading(true)
     await new Promise((r) => setTimeout(r, 900))
-    if (email === "admin@aurelia.com" && password === "password") {
+    if (email === "admin@haydaskinco.com" && password === "password") {
       router.push("/admin/dashboard")
     } else {
-      setError("Invalid email or password. Try admin@aurelia.com / password")
+      setError("Invalid email or password. Try admin@haydaskinco.com / password")
       setLoading(false)
     }
   }
@@ -32,13 +32,13 @@ export default function AdminLoginPage() {
       {/* Left: brand panel */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between bg-foreground p-12 text-background">
         <Link href="/" className="font-serif text-2xl font-medium tracking-[0.25em]">
-          AURELIA
+          HAYDA SKINCo.
         </Link>
         <div>
           <blockquote className="font-serif text-3xl font-light leading-relaxed text-background/90">
             &ldquo;Beauty is not about perfection — it is about the rituals we create for ourselves.&rdquo;
           </blockquote>
-          <p className="mt-4 text-sm font-light text-background/50">— Aurelia Brand Philosophy</p>
+          <p className="mt-4 text-sm font-light text-background/50">— HAYDA SKINCo.</p>
         </div>
         <p className="text-xs font-light uppercase tracking-[0.2em] text-background/40">
           Admin Portal
@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <Link href="/" className="mb-10 block font-serif text-2xl font-medium tracking-[0.25em] lg:hidden">
-            AURELIA
+            HAYDA SKINCo.
           </Link>
 
           <div className="mb-8">
@@ -73,7 +73,7 @@ export default function AdminLoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@aurelia.com"
+                  placeholder="admin@haydaskinco.com"
                   required
                   className="w-full border border-border bg-background py-3 pl-11 pr-4 text-sm font-light outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground/40"
                 />
@@ -157,7 +157,7 @@ export default function AdminLoginPage() {
 
           <div className="mt-4 rounded-sm border border-border/60 bg-muted/40 px-4 py-3">
             <p className="text-[10px] font-light text-muted-foreground text-center">
-              Demo credentials: admin@aurelia.com / password
+              Demo credentials: admin@haydaskinco.com / password
             </p>
           </div>
         </div>

@@ -9,11 +9,11 @@ import {
   BookOpen,
   Users,
   ShoppingBag,
+  Tag,
   LogOut,
   Menu,
   X,
   ChevronRight,
-  Settings,
   Bell,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -40,6 +40,11 @@ const NAV = [
     icon: Users,
   },
   {
+    label: "Deals",
+    href: "/admin/deals",
+    icon: Tag,
+  },
+  {
     label: "Journals",
     href: "/admin/journals",
     icon: BookOpen,
@@ -63,7 +68,7 @@ export function AdminSidebar() {
       {/* Mobile header bar */}
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background px-5 py-4 lg:hidden">
         <Link href="/admin/dashboard" className="font-serif text-xl font-medium tracking-[0.25em]">
-          AURELIA
+          HAYDA SKINCo.
         </Link>
         <div className="flex items-center gap-3">
           <button className="relative text-foreground/70 hover:text-foreground">
@@ -87,7 +92,7 @@ export function AdminSidebar() {
         <div className="flex items-center justify-between border-b border-border px-6 py-5">
           <div>
             <Link href="/admin/dashboard" className="font-serif text-xl font-medium tracking-[0.25em]">
-              AURELIA
+              HAYDA SKINCo.
             </Link>
             <p className="text-[10px] font-light uppercase tracking-[0.2em] text-muted-foreground mt-0.5">
               Admin
@@ -137,18 +142,6 @@ export function AdminSidebar() {
             })}
           </ul>
 
-          <div className="mt-6 border-t border-border pt-4">
-            <p className="mb-2 px-3 text-[10px] font-light uppercase tracking-[0.2em] text-muted-foreground">
-              Settings
-            </p>
-            <Link
-              href="/admin/settings"
-              className="group flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-light text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all"
-            >
-              <Settings className="size-4 text-muted-foreground group-hover:text-foreground/70" />
-              Settings
-            </Link>
-          </div>
         </nav>
 
         {/* User / footer */}
@@ -160,7 +153,7 @@ export function AdminSidebar() {
               </div>
               <div>
                 <p className="text-xs font-medium">Admin</p>
-                <p className="text-[10px] font-light text-muted-foreground">admin@aurelia.com</p>
+                <p className="text-[10px] font-light text-muted-foreground">admin@haydaskinco.com</p>
               </div>
             </div>
             <Link

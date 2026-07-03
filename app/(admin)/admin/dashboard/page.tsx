@@ -132,7 +132,7 @@ export default function DashboardPage() {
       <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background px-6 py-4 lg:px-8">
         <div>
           <h1 className="font-serif text-2xl font-medium">Dashboard</h1>
-          <p className="text-xs font-light text-muted-foreground mt-0.5">Welcome back — here&apos;s how Aurelia is performing.</p>
+          <p className="text-xs font-light text-muted-foreground mt-0.5">Welcome back — here&apos;s how HAYDA SKINCo. is performing.</p>
         </div>
         <div className="flex items-center gap-3">
           <button className="hidden sm:flex items-center gap-2 border border-border px-4 py-2 text-xs font-light text-muted-foreground hover:border-foreground hover:text-foreground transition-colors">

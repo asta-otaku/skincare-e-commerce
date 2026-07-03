@@ -18,7 +18,7 @@ export function Newsletter() {
   return (
     <section className="mx-auto max-w-7xl px-5 py-20 md:py-24 lg:px-8">
       <div className="flex flex-col items-center border border-gold/50 px-6 py-14 text-center md:px-12 md:py-20">
-        <p className="text-xs font-light uppercase tracking-[0.3em] text-gold">The Aurelia List</p>
+        <p className="text-xs font-light uppercase tracking-[0.3em] text-gold">The HAYDA List</p>
         <h2 className="mt-4 text-balance font-serif text-3xl font-light text-foreground md:text-4xl">
           Join the ritual
         </h2>

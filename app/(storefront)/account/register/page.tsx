@@ -47,7 +47,7 @@ export default function AccountRegisterPage() {
         <p className="text-[11px] font-light uppercase tracking-[0.28em] text-gold mb-3">Account</p>
         <h1 className="font-serif text-4xl font-medium">Create account</h1>
         <p className="mt-3 text-sm font-light text-muted-foreground">
-          Join Aurelia to track orders, leave reviews, and save your rituals.
+          Join HAYDA SKINCo. to track orders, leave reviews, and save your favourites.
         </p>
       </div>
 

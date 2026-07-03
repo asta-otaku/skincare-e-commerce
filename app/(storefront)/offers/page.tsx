@@ -1,0 +1,53 @@
+import type { Metadata } from "next"
+import { Suspense } from "react"
+import Link from "next/link"
+import { products } from "@/lib/products"
+import { PageHeader } from "@/components/page-header"
+import { OffersGrid } from "./offers-grid"
+
+export const metadata: Metadata = {
+  title: "Offers — HAYDA SKINCo.",
+  description: "Shop sale items, limited-time deals, and discounted skincare at HAYDA SKINCo. Get premium skincare at the best prices.",
+}
+
+export default function OffersPage() {
+  const saleCount = products.filter(p => p.tag === "Sale").length
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Limited-Time Deals"
+        title="Offers & Sale"
+        description={`${saleCount} products on sale now — premium skincare at reduced prices, while stocks last.`}
+      />
+
+      {/* Banner strip */}
+      <div className="bg-foreground text-background">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-10 gap-y-2 px-5 py-4 text-center lg:px-8">
+          {["Free delivery on orders over ₦20,000", "Authentic products guaranteed", "Easy 7-day returns"].map(text => (
+            <p key={text} className="text-xs font-light uppercase tracking-[0.15em]">{text}</p>
+          ))}
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl px-5 py-10 lg:px-8">
+        {/* Category shortcuts */}
+        <div className="mb-8 flex flex-wrap gap-2">
+          {["All Offers", "Face", "Bath & Body", "Sunscreen", "Serums", "Moisturisers"].map(cat => (
+            <Link
+              key={cat}
+              href={cat === "All Offers" ? "/offers" : `/offers?category=${cat}`}
+              className="border border-border px-4 py-2 text-xs font-light uppercase tracking-[0.12em] text-muted-foreground transition-all hover:border-foreground hover:text-foreground"
+            >
+              {cat}
+            </Link>
+          ))}
+        </div>
+
+        <Suspense fallback={<div className="py-20 text-center text-sm font-light text-muted-foreground">Loading offers…</div>}>
+          <OffersGrid />
+        </Suspense>
+      </div>
+    </>
+  )
+}

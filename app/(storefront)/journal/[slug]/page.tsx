@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, Clock, User, Tag } from "lucide-react"
+import { ArrowLeft, Clock, User, Tag, Share2, Link2 } from "lucide-react"
 import { journals } from "@/lib/journals"
 
 /* ─── Static params ─────────────────────────────────────────── */
@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const article = journals.find(j => j.slug === slug)
   if (!article) return {}
   return {
-    title: `${article.title} — Aurelia Journal`,
+    title: `${article.title} — HAYDA Skin Blog`,
     description: article.excerpt,
   }
 }
@@ -77,6 +77,9 @@ function MarkdownContent({ content }: { content: string }) {
     </div>
   )
 }
+
+/* ─── Share buttons (client component) ─────────────────────── */
+import { ShareButtons } from "./share-buttons"
 
 /* ─── Page ──────────────────────────────────────────────────── */
 export default async function JournalArticlePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -165,6 +168,9 @@ export default async function JournalArticlePage({ params }: { params: Promise<{
               ))}
             </div>
           )}
+
+          {/* Share buttons */}
+          <ShareButtons title={article.title} slug={article.slug} />
         </article>
 
         {/* Sidebar */}
@@ -178,7 +184,7 @@ export default async function JournalArticlePage({ params }: { params: Promise<{
               </div>
               <div>
                 <p className="text-sm font-medium">{article.author}</p>
-                <p className="text-xs font-light text-muted-foreground">Aurelia Atelier</p>
+                <p className="text-xs font-light text-muted-foreground">HAYDA SKINCo.</p>
               </div>
             </div>
           </div>
