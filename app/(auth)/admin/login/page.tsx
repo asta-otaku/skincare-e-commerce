@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Lock, Mail, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { saveAdminSession, getAdminSession } from "@/lib/auth"
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -14,12 +15,18 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  // If already signed in, redirect straight to dashboard
+  useEffect(() => {
+    if (getAdminSession()) router.replace("/admin/dashboard")
+  }, [router])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 900))
+    await new Promise((r) => setTimeout(r, 800))
     if (email === "admin@haydaskinco.com" && password === "password") {
+      saveAdminSession({ email, name: "Admin", signedInAt: Date.now() })
       router.push("/admin/dashboard")
     } else {
       setError("Invalid email or password. Try admin@haydaskinco.com / password")

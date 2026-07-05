@@ -1,11 +1,13 @@
 "use client"
 
+import { useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   LayoutDashboard, ShoppingBag, Heart, Star, Settings, ChevronRight, LogOut, Gift,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useUserAuth } from "@/components/user-auth-provider"
 
 const NAV = [
   { label: "Overview",  href: "/account",          icon: LayoutDashboard },
@@ -16,26 +18,38 @@ const NAV = [
   { label: "Settings",  href: "/account/settings",  icon: Settings },
 ]
 
-const AUTH_PATHS = ["/account/login", "/account/register"]
+const AUTH_PATHS = ["/login", "/register"]
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { session, signOut } = useUserAuth()
   const isAuthPage = AUTH_PATHS.some(p => pathname === p)
 
+  // Guard: redirect to login if not signed in and on a protected page
+  useEffect(() => {
+    if (!isAuthPage && session === null) {
+      // session is null after mount check — not signed in
+      router.replace("/login")
+    }
+  }, [session, isAuthPage, router])
+
   function handleSignOut() {
-    // Auth state will be cleared by Supabase when integrated
-    router.push("/account/login")
+    signOut()
+    router.push("/login")
   }
 
   if (isAuthPage) return <>{children}</>
+
+  // Show nothing while checking auth (session is null before mount resolves)
+  if (session === null) return null
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-10 md:py-14 lg:px-8">
       {/* Page heading */}
       <div className="mb-8 border-b border-border pb-6">
         <p className="text-[11px] font-light uppercase tracking-[0.28em] text-gold mb-1.5">My Account</p>
-        <h1 className="font-serif text-3xl font-medium">Welcome back, Sophie</h1>
+        <h1 className="font-serif text-3xl font-medium">Welcome back, {session?.firstName ?? "there"}</h1>
         <p className="mt-1 text-sm font-light text-muted-foreground">Manage your orders, favourites, and details.</p>
       </div>
 

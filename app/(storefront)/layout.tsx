@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import { CartProvider } from '@/components/cart-provider'
 import { FavoritesProvider } from '@/components/favorites-provider'
+import { UserAuthProvider } from '@/components/user-auth-provider'
 import { SiteNavbar } from '@/components/site-navbar'
 import { SiteFooter } from '@/components/site-footer'
 import { CartDrawer } from '@/components/cart-drawer'
@@ -11,6 +12,7 @@ import { NewsletterPopup } from '@/components/newsletter-popup'
 
 export default function StorefrontLayout({ children }: { children: React.ReactNode }) {
   return (
+    <UserAuthProvider>
     <CartProvider>
       <FavoritesProvider>
         <SearchProvider>
@@ -28,5 +30,6 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
         </SearchProvider>
       </FavoritesProvider>
     </CartProvider>
+    </UserAuthProvider>
   )
 }

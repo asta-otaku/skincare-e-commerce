@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
+import { useAdminAuth } from "@/components/admin-auth-provider"
 import {
   LayoutDashboard,
   Package,
@@ -54,6 +55,7 @@ const NAV = [
 export function AdminSidebar() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { session, signOut } = useAdminAuth()
 
   return (
     <>
@@ -149,20 +151,21 @@ export function AdminSidebar() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex size-8 items-center justify-center rounded-full bg-gold text-xs font-medium text-gold-foreground">
-                A
+                {session?.name?.charAt(0).toUpperCase() ?? "A"}
               </div>
               <div>
-                <p className="text-xs font-medium">Admin</p>
-                <p className="text-[10px] font-light text-muted-foreground">admin@haydaskinco.com</p>
+                <p className="text-xs font-medium">{session?.name ?? "Admin"}</p>
+                <p className="text-[10px] font-light text-muted-foreground">{session?.email ?? ""}</p>
               </div>
             </div>
-            <Link
-              href="/admin/login"
+            <button
+              type="button"
+              onClick={signOut}
               className="text-muted-foreground hover:text-destructive transition-colors"
               aria-label="Sign out"
             >
               <LogOut className="size-4" />
-            </Link>
+            </button>
           </div>
         </div>
       </aside>

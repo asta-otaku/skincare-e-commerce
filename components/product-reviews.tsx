@@ -290,13 +290,13 @@ export function ProductReviews({ productId }: { productId: string }) {
               </div>
               <div className="flex gap-2">
                 <Link
-                  href="/account/login"
+                  href="/login"
                   className="bg-foreground px-5 py-2.5 text-xs font-medium uppercase tracking-[0.15em] text-background hover:bg-gold hover:text-gold-foreground transition-colors"
                 >
                   Sign In
                 </Link>
                 <Link
-                  href="/account/register"
+                  href="/register"
                   className="border border-border px-5 py-2.5 text-xs font-light uppercase tracking-[0.15em] hover:border-foreground transition-colors"
                 >
                   Create Account

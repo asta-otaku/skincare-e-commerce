@@ -1,27 +1,37 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useUserAuth } from "@/components/user-auth-provider"
 
-export default function AccountLoginPage() {
+export default function LoginPage() {
   const router = useRouter()
+  const { session, signIn } = useUserAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  // Already signed in → go to account
+  useEffect(() => {
+    if (session) router.replace("/account")
+  }, [session, router])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 900))
-    // Supabase auth will go here
-    setLoading(false)
-    setError("Authentication is not yet enabled. Supabase integration coming soon.")
+    const err = await signIn(email, password)
+    if (err) {
+      setError(err)
+      setLoading(false)
+    } else {
+      router.push("/account")
+    }
   }
 
   return (
@@ -31,7 +41,7 @@ export default function AccountLoginPage() {
         <p className="text-[11px] font-light uppercase tracking-[0.28em] text-gold mb-3">Account</p>
         <h1 className="font-serif text-4xl font-medium">Welcome back</h1>
         <p className="mt-3 text-sm font-light text-muted-foreground">
-          Sign in to view your orders, wishlists, and saved rituals.
+          Sign in to view your orders, wishlists, and saved favourites.
         </p>
       </div>
 
@@ -126,14 +136,13 @@ export default function AccountLoginPage() {
 
       <p className="mt-8 text-center text-xs font-light text-muted-foreground">
         Don&apos;t have an account?{" "}
-        <Link href="/account/register" className="font-medium text-foreground underline-offset-2 hover:underline">
+        <Link href="/register" className="font-medium text-foreground underline-offset-2 hover:underline">
           Create one
         </Link>
       </p>
 
-      {/* Supabase note */}
-      <p className="mt-6 text-center text-[10px] font-light text-muted-foreground/60">
-        Authentication powered by Supabase — coming soon
+      <p className="mt-6 text-center text-[10px] font-light text-muted-foreground/40">
+        Your session is stored locally. Full auth via Supabase when backend is connected.
       </p>
     </div>
   )
