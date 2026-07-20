@@ -4,6 +4,7 @@
  * to every request — required for RLS write policies (admin only).
  * Falls back to the local mock array ONLY when NEXT_PUBLIC_SUPABASE_URL is not set.
  */
+import { createClient as createSb } from "@supabase/supabase-js"
 import { createClient, createAdminBrowserClient } from "@/lib/supabase/client"
 import type { Product } from "@/lib/products"
 import { products as mockProducts, BRANDS as mockBrands } from "@/lib/products"
@@ -17,6 +18,17 @@ export type ProductQuery = {
   inStockOnly?: boolean
   minRating?: number
   sort?: string
+}
+
+/** Browser auth client on client; plain anon client on server (public product reads). */
+function getReadClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return null
+  if (typeof window !== "undefined") return createClient()
+  return createSb(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -68,7 +80,7 @@ function filterMock(q: ProductQuery): Product[] {
 
 /** Filtered + sorted product query against Supabase (or mock). */
 export async function queryProducts(q: ProductQuery = {}): Promise<Product[]> {
-  const supabase = createClient()
+  const supabase = getReadClient()
   if (!supabase) return filterMock(q)
 
   let query = supabase
@@ -140,7 +152,7 @@ export async function getAllProducts(): Promise<Product[]> {
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
-  const supabase = createClient()
+  const supabase = getReadClient()
   if (!supabase) return mockProducts.find(p => p.id === id) ?? null
 
   const { data, error } = await supabase
@@ -157,7 +169,7 @@ export async function getProductById(id: string): Promise<Product | null> {
 }
 
 export async function getProductIds(): Promise<string[]> {
-  const supabase = createClient()
+  const supabase = getReadClient()
   if (!supabase) return mockProducts.map(p => p.id)
 
   const { data, error } = await supabase
@@ -170,8 +182,32 @@ export async function getProductIds(): Promise<string[]> {
   return data.map((r: any) => r.id as string)
 }
 
-export async function getProductsByBrand(brand: string): Promise<Product[]> {
-  return queryProducts({ brand })
+export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
+  const list = await queryProducts({ sort: "rating" })
+  const tagged = list.filter(p => p.tag === "New" || p.tag === "Bestseller")
+  const pool = tagged.length >= limit ? tagged : list
+  return pool.slice(0, limit)
+}
+
+export async function getRelatedProducts(currentId: string, limit = 4): Promise<Product[]> {
+  const list = await queryProducts({ sort: "rating" })
+  return list.filter(p => p.id !== currentId).slice(0, limit)
+}
+
+export async function searchProducts(query: string, category?: string): Promise<Product[]> {
+  const list = await queryProducts({
+    category: category && category !== "All" ? category : undefined,
+  })
+  const q = query.trim().toLowerCase()
+  if (!q) return list
+  return list.filter(
+    p =>
+      p.name.toLowerCase().includes(q) ||
+      p.tagline.toLowerCase().includes(q) ||
+      p.category.toLowerCase().includes(q) ||
+      p.brand.toLowerCase().includes(q) ||
+      p.description.toLowerCase().includes(q),
+  )
 }
 
 /** Upsert a product row. Returns the saved product id or throws. */
@@ -223,7 +259,7 @@ export async function deleteProduct(id: string): Promise<void> {
 }
 
 export async function getAllBrands() {
-  const supabase = createClient()
+  const supabase = getReadClient()
   if (!supabase) return mockBrands
 
   const { data, error } = await supabase

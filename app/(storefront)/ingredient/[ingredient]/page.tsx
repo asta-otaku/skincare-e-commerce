@@ -3,7 +3,8 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { ProductCard } from "@/components/product-card"
-import { products, ALL_INGREDIENTS } from "@/lib/products"
+import { ALL_INGREDIENTS } from "@/lib/products"
+import { queryProducts } from "@/lib/supabase/products"
 
 function slugToLabel(slug: string) {
   return ALL_INGREDIENTS.find(i => i.toLowerCase().replace(/\s+/g, "-").replace("/", "-") === slug) ?? null
@@ -38,7 +39,7 @@ export default async function IngredientPage({ params }: { params: Promise<{ ing
   const label = slugToLabel(ingredient)
   if (!label) notFound()
 
-  const filtered = products.filter(p => p.ingredients.some(i => i.toLowerCase() === label.toLowerCase()))
+  const filtered = await queryProducts({ ingredient: label })
   const info = INGREDIENT_INFO[label]
 
   return (

@@ -3,7 +3,8 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { ProductCard } from "@/components/product-card"
-import { products, ALL_CONCERNS } from "@/lib/products"
+import { ALL_CONCERNS } from "@/lib/products"
+import { queryProducts } from "@/lib/supabase/products"
 
 function slugToLabel(slug: string) {
   return ALL_CONCERNS.find(c => c.toLowerCase().replace(/\s+/g, "-").replace("/", "-") === slug) ?? null
@@ -37,7 +38,7 @@ export default async function ConcernPage({ params }: { params: Promise<{ concer
   const label = slugToLabel(concern)
   if (!label) notFound()
 
-  const filtered = products.filter(p => p.concerns.includes(label))
+  const filtered = await queryProducts({ concern: label })
   const info = CONCERN_INFO[label]
 
   return (

@@ -121,6 +121,27 @@ export async function updateProfile(values: {
   return null
 }
 
+/**
+ * One-time +100 points when profile has name + phone.
+ * Returns { claimed: true, points: 100 } on first grant, or null if not applicable.
+ */
+export async function claimProfileBonus(): Promise<{ claimed: boolean; points?: number; message?: string } | null> {
+  const supabase = createClient()
+  if (!supabase) return null
+
+  const { data, error } = await supabase.rpc("claim_profile_bonus")
+  if (error) {
+    console.error("[profile] claim_profile_bonus:", error.message)
+    return { claimed: false, message: error.message }
+  }
+  if (data && typeof data === "object") {
+    const d = data as { ok?: boolean; claimed?: boolean; points?: number; message?: string }
+    if (!d.ok) return { claimed: false, message: d.message }
+    return { claimed: Boolean(d.claimed), points: d.points, message: d.message }
+  }
+  return null
+}
+
 /** Persist notification preference toggles. */
 export async function updatePreferences(prefs: NotificationPrefs): Promise<string | null> {
   const supabase = createClient()

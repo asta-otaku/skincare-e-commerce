@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, createContext, useContext, useCallback, us
 import Image from "next/image"
 import Link from "next/link"
 import { Search, X, ArrowRight } from "lucide-react"
-import { products, formatPrice, type Product } from "@/lib/products"
+import { formatPrice, type Product } from "@/lib/products"
+import { queryProducts } from "@/lib/supabase/products"
 import { cn } from "@/lib/utils"
 
 /* ─── Context ──────────────────────────────────────────────── */
@@ -37,19 +38,27 @@ export function SearchModal() {
   const { isSearchOpen, closeSearch } = useSearch()
   const [query, setQuery] = useState("")
   const [activeCategory, setActiveCategory] = useState("All")
+  const [catalog, setCatalog] = useState<Product[]>([])
+  const [catalogLoaded, setCatalogLoaded] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (isSearchOpen) {
       document.body.style.overflow = "hidden"
       setTimeout(() => inputRef.current?.focus(), 50)
+      if (!catalogLoaded) {
+        queryProducts({}).then(data => {
+          setCatalog(data)
+          setCatalogLoaded(true)
+        })
+      }
     } else {
       document.body.style.overflow = ""
       setQuery("")
       setActiveCategory("All")
     }
     return () => { document.body.style.overflow = "" }
-  }, [isSearchOpen])
+  }, [isSearchOpen, catalogLoaded])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -60,20 +69,21 @@ export function SearchModal() {
   }, [closeSearch])
 
   const results = useMemo<Product[]>(() => {
-    let pool = products
+    let pool = catalog
     if (activeCategory !== "All") {
-      pool = pool.filter((p) => p.category === activeCategory)
+      pool = pool.filter((p) => p.category.toLowerCase().includes(activeCategory.toLowerCase()))
     }
-    if (!query.trim()) return pool
+    if (!query.trim()) return pool.slice(0, 40)
     const q = query.toLowerCase()
     return pool.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         p.tagline.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q) ||
+        p.brand.toLowerCase().includes(q) ||
         p.description.toLowerCase().includes(q),
     )
-  }, [query, activeCategory])
+  }, [query, activeCategory, catalog])
 
   return (
     <>

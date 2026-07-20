@@ -5,7 +5,8 @@ import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight, ShoppingBag, ChevronLeft, ChevronRight, Sparkles } from "lucide-react"
 import { ProductCard } from "@/components/product-card"
-import { products, BRANDS } from "@/lib/products"
+import { BRANDS, type Product } from "@/lib/products"
+import { getFeaturedProducts } from "@/lib/supabase/products"
 import { deals, dealAsProduct } from "@/lib/deals"
 import { journals } from "@/lib/journals"
 import { useCart } from "@/components/cart-provider"
@@ -272,8 +273,12 @@ function HomeDealCard({ deal }: { deal: typeof deals[number] }) {
 }
 
 export default function HomePage() {
-  const newArrivals = products.filter(p => p.tag === "New" || p.tag === "Bestseller").slice(0, 4)
+  const [newArrivals, setNewArrivals] = useState<Product[]>([])
   const recentArticles = journals.filter(j => j.status === "published").slice(0, 3)
+
+  useEffect(() => {
+    getFeaturedProducts(4).then(setNewArrivals)
+  }, [])
 
   return (
     <>

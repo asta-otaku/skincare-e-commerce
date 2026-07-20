@@ -6,7 +6,7 @@
 > - Priority 3 (Customer Features): **COMPLETE** — See `PRIORITY_3.md`
 > - Priority 4 (Admin CRUD + dashboard): **COMPLETE** — See `PRIORITY_4.md`. Live dashboard + users/roles; products/journals/deals/orders were already wired.
 > - Priority 5 (Communication): **COMPLETE** — See `PRIORITY_5.md`. Resend email, Supabase newsletter/contact/wholesale, WhatsApp env. Image storage was already done.
-> - Priority 6: Pending (Loyalty polish / final QA — much of rewards already in P3)
+> - Priority 6 (Loyalty polish & ship): **COMPLETE** — See `PRIORITY_6.md`. Profile +100 bonus, password reset UX, catalog surfaces on Supabase; core rewards were already in P3.
 
 ---
 
@@ -312,7 +312,8 @@ On mount, fetch user's wishlist. `toggleFavorite` → upsert/delete row.
 
 ### 3.4 Loyalty / Rewards Points
 
-**Current:** `app/(storefront)/account/rewards/page.tsx` — hardcoded `POINTS_BALANCE = 1250`, static history, redeem buttons do nothing.
+**Status:** Live (Priority 3 + Priority 6 polish). See `PRIORITY_3.md` / `PRIORITY_6.md`.  
+~~**Current:** `app/(storefront)/account/rewards/page.tsx` — hardcoded `POINTS_BALANCE = 1250`, static history, redeem buttons do nothing.~~
 
 **Database tables:**
 

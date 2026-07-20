@@ -14,8 +14,8 @@ import {
 const WAYS_TO_EARN = [
   { icon: ShoppingBag, label: "Place an order", desc: "Earn 1 point per ₦100 spent" },
   { icon: Star, label: "Write a product review", desc: "+50 points per review" },
+  { icon: Zap, label: "Complete your profile", desc: "+100 points (name + phone)" },
   { icon: Gift, label: "Refer a friend", desc: "Coming soon" },
-  { icon: Zap, label: "Complete your profile", desc: "Coming soon" },
 ]
 
 export default function RewardsPage() {

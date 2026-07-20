@@ -1,8 +1,22 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import { products } from "@/lib/products"
 import { ProductCard } from "@/components/product-card"
+import { getFeaturedProducts } from "@/lib/supabase/products"
+import type { Product } from "@/lib/products"
 
 export function FeaturedProducts() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getFeaturedProducts(8).then(data => {
+      setProducts(data)
+      setLoading(false)
+    })
+  }, [])
+
   return (
     <section id="featured" className="mx-auto max-w-7xl px-5 py-20 md:py-28 lg:px-8">
       <div className="mb-14 flex flex-col items-center text-center">
@@ -18,9 +32,13 @@ export function FeaturedProducts() {
       </div>
 
       <div className="grid grid-cols-2 gap-x-5 gap-y-12 md:gap-x-7 lg:grid-cols-4">
-        {products.map((product, index) => (
-          <ProductCard key={product.id} product={product} index={index} />
-        ))}
+        {loading
+          ? [...Array(4)].map((_, i) => (
+              <div key={i} className="aspect-[3/4] animate-pulse bg-muted/40" />
+            ))
+          : products.map((product, index) => (
+              <ProductCard key={product.id} product={product} index={index} />
+            ))}
       </div>
 
       <div className="mt-16 flex justify-center">

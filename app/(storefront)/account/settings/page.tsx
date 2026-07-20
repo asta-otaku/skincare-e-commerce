@@ -5,7 +5,7 @@ import { Check, Eye, EyeOff, Plus, Trash2, MapPin } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   getProfile, updateProfile, updatePassword, updatePreferences,
-  getAddresses, addAddress, deleteAddress,
+  getAddresses, addAddress, deleteAddress, claimProfileBonus,
   DEFAULT_PREFS,
   type Profile, type Address, type NotificationPrefs,
 } from "@/lib/supabase/profile"
@@ -58,9 +58,23 @@ export default function AccountSettingsPage() {
     setProfileSaving(true)
     setProfileMsg(null)
     const err = await updateProfile({ full_name: fullName, phone })
-    setProfileMsg(err ? { ok: false, text: err } : { ok: true, text: "Profile saved." })
+    if (err) {
+      setProfileMsg({ ok: false, text: err })
+      setProfileSaving(false)
+      setTimeout(() => setProfileMsg(null), 3000)
+      return
+    }
+
+    let text = "Profile saved."
+    if (fullName.trim() && phone.trim()) {
+      const bonus = await claimProfileBonus()
+      if (bonus?.claimed && bonus.points) {
+        text = `Profile saved. You earned ${bonus.points} loyalty points!`
+      }
+    }
+    setProfileMsg({ ok: true, text })
     setProfileSaving(false)
-    setTimeout(() => setProfileMsg(null), 3000)
+    setTimeout(() => setProfileMsg(null), 4000)
   }
 
   async function handlePasswordSave() {
