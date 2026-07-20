@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { isPaystackConfigured, toKobo, verifyTransaction } from "@/lib/paystack"
 import { fulfillPaidOrder } from "@/lib/supabase/orders"
+import { sendOrderConfirmationIfNew } from "@/lib/email/order"
 
 export async function POST(request: Request) {
   try {
@@ -45,6 +46,9 @@ export async function POST(request: Request) {
     // Local mock checkout (no Paystack keys)
     if (mock || !isPaystackConfigured()) {
       const result = await fulfillPaidOrder(db, reference)
+      if (result.ok) {
+        void sendOrderConfirmationIfNew(reference, result.message)
+      }
       return NextResponse.json({
         ok: result.ok,
         reference,
@@ -85,6 +89,8 @@ export async function POST(request: Request) {
         { status: 500 },
       )
     }
+
+    void sendOrderConfirmationIfNew(reference, result.message)
 
     return NextResponse.json({
       ok: true,

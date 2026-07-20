@@ -41,6 +41,11 @@ export default function RewardsPage() {
     setRedeeming(null)
     if (res.ok && res.promoCode) {
       setMessage(`Redeemed! Use code ${res.promoCode} at checkout for ₦${res.discountNgn?.toLocaleString()} off.`)
+      void fetch("/api/email/reward", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ promoCode: res.promoCode, discountNgn: res.discountNgn }),
+      })
       await load()
     } else {
       setMessage(res.message ?? "Could not redeem reward.")

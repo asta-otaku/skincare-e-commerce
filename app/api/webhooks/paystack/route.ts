@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { verifyPaystackSignature } from "@/lib/paystack"
 import { fulfillPaidOrder } from "@/lib/supabase/orders"
+import { sendOrderConfirmationIfNew } from "@/lib/email/order"
 
 export async function POST(request: Request) {
   const rawBody = await request.text()
@@ -29,6 +30,8 @@ export async function POST(request: Request) {
     const result = await fulfillPaidOrder(db, event.data.reference)
     if (!result.ok) {
       console.error("[webhook] fulfill:", result.message)
+    } else {
+      void sendOrderConfirmationIfNew(event.data.reference, result.message)
     }
   }
 

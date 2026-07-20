@@ -2,14 +2,14 @@
 
 import { useState } from "react"
 import { X, MessageCircle } from "lucide-react"
+import { whatsAppHref } from "@/lib/whatsapp"
 
-const WHATSAPP_NUMBER = "2348000000000"
 const MESSAGE = "Hi! I'd like to enquire about a product on HAYDA SKINCo."
 
 export function WhatsAppWidget() {
   const [expanded, setExpanded] = useState(false)
 
-  const href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(MESSAGE)}`
+  const href = whatsAppHref(MESSAGE)
 
   return (
     <div className="fixed bottom-6 right-5 z-50 flex flex-col items-end gap-3 md:bottom-8 md:right-8">

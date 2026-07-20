@@ -15,7 +15,7 @@ import {
   type Order,
   type OrderStatus,
 } from "@/lib/orders"
-import { getAllOrders, updateOrderStatus } from "@/lib/supabase/orders"
+import { getAllOrders } from "@/lib/supabase/orders"
 import { cn } from "@/lib/utils"
 
 const STATUSES: { value: "all" | OrderStatus; label: string }[] = [
@@ -87,8 +87,21 @@ export default function AdminOrdersPage() {
 
   async function updateStatus(id: string, status: OrderStatus) {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status, updatedAt: new Date().toISOString() } : o))
-    const err = await updateOrderStatus(id, status)
-    if (err) console.error("Status update failed:", err)
+    try {
+      const res = await fetch("/api/admin/orders/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reference: id, status }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        console.error("Status update failed:", data.error ?? res.statusText)
+        await load()
+      }
+    } catch (err) {
+      console.error("Status update failed:", err)
+      await load()
+    }
   }
 
   const SORT_OPTIONS: { value: SortKey; label: string }[] = [

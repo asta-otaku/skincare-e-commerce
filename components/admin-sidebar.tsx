@@ -16,6 +16,7 @@ import {
   X,
   ChevronRight,
   Bell,
+  Inbox,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -39,6 +40,11 @@ const NAV = [
     label: "Users",
     href: "/admin/users",
     icon: Users,
+  },
+  {
+    label: "Inbox",
+    href: "/admin/inbox",
+    icon: Inbox,
   },
   {
     label: "Deals",

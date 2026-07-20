@@ -1,10 +1,12 @@
 # HAYDA SKINCo. — Backend Integration Checklist
 
 > **Status — Updated Jul 2026:**
-> - Priority 1 (Auth + DB foundation): **COMPLETE** (including polish) — Supabase Auth, Products, Journals, Deals, preferences, ISR, seed data.
-> - Priority 2 (Checkout & Payments): **COMPLETE** — See `PRIORITY_2.md`. Orders + promo_codes tables, Paystack init/verify/webhook, checkout redirect, admin + account order UIs. Mock mode works without Paystack keys.
-> - Priority 3 (Customer Features): **IN PROGRESS** — See `PRIORITY_3.md`. Cart localStorage, wishlist, reviews, loyalty. Run migration `009_customer_features.sql`.
-> - Priority 4–6: Pending (Admin live metrics polish, Email, etc.)
+> - Priority 1 (Auth + DB foundation): **COMPLETE**
+> - Priority 2 (Checkout & Payments): **COMPLETE** — See `PRIORITY_2.md`
+> - Priority 3 (Customer Features): **COMPLETE** — See `PRIORITY_3.md`
+> - Priority 4 (Admin CRUD + dashboard): **COMPLETE** — See `PRIORITY_4.md`. Live dashboard + users/roles; products/journals/deals/orders were already wired.
+> - Priority 5 (Communication): **COMPLETE** — See `PRIORITY_5.md`. Resend email, Supabase newsletter/contact/wholesale, WhatsApp env. Image storage was already done.
+> - Priority 6: Pending (Loyalty polish / final QA — much of rewards already in P3)
 
 ---
 

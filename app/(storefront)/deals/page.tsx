@@ -7,6 +7,7 @@ import { type Deal, dealAsProduct } from "@/lib/deals"
 import { getActiveDeals } from "@/lib/supabase/deals"
 import { useCart } from "@/components/cart-provider"
 import { cn } from "@/lib/utils"
+import { whatsAppHref } from "@/lib/whatsapp"
 
 export default function DealsPage() {
   const [activeDeals, setActiveDeals] = useState<Deal[]>([])
@@ -61,7 +62,7 @@ export default function DealsPage() {
           Can't find the right combination? Chat with us on WhatsApp and we'll curate a personalised skincare kit just for you.
         </p>
         <a
-          href="https://wa.me/2348000000000?text=Hi! I'd like a custom skincare bundle recommendation."
+          href={whatsAppHref("Hi! I'd like a custom skincare bundle recommendation.")}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 bg-[#25D366] px-8 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-90"

@@ -8,6 +8,7 @@ import { useCart } from "@/components/cart-provider"
 import { useSearch } from "@/components/search-modal"
 import { useUserAuth } from "@/components/user-auth-provider"
 import { cn } from "@/lib/utils"
+import { whatsAppHref } from "@/lib/whatsapp"
 
 /* ─── Navigation data ───────────────────────────────────────── */
 const NAV = [
@@ -439,7 +440,7 @@ export function SiteNavbar() {
                   <User className="size-4" /> Sign In / Register
                 </Link>
               )}
-              <a href="https://wa.me/2348000000000" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 py-2 text-sm font-light text-foreground/70 hover:text-foreground">
+              <a href={whatsAppHref()} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 py-2 text-sm font-light text-foreground/70 hover:text-foreground">
                 <span className="flex size-4 items-center justify-center rounded-full bg-[#25D366]">
                   <span className="text-[8px] font-bold text-white">W</span>
                 </span>

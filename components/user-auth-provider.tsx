@@ -125,6 +125,11 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
       const s: UserSession = { email, name, firstName, signedInAt: Date.now() }
       saveUserSession(s)
       setSession(s)
+      void fetch("/api/email/welcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name }),
+      })
       return null
     }
 
@@ -137,6 +142,12 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
       },
     })
     if (error) return error.message
+    // Fire-and-forget welcome email (server holds Resend key)
+    void fetch("/api/email/welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, name }),
+    })
     return null
   }
 

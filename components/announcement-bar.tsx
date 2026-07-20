@@ -1,17 +1,16 @@
 import Link from "next/link"
-
-const MESSAGES = [
-  "🚚 Free delivery on orders ₦50,000 and above",
-  "📦 Nationwide delivery across Nigeria",
-  "💬 WhatsApp us: +234 813 730 9609",
-  "✨ New arrivals from CeraVe, The Ordinary & COSRX",
-  "🎁 Combo deals — save up to 20% on bundles",
-  "💳 Pay securely with Paystack or Flutterwave",
-]
+import { getWhatsAppDisplay } from "@/lib/whatsapp"
 
 export function AnnouncementBar() {
-  // Duplicate for seamless infinite scroll
-  const doubled = [...MESSAGES, ...MESSAGES]
+  const messages = [
+    "🚚 Free delivery on orders ₦50,000 and above",
+    "📦 Nationwide delivery across Nigeria",
+    `💬 WhatsApp us: ${getWhatsAppDisplay()}`,
+    "✨ New arrivals from CeraVe, The Ordinary & COSRX",
+    "🎁 Combo deals — save up to 20% on bundles",
+    "💳 Pay securely with Paystack or Flutterwave",
+  ]
+  const doubled = [...messages, ...messages]
 
   return (
     <div className="relative overflow-hidden bg-foreground py-2.5 text-background">

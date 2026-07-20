@@ -21,10 +21,30 @@ export default function WholesalePage() {
     name: "", business: "", email: "", phone: "", type: "", volume: "", message: "",
   })
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setSubmitted(true)
+    setError(null)
+    setLoading(true)
+    try {
+      const res = await fetch("/api/wholesale", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(typeof data.error === "string" ? data.error : "Could not submit enquiry.")
+        return
+      }
+      setSubmitted(true)
+    } catch {
+      setError("Could not submit enquiry. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -148,8 +168,11 @@ export default function WholesalePage() {
                   <span className="text-[11px] font-light uppercase tracking-[0.15em] text-muted-foreground">Additional Notes</span>
                   <textarea rows={3} value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} className="input-field resize-none" placeholder="Tell us what products or brands you're interested in…" />
                 </label>
-                <button type="submit" className="w-full bg-foreground py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-background transition-all hover:bg-gold hover:text-gold-foreground">
-                  Submit Enquiry
+                {error && (
+                  <p className="text-sm font-light text-destructive">{error}</p>
+                )}
+                <button type="submit" disabled={loading} className="w-full bg-foreground py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-background transition-all hover:bg-gold hover:text-gold-foreground disabled:opacity-60">
+                  {loading ? "Submitting…" : "Submit Enquiry"}
                 </button>
               </form>
             </>

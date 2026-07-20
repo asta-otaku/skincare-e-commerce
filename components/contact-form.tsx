@@ -5,10 +5,36 @@ import { Check } from "lucide-react"
 
 export function ContactForm() {
   const [sent, setSent] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setSent(true)
+    setError(null)
+    setLoading(true)
+    const fd = new FormData(e.currentTarget)
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: fd.get("name"),
+          email: fd.get("email"),
+          subject: fd.get("subject"),
+          message: fd.get("message"),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(typeof data.error === "string" ? data.error : "Could not send message.")
+        return
+      }
+      setSent(true)
+    } catch {
+      setError("Could not send message. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const fieldClass =
@@ -70,11 +96,15 @@ export function ContactForm() {
           className={`${fieldClass} resize-none`}
         />
       </div>
+      {error && (
+        <p className="text-sm font-light text-destructive">{error}</p>
+      )}
       <button
         type="submit"
-        className="mt-2 inline-flex items-center justify-center border border-foreground bg-foreground px-9 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-background transition-all duration-300 hover:border-gold hover:bg-gold hover:text-gold-foreground"
+        disabled={loading}
+        className="mt-2 inline-flex items-center justify-center border border-foreground bg-foreground px-9 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-background transition-all duration-300 hover:border-gold hover:bg-gold hover:text-gold-foreground disabled:opacity-60"
       >
-        Send Message
+        {loading ? "Sending…" : "Send Message"}
       </button>
     </form>
   )

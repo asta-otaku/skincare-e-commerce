@@ -10,6 +10,8 @@ export function NewsletterPopup() {
   const [visible, setVisible] = useState(false)
   const [email, setEmail] = useState("")
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // Only show once — respect dismissal stored in sessionStorage
@@ -24,15 +26,33 @@ export function NewsletterPopup() {
     setVisible(false)
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!email) return
-    setSubmitted(true)
-    sessionStorage.setItem(STORAGE_KEY, "1")
-    setTimeout(() => {
-      setVisible(false)
-      setSubmitted(false)
-    }, 2500)
+    setError(null)
+    setLoading(true)
+    try {
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source: "popup" }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(typeof data.error === "string" ? data.error : "Could not subscribe.")
+        return
+      }
+      setSubmitted(true)
+      sessionStorage.setItem(STORAGE_KEY, "1")
+      setTimeout(() => {
+        setVisible(false)
+        setSubmitted(false)
+      }, 2500)
+    } catch {
+      setError("Could not subscribe. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (!visible) return null
@@ -98,11 +118,16 @@ export function NewsletterPopup() {
               />
               <button
                 type="submit"
-                className="shrink-0 bg-foreground px-7 py-3 text-xs font-medium uppercase tracking-[0.15em] text-background transition-colors hover:bg-gold hover:text-gold-foreground"
+                disabled={loading}
+                className="shrink-0 bg-foreground px-7 py-3 text-xs font-medium uppercase tracking-[0.15em] text-background transition-colors hover:bg-gold hover:text-gold-foreground disabled:opacity-60"
               >
-                Subscribe
+                {loading ? "…" : "Subscribe"}
               </button>
             </form>
+          )}
+
+          {error && (
+            <p className="mt-3 text-xs font-light text-destructive">{error}</p>
           )}
 
           <p className="mt-4 text-[10px] font-light text-muted-foreground">

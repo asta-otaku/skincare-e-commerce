@@ -14,7 +14,7 @@ import {
   type Order,
   type OrderStatus,
 } from "@/lib/orders"
-import { getOrderByReference, updateOrderStatus } from "@/lib/supabase/orders"
+import { getOrderByReference } from "@/lib/supabase/orders"
 import { cn } from "@/lib/utils"
 
 function formatCurrency(n: number) {
@@ -78,7 +78,20 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   async function updateStatus(status: OrderStatus) {
     setOrder(prev => prev ? { ...prev, status, updatedAt: new Date().toISOString() } : prev)
     setStatusOpen(false)
-    await updateOrderStatus(order!.id, status)
+    try {
+      const res = await fetch("/api/admin/orders/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reference: order!.reference, status }),
+      })
+      if (!res.ok) {
+        const o = await getOrderByReference(id)
+        setOrder(o)
+      }
+    } catch {
+      const o = await getOrderByReference(id)
+      setOrder(o)
+    }
   }
 
   function copyRef() {

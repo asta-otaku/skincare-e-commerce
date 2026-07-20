@@ -23,7 +23,7 @@ export type CheckoutItem = {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToOrder(row: any): Order {
+export function rowToOrder(row: any): Order {
   const addr = (row.shipping_address ?? {}) as ShippingAddress & {
     email?: string
     firstName?: string

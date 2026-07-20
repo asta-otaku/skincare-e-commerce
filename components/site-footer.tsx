@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Check } from "lucide-react"
+import { getWhatsAppDisplay, getWhatsAppNumber } from "@/lib/whatsapp"
 
 const COLUMNS = [
   {
@@ -123,13 +124,33 @@ function FlutterwaveIcon() {
 export function SiteFooter() {
   const [email, setEmail] = useState("")
   const [subscribed, setSubscribed] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  function handleSubscribe(e: React.FormEvent) {
+  async function handleSubscribe(e: React.FormEvent) {
     e.preventDefault()
     if (!email) return
-    setSubscribed(true)
-    setEmail("")
-    setTimeout(() => setSubscribed(false), 4000)
+    setError(null)
+    setLoading(true)
+    try {
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source: "footer" }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(typeof data.error === "string" ? data.error : "Could not subscribe.")
+        return
+      }
+      setSubscribed(true)
+      setEmail("")
+      setTimeout(() => setSubscribed(false), 4000)
+    } catch {
+      setError("Could not subscribe. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -144,21 +165,25 @@ export function SiteFooter() {
                 Get skincare tips, early access to deals, and new arrivals straight to your inbox.
               </p>
             </div>
-            <form onSubmit={handleSubscribe} className="flex w-full max-w-sm gap-2 shrink-0">
-              <input
-                type="email"
-                placeholder="Your email address"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                className="flex-1 border border-border bg-background px-4 py-3 text-sm font-light outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground/50"
-              />
-              <button
-                type="submit"
-                className="shrink-0 bg-foreground px-5 py-3 text-xs font-medium uppercase tracking-[0.15em] text-background transition-colors hover:bg-gold hover:text-gold-foreground"
-              >
-                {subscribed ? <Check className="size-4" /> : "Subscribe"}
-              </button>
+            <form onSubmit={handleSubscribe} className="flex w-full max-w-sm flex-col gap-2 shrink-0">
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  placeholder="Your email address"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  className="flex-1 border border-border bg-background px-4 py-3 text-sm font-light outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground/50"
+                />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="shrink-0 bg-foreground px-5 py-3 text-xs font-medium uppercase tracking-[0.15em] text-background transition-colors hover:bg-gold hover:text-gold-foreground disabled:opacity-60"
+                >
+                  {subscribed ? <Check className="size-4" /> : loading ? "…" : "Subscribe"}
+                </button>
+              </div>
+              {error && <p className="text-xs font-light text-destructive">{error}</p>}
             </form>
           </div>
         </div>
@@ -183,7 +208,7 @@ export function SiteFooter() {
             </p>
             <p className="mt-4 text-sm font-light text-muted-foreground">
               📍 Lagos, Nigeria<br />
-              📞 <a href="tel:+2348137309609" className="hover:text-gold transition-colors">+234 813 730 9609</a><br />
+              📞 <a href={`tel:+${getWhatsAppNumber()}`} className="hover:text-gold transition-colors">{getWhatsAppDisplay()}</a><br />
               ✉️ <a href="mailto:hello@haydaskinco.com" className="hover:text-gold transition-colors">hello@haydaskinco.com</a>
             </p>
             {/* Social */}
