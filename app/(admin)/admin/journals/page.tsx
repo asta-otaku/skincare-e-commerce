@@ -1,14 +1,25 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Plus, Search, Edit2, Trash2, Eye, Clock, BookOpen } from "lucide-react"
-import { journals as initialJournals, type Journal } from "@/lib/journals"
+import { Plus, Search, Edit2, Trash2, Eye, Clock, BookOpen, RefreshCw } from "lucide-react"
+import { type Journal } from "@/lib/journals"
+import { getAllJournals, deleteJournal } from "@/lib/supabase/journals"
 import { cn } from "@/lib/utils"
 
 export default function AdminJournalsPage() {
-  const [articles, setArticles] = useState<Journal[]>(initialJournals)
+  const [articles, setArticles] = useState<Journal[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const data = await getAllJournals()
+    setArticles(data)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all")
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -23,7 +34,8 @@ export default function AdminJournalsPage() {
     return matchSearch && matchStatus
   })
 
-  function confirmDelete(id: string) {
+  async function confirmDelete(id: string) {
+    try { await deleteJournal(id) } catch { /* fall through */ }
     setArticles((prev) => prev.filter((a) => a.id !== id))
     setDeleteId(null)
   }
@@ -38,15 +50,26 @@ export default function AdminJournalsPage() {
         <div>
           <h1 className="font-serif text-2xl font-medium">Journal</h1>
           <p className="text-xs font-light text-muted-foreground mt-0.5">
-            {published} published · {drafts} draft{drafts !== 1 ? "s" : ""}
+            {loading ? "Loading…" : `${published} published · ${drafts} draft${drafts !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <Link
-          href="/admin/journals/new"
-          className="flex items-center gap-2 bg-foreground px-5 py-2.5 text-xs font-medium uppercase tracking-[0.15em] text-background transition-colors hover:bg-gold hover:text-gold-foreground"
-        >
-          <Plus className="size-3.5" /> Write Article
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={load}
+            disabled={loading}
+            aria-label="Refresh"
+            className="flex size-9 items-center justify-center border border-border text-muted-foreground hover:border-foreground hover:text-foreground disabled:opacity-40 transition-colors"
+          >
+            <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+          </button>
+          <Link
+            href="/admin/journals/new"
+            className="flex items-center gap-2 bg-foreground px-5 py-2.5 text-xs font-medium uppercase tracking-[0.15em] text-background transition-colors hover:bg-gold hover:text-gold-foreground"
+          >
+            <Plus className="size-3.5" /> Write Article
+          </Link>
+        </div>
       </div>
 
       <div className="px-6 py-6 lg:px-8 lg:py-8">
@@ -95,14 +118,30 @@ export default function AdminJournalsPage() {
           </div>
         </div>
 
+        {/* Loading skeleton */}
+        {loading && (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="border border-border overflow-hidden">
+                <div className="aspect-video bg-muted/50 animate-pulse" />
+                <div className="p-5 space-y-2">
+                  <div className="h-3 w-24 bg-muted/50 animate-pulse" />
+                  <div className="h-5 w-full bg-muted/50 animate-pulse" />
+                  <div className="h-3 w-48 bg-muted/30 animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Articles */}
-        {filtered.length === 0 ? (
+        {!loading && filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-border">
             <BookOpen className="size-10 text-muted-foreground mb-3" />
             <p className="font-serif text-lg font-medium">No articles found</p>
             <p className="mt-1 text-sm font-light text-muted-foreground">Try adjusting your search or write a new article.</p>
           </div>
-        ) : (
+        ) : !loading && (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {filtered.map((article) => (
               <div key={article.id} className="group border border-border bg-card flex flex-col overflow-hidden">

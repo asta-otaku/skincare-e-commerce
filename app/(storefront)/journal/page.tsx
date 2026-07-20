@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
 import { PageHeader } from "@/components/page-header"
-import { journals } from "@/lib/journals"
+import { getPublishedJournals } from "@/lib/supabase/journals"
 import { ArrowRight, Clock } from "lucide-react"
 
 export const metadata: Metadata = {
@@ -11,10 +11,12 @@ export const metadata: Metadata = {
     "Skincare tips, ingredient deep-dives, and product guides from the HAYDA SKINCo. team — everything you need for a better routine.",
 }
 
-const published = journals.filter(j => j.status === "published")
-const [featured, ...rest] = published
+/** Revalidate journal listing every 60s; admin saves also call revalidatePath. */
+export const revalidate = 60
 
-export default function JournalPage() {
+export default async function JournalPage() {
+  const publishedJournals = await getPublishedJournals()
+  const [featured, ...rest] = publishedJournals
   return (
     <>
       <PageHeader
@@ -108,7 +110,7 @@ export default function JournalPage() {
         )}
 
         {/* All drafts hidden — show CTA if nothing published */}
-        {published.length === 0 && (
+        {publishedJournals.length === 0 && (
           <div className="py-24 text-center">
             <p className="font-serif text-2xl font-medium text-muted-foreground">New articles coming soon.</p>
           </div>

@@ -74,19 +74,22 @@ type ShippingData = {
 
 type PaymentMethod = "card" | "bank_transfer" | "ussd" | "mobile_money"
 
+/** Express shipping in NGN — keep in sync with `/api/orders`. */
+const EXPRESS_SHIPPING_NGN = 3000
+
 const SHIPPING_METHODS = [
   { id: "standard" as const, label: "Standard Shipping", desc: "5–7 business days", price: 0, priceLabel: "Free" },
-  { id: "express" as const, label: "Express Shipping", desc: "2–3 business days", price: 18, priceLabel: "$18" },
+  {
+    id: "express" as const,
+    label: "Express Shipping",
+    desc: "2–3 business days",
+    price: EXPRESS_SHIPPING_NGN,
+    priceLabel: formatPrice(EXPRESS_SHIPPING_NGN),
+  },
 ]
 
-const PROMO_CODES: Record<string, number> = {
-  "HAYDA10": 0.10,
-  "WELCOME15": 0.15,
-  "SKINCARE20": 0.20,
-}
-
 export default function CheckoutPage() {
-  const { items, subtotal, clearCart } = useCart()
+  const { items, subtotal } = useCart()
   const [step, setStep] = useState<Step>("shipping")
 
   const [shipping, setShipping] = useState<ShippingData>({
@@ -100,27 +103,88 @@ export default function CheckoutPage() {
   // Promo code
   const [promoInput, setPromoInput] = useState("")
   const [appliedPromo, setAppliedPromo] = useState<string | null>(null)
+  const [promoPct, setPromoPct] = useState(0)
+  const [promoNgn, setPromoNgn] = useState(0)
   const [promoError, setPromoError] = useState("")
+  const [paying, setPaying] = useState(false)
+  const [payError, setPayError] = useState("")
+  const [orderRef, setOrderRef] = useState<string | null>(null)
 
-  function applyPromo() {
+  async function applyPromo() {
     const code = promoInput.trim().toUpperCase()
-    if (PROMO_CODES[code]) {
-      setAppliedPromo(code)
-      setPromoError("")
-    } else {
-      setPromoError("Invalid promo code. Try HAYDA10, WELCOME15, or SKINCARE20.")
-      setAppliedPromo(null)
+    if (!code) return
+    setPromoError("")
+    try {
+      const res = await fetch("/api/promo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      })
+      const data = await res.json()
+      if (!data.valid) {
+        setPromoError(data.message ?? "Invalid promo code.")
+        setAppliedPromo(null)
+        setPromoPct(0)
+        setPromoNgn(0)
+        return
+      }
+      setAppliedPromo(data.code)
+      setPromoPct(Number(data.discount_pct || 0) / 100)
+      setPromoNgn(Number(data.discount_ngn || 0))
+    } catch {
+      setPromoError("Could not validate promo code.")
     }
   }
 
-  const discount = appliedPromo ? subtotal * PROMO_CODES[appliedPromo] : 0
-  const shippingCost = shipping.shippingMethod === "express" ? 3000 : 0
-  const tax = subtotal * 0.075
-  const total = subtotal - discount + shippingCost + tax
+  const discount = appliedPromo
+    ? promoNgn > 0
+      ? Math.min(subtotal, promoNgn)
+      : Math.round(subtotal * promoPct)
+    : 0
+  const shippingCost =
+    SHIPPING_METHODS.find((m) => m.id === shipping.shippingMethod)?.price ?? 0
+  const tax = Math.round(subtotal * 0.075)
+  const total = Math.max(0, subtotal - discount + shippingCost + tax)
 
-  function handleConfirm() {
-    clearCart()
-    setStep("confirmed")
+  async function handleConfirm() {
+    setPaying(true)
+    setPayError("")
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: items.map(i => ({
+            productId: i.id,
+            name: i.name,
+            image: i.image,
+            category: i.category,
+            price: i.price,
+            quantity: i.quantity,
+          })),
+          shipping,
+          paymentMethod,
+          promoCode: appliedPromo,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setPayError(data.error ?? "Could not start checkout.")
+        setPaying(false)
+        return
+      }
+      setOrderRef(data.reference)
+      // Redirect to Paystack (or mock callback when keys missing)
+      if (data.authorization_url) {
+        window.location.href = data.authorization_url
+        return
+      }
+      setPayError("No payment URL returned.")
+      setPaying(false)
+    } catch {
+      setPayError("Network error. Please try again.")
+      setPaying(false)
+    }
   }
 
   if (step === "confirmed") {
@@ -136,7 +200,7 @@ export default function CheckoutPage() {
           <span className="font-medium text-foreground">{shipping.email}</span>.
         </p>
         <p className="mb-8 text-[11px] font-light uppercase tracking-[0.18em] text-muted-foreground">
-          Order #{Math.random().toString(36).slice(2, 10).toUpperCase()}
+          Order #{orderRef ?? "—"}
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
@@ -156,7 +220,7 @@ export default function CheckoutPage() {
     )
   }
 
-  if (items.length === 0 && step !== "confirmed") {
+  if (items.length === 0) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-5 text-center">
         <p className="font-serif text-2xl font-medium">Your cart is empty</p>
@@ -221,6 +285,8 @@ export default function CheckoutPage() {
                 shippingCost={shippingCost}
                 tax={tax}
                 total={total}
+                paying={paying}
+                payError={payError}
                 onBack={() => setStep("payment")}
                 onConfirm={handleConfirm}
               />
@@ -283,7 +349,7 @@ function ShippingForm({
               onChange={set("country")}
               className="border border-border bg-background px-4 py-3 text-sm font-light outline-none focus:border-foreground transition-colors"
             >
-              {["United States", "United Kingdom", "Canada", "Australia", "France", "Germany"].map((c) => (
+              {["Nigeria", "United States", "United Kingdom", "Canada", "Australia", "France", "Germany"].map((c) => (
                 <option key={c}>{c}</option>
               ))}
             </select>
@@ -469,13 +535,15 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
 }
 
 function ReviewStep({
-  shipping, paymentMethod, shippingCost, tax, total, onBack, onConfirm,
+  shipping, paymentMethod, shippingCost, tax, total, paying, payError, onBack, onConfirm,
 }: {
   shipping: ShippingData
   paymentMethod: PaymentMethod
   shippingCost: number
   tax: number
   total: number
+  paying: boolean
+  payError: string
   onBack: () => void
   onConfirm: () => void
 }) {
@@ -537,20 +605,35 @@ function ReviewStep({
           </div>
         </div>
 
+        {payError && (
+          <p className="text-xs text-destructive bg-destructive/10 border border-destructive/20 px-4 py-2.5">
+            {payError}
+          </p>
+        )}
+
         <div className="flex gap-3">
           <button
             type="button"
             onClick={onBack}
-            className="flex items-center gap-2 border border-border px-6 py-4 text-xs font-medium uppercase tracking-[0.15em] transition-colors hover:border-foreground"
+            disabled={paying}
+            className="flex items-center gap-2 border border-border px-6 py-4 text-xs font-medium uppercase tracking-[0.15em] transition-colors hover:border-foreground disabled:opacity-40"
           >
             <ArrowLeft className="size-3.5" /> Back
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="flex-1 flex items-center justify-center gap-2 bg-[#00C3F7] py-4 text-xs font-semibold uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-90"
+            disabled={paying}
+            className="flex-1 flex items-center justify-center gap-2 bg-[#00C3F7] py-4 text-xs font-semibold uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-90 disabled:opacity-60"
           >
-            <Lock className="size-3.5" /> Pay with Paystack
+            {paying ? (
+              <>
+                <span className="size-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                Redirecting…
+              </>
+            ) : (
+              <><Lock className="size-3.5" /> Pay with Paystack</>
+            )}
           </button>
         </div>
       </div>
@@ -568,7 +651,7 @@ function OrderSummary({
   appliedPromo: string | null
   promoInput: string
   setPromoInput: (v: string) => void
-  applyPromo: () => void
+  applyPromo: () => void | Promise<void>
   promoError: string
   shippingCost: number
   tax: number

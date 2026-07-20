@@ -1,13 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ShoppingBag, Tag, ArrowRight, Check } from "lucide-react"
-import { deals, dealAsProduct } from "@/lib/deals"
+import { type Deal, dealAsProduct } from "@/lib/deals"
+import { getActiveDeals } from "@/lib/supabase/deals"
 import { useCart } from "@/components/cart-provider"
 import { cn } from "@/lib/utils"
 
 export default function DealsPage() {
+  const [activeDeals, setActiveDeals] = useState<Deal[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getActiveDeals().then(data => {
+      setActiveDeals(data)
+      setLoading(false)
+    })
+  }, [])
+
   return (
     <div className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
       {/* Header */}
@@ -28,9 +39,19 @@ export default function DealsPage() {
 
       {/* Deals grid — only active deals shown on storefront */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {deals.filter(d => d.status === "active").map(deal => (
-          <DealCard key={deal.id} deal={deal} />
-        ))}
+        {loading
+          ? [...Array(3)].map((_, i) => (
+              <div key={i} className="border border-border p-6 space-y-3">
+                <div className="h-4 w-24 bg-muted/50 animate-pulse" />
+                <div className="h-6 w-full bg-muted/50 animate-pulse" />
+                <div className="h-3 w-40 bg-muted/30 animate-pulse" />
+                <div className="h-20 w-full bg-muted/20 animate-pulse mt-4" />
+              </div>
+            ))
+          : activeDeals.map(deal => (
+              <DealCard key={deal.id} deal={deal} />
+            ))
+        }
       </div>
 
       {/* Custom bundle CTA */}
@@ -52,7 +73,7 @@ export default function DealsPage() {
   )
 }
 
-function DealCard({ deal }: { deal: ReturnType<typeof deals>[number] }) {
+function DealCard({ deal }: { deal: Deal }) {
   const { addItem, openCart } = useCart()
   const [added, setAdded] = useState(false)
 

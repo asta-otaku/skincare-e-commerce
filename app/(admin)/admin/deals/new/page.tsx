@@ -2,8 +2,11 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowLeft, Plus, Trash2, Check } from "lucide-react"
 import { type DealItem } from "@/lib/deals"
+import { saveDeal } from "@/lib/supabase/deals"
+import { revalidateDeals } from "@/app/actions/revalidate"
 import { cn } from "@/lib/utils"
 
 type FormState = {
@@ -46,8 +49,11 @@ function Field({ label, required, children }: { label: string; required?: boolea
 }
 
 export default function NewDealPage() {
+  const router = useRouter()
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState("")
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -84,12 +90,32 @@ export default function NewDealPage() {
     return Object.keys(e).length === 0
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!validate()) return
-    // In production this would POST to an API. For now simulate success.
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+    setSaving(true)
+    setSaveError("")
+    try {
+      await saveDeal({
+        id: form.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+        title: form.title,
+        brand: form.brand,
+        subtitle: form.subtitle,
+        concern: form.concern,
+        badge: form.badge,
+        originalPrice: Number(form.originalPrice),
+        salePrice: Number(form.salePrice),
+        highlight: form.highlight,
+        status: form.status,
+        items: form.items.map(({ _key, ...i }) => i),
+      })
+      await revalidateDeals()
+      setSaved(true)
+      setTimeout(() => router.push("/admin/deals"), 800)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Save failed.")
+      setSaving(false)
+    }
   }
 
   // Auto-calculate badge when prices change
@@ -128,19 +154,25 @@ export default function NewDealPage() {
           <button
             type="submit"
             form="deal-form"
+            disabled={saving}
             className={cn(
               "flex items-center gap-2 px-5 py-2.5 text-xs font-medium uppercase tracking-[0.15em] transition-all",
-              saved
-                ? "bg-gold text-gold-foreground"
+              saved ? "bg-gold text-gold-foreground"
+                : saving ? "bg-muted text-muted-foreground cursor-not-allowed"
                 : "bg-foreground text-background hover:bg-gold hover:text-gold-foreground",
             )}
           >
-            {saved ? <><Check className="size-3.5" /> Saved!</> : "Save Deal"}
+            {saved ? <><Check className="size-3.5" /> Saved!</> : saving ? "Saving…" : "Save Deal"}
           </button>
         </div>
       </div>
 
       <form id="deal-form" onSubmit={handleSubmit} className="px-6 py-8 lg:px-8 lg:py-10">
+        {saveError && (
+          <p className="mb-6 text-xs text-destructive bg-destructive/10 border border-destructive/20 px-4 py-2.5">
+            {saveError}
+          </p>
+        )}
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Left: main details */}
           <div className="lg:col-span-2 space-y-6">

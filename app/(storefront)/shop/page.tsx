@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { PageHeader } from "@/components/page-header"
 import { ShopGrid } from "@/components/shop-grid"
+import { getAllProducts } from "@/lib/supabase/products"
 
 export const metadata: Metadata = {
   title: "Shop — HAYDA SKINCo.",
@@ -9,7 +10,11 @@ export const metadata: Metadata = {
     "Browse all skincare products stocked by HAYDA SKINCo. — CeraVe, The Ordinary, La Roche-Posay, COSRX, Paula's Choice, and more. Delivered nationwide.",
 }
 
-export default function ShopPage() {
+export const revalidate = 60
+
+export default async function ShopPage() {
+  const products = await getAllProducts()
+
   return (
     <>
       <PageHeader
@@ -18,7 +23,7 @@ export default function ShopPage() {
         description="Trusted brands. Authentic products. Delivered anywhere in Nigeria."
       />
       <Suspense>
-        <ShopGrid />
+        <ShopGrid initialProducts={products} />
       </Suspense>
     </>
   )

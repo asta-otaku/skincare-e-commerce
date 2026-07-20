@@ -3,7 +3,7 @@ import Link from "next/link"
 const MESSAGES = [
   "🚚 Free delivery on orders ₦50,000 and above",
   "📦 Nationwide delivery across Nigeria",
-  "💬 WhatsApp us: +234 800 000 0000",
+  "💬 WhatsApp us: +234 813 730 9609",
   "✨ New arrivals from CeraVe, The Ordinary & COSRX",
   "🎁 Combo deals — save up to 20% on bundles",
   "💳 Pay securely with Paystack or Flutterwave",

@@ -4,16 +4,16 @@ import { useState } from "react"
 import { Check, Building2, Package, Truck, HeadphonesIcon } from "lucide-react"
 
 const PERKS = [
-  { icon: Package,          title: "Wholesale Pricing",   desc: "Tiered discounts based on order volume — the more you buy, the more you save." },
-  { icon: Truck,            title: "Nationwide Delivery",  desc: "We deliver to salons, clinics, spas, and retailers across all states in Nigeria." },
-  { icon: Building2,        title: "Authentic Products",  desc: "All products are 100% authentic, sourced from authorised distributors." },
-  { icon: HeadphonesIcon,   title: "Dedicated Support",   desc: "A dedicated account manager to handle your orders and enquiries." },
+  { icon: Package, title: "Wholesale Pricing", desc: "Tiered discounts based on order volume — the more you buy, the more you save." },
+  { icon: Truck, title: "Nationwide Delivery", desc: "We deliver to salons, clinics, spas, and retailers across all states in Nigeria." },
+  { icon: Building2, title: "Authentic Products", desc: "All products are 100% authentic, sourced from authorised distributors." },
+  { icon: HeadphonesIcon, title: "Dedicated Support", desc: "A dedicated account manager to handle your orders and enquiries." },
 ]
 
 const MINIMUMS = [
-  { tier: "Starter",   min: "₦100,000",  discount: "10% off", note: "Perfect for small businesses" },
-  { tier: "Growth",    min: "₦250,000",  discount: "15% off", note: "For growing salons & clinics" },
-  { tier: "Scale",     min: "₦500,000+", discount: "20% off", note: "For distributors & large retailers" },
+  { tier: "Starter", min: "₦100,000", discount: "10% off", note: "Perfect for small businesses" },
+  { tier: "Growth", min: "₦250,000", discount: "15% off", note: "For growing salons & clinics" },
+  { tier: "Scale", min: "₦500,000+", discount: "20% off", note: "For distributors & large retailers" },
 ]
 
 export default function WholesalePage() {
@@ -124,7 +124,7 @@ export default function WholesalePage() {
                 </label>
                 <label className="flex flex-col gap-1.5">
                   <span className="text-[11px] font-light uppercase tracking-[0.15em] text-muted-foreground">Phone Number *</span>
-                  <input required type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="input-field" placeholder="+234 800 000 0000" />
+                  <input required type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="input-field" placeholder="+234 813 730 9609" />
                 </label>
                 <label className="flex flex-col gap-1.5">
                   <span className="text-[11px] font-light uppercase tracking-[0.15em] text-muted-foreground">Business Type *</span>

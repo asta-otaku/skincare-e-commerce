@@ -1,9 +1,10 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { SlidersHorizontal, X, ChevronDown } from "lucide-react"
-import { products, BRANDS, ALL_CONCERNS, ALL_INGREDIENTS, ALL_CATEGORIES } from "@/lib/products"
+import { BRANDS, ALL_CONCERNS, ALL_INGREDIENTS, ALL_CATEGORIES, type Product } from "@/lib/products"
+import { queryProducts } from "@/lib/supabase/products"
 import { ProductCard } from "@/components/product-card"
 import { cn } from "@/lib/utils"
 
@@ -15,7 +16,7 @@ const SORT_OPTIONS = [
   { label: "Most Reviews", value: "reviews" },
 ]
 
-export function ShopGrid() {
+export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
   const searchParams = useSearchParams()
   const initCategory = searchParams?.get("category") ?? "All"
   const initBrand    = searchParams?.get("brand") ?? "All"
@@ -29,24 +30,29 @@ export function ShopGrid() {
   const [priceMax, setPriceMax]   = useState(50000)
   const [inStockOnly, setInStockOnly] = useState(false)
   const [minRating, setMinRating]     = useState(0)
+  const [filtered, setFiltered] = useState<Product[]>(initialProducts ?? [])
+  const [loading, setLoading] = useState(false)
 
-  const filtered = useMemo(() => {
-    let list = [...products]
-    if (category !== "All")   list = list.filter(p => p.category.toLowerCase().includes(category.toLowerCase()))
-    if (brand !== "All")      list = list.filter(p => p.brand === brand)
-    if (concern !== "All")    list = list.filter(p => p.concerns.includes(concern))
-    if (ingredient !== "All") list = list.filter(p => p.ingredients.some(i => i === ingredient))
-    if (inStockOnly)          list = list.filter(p => p.stock > 0)
-    if (minRating > 0)        list = list.filter(p => p.rating >= minRating)
-    list = list.filter(p => p.price <= priceMax)
-
-    if (sort === "price-asc")  list.sort((a, b) => a.price - b.price)
-    if (sort === "price-desc") list.sort((a, b) => b.price - a.price)
-    if (sort === "rating")     list.sort((a, b) => b.rating - a.rating)
-    if (sort === "reviews")    list.sort((a, b) => b.reviewCount - a.reviewCount)
-
-    return list
-  }, [category, brand, concern, ingredient, sort, priceMax, inStockOnly])
+  // Query Supabase with filters (DB-level), not client-side array filtering
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    queryProducts({
+      category,
+      brand,
+      concern,
+      ingredient,
+      priceMax,
+      inStockOnly,
+      minRating,
+      sort,
+    }).then(list => {
+      if (!cancelled) setFiltered(list)
+    }).finally(() => {
+      if (!cancelled) setLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [category, brand, concern, ingredient, sort, priceMax, inStockOnly, minRating])
 
   const activeCount = [
     category !== "All", brand !== "All", concern !== "All",
@@ -82,7 +88,9 @@ export function ShopGrid() {
               <X className="size-3.5" /> Clear all
             </button>
           )}
-          <p className="text-xs font-light text-muted-foreground">{filtered.length} product{filtered.length !== 1 ? "s" : ""}</p>
+          <p className="text-xs font-light text-muted-foreground">
+            {loading ? "Loading…" : `${filtered.length} product${filtered.length !== 1 ? "s" : ""}`}
+          </p>
         </div>
 
         {/* Sort */}
@@ -172,7 +180,17 @@ export function ShopGrid() {
       )}
 
       {/* Product grid */}
-      {filtered.length === 0 ? (
+      {loading && filtered.length === 0 ? (
+        <div className="grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 md:grid-cols-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="space-y-3">
+              <div className="aspect-square bg-muted/40 animate-pulse" />
+              <div className="h-3 w-2/3 bg-muted/40 animate-pulse" />
+              <div className="h-3 w-1/3 bg-muted/30 animate-pulse" />
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <p className="font-serif text-2xl font-medium text-muted-foreground">No products match your filters.</p>
           <button type="button" onClick={clearAll} className="mt-4 text-sm font-light text-gold underline underline-offset-2">
@@ -180,7 +198,7 @@ export function ShopGrid() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 md:grid-cols-4">
+        <div className={cn("grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 md:grid-cols-4", loading && "opacity-60 transition-opacity")}>
           {filtered.map((p, i) => (
             <ProductCard key={p.id} product={p} index={i} />
           ))}

@@ -1,53 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Star, Edit2, Trash2, Check, X, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-type Review = {
-  id: string
-  productId: string
-  productName: string
-  productImage: string
-  productCategory: string
-  rating: number
-  title: string
-  body: string
-  date: string
-  helpful: number
-  verified: boolean
-}
-
-const INITIAL_REVIEWS: Review[] = [
-  {
-    id: "r1",
-    productId: "radiance-serum",
-    productName: "Radiance Renewal Serum",
-    productImage: "/product-serum.png",
-    productCategory: "Serums",
-    rating: 5,
-    title: "The most beautiful serum I've ever used",
-    body: "I've been using this for three months and my skin has never looked better. The glow is real — friends keep asking what I'm doing differently. The texture is featherlight, absorbs immediately, and layers perfectly under moisturiser.",
-    date: "2024-11-20",
-    helpful: 24,
-    verified: true,
-  },
-  {
-    id: "r2",
-    productId: "gold-oil",
-    productName: "Gold Infusion Face Oil",
-    productImage: "/product-oil.png",
-    productCategory: "Oils",
-    rating: 5,
-    title: "Worth every penny",
-    body: "Absolutely stunning. I press two drops into damp skin every evening and wake up glowing. The formula doesn't feel greasy at all — it absorbs within seconds. A ritual I genuinely look forward to.",
-    date: "2024-10-15",
-    helpful: 18,
-    verified: true,
-  },
-]
+import {
+  deleteMyReview,
+  getMyReviews,
+  updateMyReview,
+  type ReviewRow,
+} from "@/lib/supabase/reviews"
 
 function StarDisplay({ rating, interactive, onChange }: {
   rating: number
@@ -58,7 +21,7 @@ function StarDisplay({ rating, interactive, onChange }: {
   const display = interactive ? (hovered || rating) : rating
   return (
     <div className="flex gap-0.5">
-      {[1,2,3,4,5].map(i => (
+      {[1, 2, 3, 4, 5].map(i => (
         <Star
           key={i}
           className={cn(
@@ -76,28 +39,43 @@ function StarDisplay({ rating, interactive, onChange }: {
 }
 
 export default function AccountReviewsPage() {
-  const [reviews, setReviews] = useState<Review[]>(INITIAL_REVIEWS)
+  const [reviews, setReviews] = useState<ReviewRow[]>([])
+  const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ rating: 0, title: "", body: "" })
+  const [saving, setSaving] = useState(false)
 
-  function startEdit(review: Review) {
+  async function load() {
+    setLoading(true)
+    setReviews(await getMyReviews())
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    void load()
+  }, [])
+
+  function startEdit(review: ReviewRow) {
     setEditingId(review.id)
     setEditForm({ rating: review.rating, title: review.title, body: review.body })
   }
 
-  function saveEdit() {
-    setReviews(prev => prev.map(r =>
-      r.id === editingId
-        ? { ...r, rating: editForm.rating, title: editForm.title, body: editForm.body }
-        : r,
-    ))
-    setEditingId(null)
+  async function saveEdit() {
+    if (!editingId) return
+    setSaving(true)
+    const err = await updateMyReview(editingId, editForm)
+    setSaving(false)
+    if (!err) {
+      setEditingId(null)
+      await load()
+    }
   }
 
-  function confirmDelete(id: string) {
-    setReviews(prev => prev.filter(r => r.id !== id))
+  async function confirmDelete(id: string) {
+    await deleteMyReview(id)
     setDeleteId(null)
+    await load()
   }
 
   return (
@@ -105,11 +83,13 @@ export default function AccountReviewsPage() {
       <div>
         <h2 className="font-serif text-2xl font-medium">Your Reviews</h2>
         <p className="mt-1 text-sm font-light text-muted-foreground">
-          {reviews.length} review{reviews.length !== 1 ? "s" : ""} written
+          {loading ? "Loading…" : `${reviews.length} review${reviews.length !== 1 ? "s" : ""} written`}
         </p>
       </div>
 
-      {reviews.length === 0 ? (
+      {loading ? (
+        <div className="h-40 border border-border bg-muted/20 animate-pulse" />
+      ) : reviews.length === 0 ? (
         <div className="flex flex-col items-center justify-center border border-dashed border-border py-20 text-center">
           <MessageSquare className="size-10 text-muted-foreground mb-4" />
           <p className="font-serif text-xl font-medium">No reviews yet</p>
@@ -124,46 +104,41 @@ export default function AccountReviewsPage() {
         <div className="space-y-4">
           {reviews.map(review => (
             <div key={review.id} className="border border-border">
-              {/* Product row */}
               <div className="flex items-center gap-3 border-b border-border px-5 py-3 bg-muted/20">
                 <div className="relative size-10 shrink-0 overflow-hidden border border-border bg-muted/40">
-                  <Image src={review.productImage} alt={review.productName} fill sizes="40px" className="object-cover" />
+                  <Image
+                    src={review.productImage || "/placeholder.svg"}
+                    alt={review.productName || "Product"}
+                    fill
+                    sizes="40px"
+                    className="object-cover"
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <Link href={`/product/${review.productId}`} className="text-sm font-medium hover:text-gold transition-colors">
-                    {review.productName}
+                    {review.productName || review.productId}
                   </Link>
-                  <p className="text-[10px] font-light uppercase tracking-[0.18em] text-gold">{review.productCategory}</p>
+                  <p className="text-[10px] font-light uppercase tracking-[0.18em] text-gold">
+                    {review.productCategory || "Product"}
+                  </p>
                 </div>
                 {review.verified && (
                   <span className="hidden sm:flex items-center gap-1 text-[10px] font-light text-green-700">
                     <Check className="size-3" /> Verified Purchase
                   </span>
                 )}
-                {/* Actions */}
                 {editingId !== review.id && (
                   <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(review)}
-                      className="flex size-7 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label="Edit review"
-                    >
+                    <button type="button" onClick={() => startEdit(review)} className="flex size-7 items-center justify-center text-muted-foreground hover:text-foreground transition-colors" aria-label="Edit review">
                       <Edit2 className="size-3.5" />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeleteId(review.id)}
-                      className="flex size-7 items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
-                      aria-label="Delete review"
-                    >
+                    <button type="button" onClick={() => setDeleteId(review.id)} className="flex size-7 items-center justify-center text-muted-foreground hover:text-destructive transition-colors" aria-label="Delete review">
                       <Trash2 className="size-3.5" />
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* Review content / edit form */}
               <div className="px-5 py-4">
                 {editingId === review.id ? (
                   <div className="space-y-3">
@@ -193,15 +168,12 @@ export default function AccountReviewsPage() {
                       <button
                         type="button"
                         onClick={saveEdit}
-                        className="flex items-center gap-1.5 bg-foreground px-5 py-2.5 text-xs font-medium uppercase tracking-[0.15em] text-background hover:bg-gold hover:text-gold-foreground transition-colors"
+                        disabled={saving}
+                        className="flex items-center gap-1.5 bg-foreground px-5 py-2.5 text-xs font-medium uppercase tracking-[0.15em] text-background hover:bg-gold hover:text-gold-foreground transition-colors disabled:opacity-50"
                       >
-                        <Check className="size-3.5" /> Save Changes
+                        <Check className="size-3.5" /> {saving ? "Saving…" : "Save Changes"}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingId(null)}
-                        className="flex items-center gap-1.5 border border-border px-5 py-2.5 text-xs font-light uppercase tracking-[0.15em] hover:border-foreground transition-colors"
-                      >
+                      <button type="button" onClick={() => setEditingId(null)} className="flex items-center gap-1.5 border border-border px-5 py-2.5 text-xs font-light uppercase tracking-[0.15em] hover:border-foreground transition-colors">
                         <X className="size-3.5" /> Cancel
                       </button>
                     </div>
@@ -227,7 +199,6 @@ export default function AccountReviewsPage() {
         </div>
       )}
 
-      {/* Delete modal */}
       {deleteId && (
         <>
           <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-[2px]" onClick={() => setDeleteId(null)} />
@@ -236,9 +207,13 @@ export default function AccountReviewsPage() {
             <p className="text-sm font-light text-muted-foreground mb-6">
               Are you sure you want to delete this review? This cannot be undone.
             </p>
-            <div className="flex gap-3">
-              <button type="button" onClick={() => setDeleteId(null)} className="flex-1 border border-border py-3 text-xs font-medium uppercase tracking-[0.15em] hover:border-foreground transition-colors">Cancel</button>
-              <button type="button" onClick={() => confirmDelete(deleteId)} className="flex-1 bg-destructive py-3 text-xs font-medium uppercase tracking-[0.15em] text-background hover:opacity-90 transition-opacity">Delete</button>
+            <div className="flex gap-2 justify-end">
+              <button type="button" onClick={() => setDeleteId(null)} className="border border-border px-5 py-2.5 text-xs uppercase tracking-[0.15em]">
+                Cancel
+              </button>
+              <button type="button" onClick={() => confirmDelete(deleteId)} className="bg-destructive px-5 py-2.5 text-xs uppercase tracking-[0.15em] text-white">
+                Delete
+              </button>
             </div>
           </div>
         </>

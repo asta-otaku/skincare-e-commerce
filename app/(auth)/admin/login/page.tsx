@@ -1,11 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Lock, Mail, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { saveAdminSession, getAdminSession } from "@/lib/auth"
+import { createAdminBrowserClient } from "@/lib/supabase/client"
+import {
+  saveAdminSession,
+  getAdminSession,
+} from "@/lib/auth"
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -14,24 +18,56 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-
-  // If already signed in, redirect straight to dashboard
-  useEffect(() => {
-    if (getAdminSession()) router.replace("/admin/dashboard")
-  }, [router])
+  const [unconfirmed, setUnconfirmed] = useState(false)
+  const [resendSent, setResendSent] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 800))
-    if (email === "admin@haydaskinco.com" && password === "password") {
-      saveAdminSession({ email, name: "Admin", signedInAt: Date.now() })
-      router.push("/admin/dashboard")
-    } else {
-      setError("Invalid email or password. Try admin@haydaskinco.com / password")
-      setLoading(false)
+
+    const supabase = createAdminBrowserClient()
+
+    if (!supabase) {
+      // Mock path — no Supabase configured
+      await new Promise(r => setTimeout(r, 800))
+      if (email === "admin@haydaskinco.com" && password === "password") {
+        saveAdminSession({ email, name: "Admin", signedInAt: Date.now() })
+        router.push("/admin/dashboard")
+      } else {
+        setError("Invalid email or password. Try admin@haydaskinco.com / password")
+        setLoading(false)
+      }
+      return
     }
+
+    // Supabase path
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    if (authError) {
+      if ((authError as { code?: string }).code === "email_not_confirmed") {
+        setUnconfirmed(true)
+        setLoading(false)
+        return
+      }
+      setError(authError.message)
+      setLoading(false)
+      return
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .single()
+
+    if (!profile || profile.role !== "admin") {
+      await supabase.auth.signOut()
+      setError("Access denied. This account does not have admin privileges.")
+      setLoading(false)
+      return
+    }
+
+    router.push("/admin/dashboard")
   }
 
   return (
@@ -121,7 +157,35 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
-            {/* Error */}
+            {/* Email not confirmed banner */}
+            {unconfirmed && (
+              <div className="border border-gold/40 bg-gold/10 px-4 py-3 space-y-2">
+                <p className="text-xs font-medium text-foreground">
+                  Please confirm your email before signing in.
+                </p>
+                <p className="text-[11px] font-light text-muted-foreground">
+                  Check your inbox for the confirmation link. If it hasn&apos;t arrived, request a new one below.
+                </p>
+                {resendSent ? (
+                  <p className="text-[11px] font-medium text-green-700">Confirmation email resent — check your inbox.</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const supabase = createAdminBrowserClient()
+                      if (!supabase || !email) return
+                      await supabase.auth.resend({ type: "signup", email })
+                      setResendSent(true)
+                    }}
+                    className="text-[11px] font-medium text-gold underline-offset-2 hover:underline"
+                  >
+                    Resend confirmation email
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Generic error */}
             {error && (
               <p className="text-xs text-destructive bg-destructive/10 border border-destructive/20 px-4 py-2.5 rounded-sm">
                 {error}

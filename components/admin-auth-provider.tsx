@@ -2,11 +2,13 @@
 
 import { createContext, useContext, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { createAdminBrowserClient } from "@/lib/supabase/client"
 import {
   type AdminSession,
   getAdminSession,
   saveAdminSession,
   clearAdminSession,
+  supabaseSessionToAdminSession,
 } from "@/lib/auth"
 
 /* ─── Context ────────────────────────────────────────────────── */
@@ -33,35 +35,127 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<AdminSession | null>(null)
   const [checked, setChecked] = useState(false)
 
-  // On mount: read localStorage. Redirect to login if no valid session.
   useEffect(() => {
-    const s = getAdminSession()
-    setSession(s)
-    setChecked(true)
-    if (!s) {
-      router.replace("/admin/login")
+    const supabase = createAdminBrowserClient()
+
+    if (!supabase) {
+      // Dev-only mock mode (no Supabase env vars)
+      const s = getAdminSession()
+      setSession(s)
+      setChecked(true)
+      if (!s) router.replace("/admin/login")
+      return
     }
+
+    // Supabase is live — never trust leftover mock localStorage sessions
+    clearAdminSession()
+
+    // Supabase path: check current session
+    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+      if (!s) {
+        setChecked(true)
+        router.replace("/admin/login")
+        return
+      }
+
+      // Verify role in profiles table
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", s.user.id)
+        .single()
+
+      if (!profile || profile.role !== "admin") {
+        await supabase.auth.signOut()
+        setChecked(true)
+        router.replace("/admin/login")
+        return
+      }
+
+      setSession(supabaseSessionToAdminSession(s))
+      setChecked(true)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, s) => {
+      if (!s) {
+        setSession(null)
+        router.replace("/admin/login")
+        return
+      }
+      // Re-check role on auth change
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", s.user.id)
+        .single()
+
+      if (!profile || profile.role !== "admin") {
+        await supabase.auth.signOut()
+        setSession(null)
+        return
+      }
+      setSession(supabaseSessionToAdminSession(s))
+    })
+
+    return () => subscription.unsubscribe()
   }, [router])
 
+  /* ── signIn ── */
   async function signIn(email: string, password: string): Promise<string | null> {
-    // Simulated auth — swap with real API call when backend is ready
-    await new Promise(r => setTimeout(r, 800))
-    if (email === "admin@haydaskinco.com" && password === "password") {
-      const s: AdminSession = { email, name: "Admin", signedInAt: Date.now() }
-      saveAdminSession(s)
-      setSession(s)
-      return null
+    const supabase = createAdminBrowserClient()
+
+    if (!supabase) {
+      // Mock path
+      await new Promise(r => setTimeout(r, 800))
+      if (email === "admin@haydaskinco.com" && password === "password") {
+        const s: AdminSession = { email, name: "Admin", signedInAt: Date.now() }
+        saveAdminSession(s)
+        setSession(s)
+        return null
+      }
+      return "Invalid email or password. Try admin@haydaskinco.com / password"
     }
-    return "Invalid email or password. Try admin@haydaskinco.com / password"
-  }
 
-  function signOut() {
     clearAdminSession()
-    setSession(null)
-    router.push("/admin/login")
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) return error.message
+
+    // Check admin role
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .single()
+
+    if (!profile || profile.role !== "admin") {
+      await supabase.auth.signOut()
+      return "Access denied. This account does not have admin privileges."
+    }
+
+    setSession(supabaseSessionToAdminSession(data.session))
+    return null
   }
 
-  // Show nothing while we check localStorage (prevents flash of protected content)
+  /* ── signOut ── */
+  function signOut() {
+    const supabase = createAdminBrowserClient()
+
+    if (!supabase) {
+      clearAdminSession()
+      setSession(null)
+      router.push("/admin/login")
+      return
+    }
+
+    clearAdminSession()
+    supabase.auth.signOut().then(() => {
+      setSession(null)
+      router.push("/admin/login")
+    })
+  }
+
   if (!checked || !session) return null
 
   return (

@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { products } from "@/lib/products"
+import { type Product } from "@/lib/products"
+import { getAllProducts } from "@/lib/supabase/products"
 import { ProductCard } from "@/components/product-card"
 import { Tag, SlidersHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -20,10 +21,15 @@ export function OffersGrid() {
 
   const [sort, setSort] = useState("discount")
   const [category, setCategory] = useState(initCategory)
+  const [allProducts, setAllProducts] = useState<Product[]>([])
 
-  // Products on sale: tag === "Sale" or low stock clearance (stock < 5 and not 0)
+  useEffect(() => {
+    getAllProducts().then(setAllProducts)
+  }, [])
+
+  // Products on sale: tag === "Sale" or low stock clearance
   const offerProducts = useMemo(() => {
-    let list = products.filter(p => p.tag === "Sale" || p.tag === "Low Stock" || p.tag === "Bestseller")
+    let list = allProducts.filter(p => p.tag === "Sale" || p.tag === "Low Stock" || p.tag === "Bestseller")
     if (category !== "All") list = list.filter(p => p.category.toLowerCase().includes(category.toLowerCase()))
 
     if (sort === "price-asc")  list = [...list].sort((a, b) => a.price - b.price)

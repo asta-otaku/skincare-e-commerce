@@ -1,21 +1,21 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import {
   Search, SlidersHorizontal, TrendingUp, ShoppingBag,
   Clock, CheckCircle2, XCircle, ArrowUpRight, ArrowUpDown,
-  ChevronDown, Download,
+  ChevronDown, Download, RefreshCw,
 } from "lucide-react"
 import {
-  orders as allOrders,
   ORDER_STATUS_META,
   PAYMENT_STATUS_META,
   PAYMENT_METHOD_LABELS,
   type Order,
   type OrderStatus,
 } from "@/lib/orders"
+import { getAllOrders, updateOrderStatus } from "@/lib/supabase/orders"
 import { cn } from "@/lib/utils"
 
 const STATUSES: { value: "all" | OrderStatus; label: string }[] = [
@@ -31,7 +31,7 @@ const STATUSES: { value: "all" | OrderStatus; label: string }[] = [
 type SortKey = "date_desc" | "date_asc" | "total_desc" | "total_asc"
 
 function formatCurrency(n: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n)
+  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(n)
 }
 
 function formatDate(iso: string, short = false) {
@@ -42,12 +42,21 @@ function formatDate(iso: string, short = false) {
 }
 
 export default function AdminOrdersPage() {
-
-  const [orders, setOrders] = useState<Order[]>(allOrders)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all")
   const [sortKey, setSortKey] = useState<SortKey>("date_desc")
   const [showSort, setShowSort] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const data = await getAllOrders()
+    setOrders(data)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
 
   const totalRevenue = orders.filter(o => o.paymentStatus === "paid").reduce((s, o) => s + o.total, 0)
   const pending   = orders.filter(o => o.status === "pending").length
@@ -76,8 +85,10 @@ export default function AdminOrdersPage() {
     })
   }, [orders, search, statusFilter, sortKey])
 
-  function updateStatus(id: string, status: OrderStatus) {
+  async function updateStatus(id: string, status: OrderStatus) {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status, updatedAt: new Date().toISOString() } : o))
+    const err = await updateOrderStatus(id, status)
+    if (err) console.error("Status update failed:", err)
   }
 
   const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -94,12 +105,23 @@ export default function AdminOrdersPage() {
         <div>
           <h1 className="font-serif text-2xl font-medium">Orders</h1>
           <p className="text-xs font-light text-muted-foreground mt-0.5">
-            {orders.length} total orders · {formatCurrency(totalRevenue)} revenue
+            {loading ? "Loading…" : `${orders.length} total orders · ${formatCurrency(totalRevenue)} revenue`}
           </p>
         </div>
+        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={load}
+          disabled={loading}
+          aria-label="Refresh"
+          className="flex size-9 items-center justify-center border border-border text-muted-foreground hover:border-foreground hover:text-foreground disabled:opacity-40"
+        >
+          <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+        </button>
         <button className="hidden sm:flex items-center gap-2 border border-border px-4 py-2 text-xs font-light uppercase tracking-[0.15em] text-muted-foreground hover:border-foreground hover:text-foreground transition-colors">
           <Download className="size-3.5" /> Export CSV
         </button>
+        </div>
       </div>
 
       <div className="px-6 py-6 lg:px-8 lg:py-8 space-y-6">

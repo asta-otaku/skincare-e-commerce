@@ -1,14 +1,15 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
-import { BRANDS, products } from "@/lib/products"
+import { getAllBrands, getAllProducts } from "@/lib/supabase/products"
 
 export const metadata: Metadata = {
   title: "Brands — HAYDA SKINCo.",
   description: "Shop all brands stocked by HAYDA SKINCo. — CeraVe, The Ordinary, La Roche-Posay, COSRX, Paula's Choice, and more.",
 }
 
-export default function BrandsPage() {
+export default async function BrandsPage() {
+  const [brands, products] = await Promise.all([getAllBrands(), getAllProducts()])
   return (
     <div className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
       {/* Header */}
@@ -22,7 +23,7 @@ export default function BrandsPage() {
 
       {/* Brand grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {BRANDS.map(brand => {
+        {brands.map(brand => {
           const brandProducts = products.filter(p => p.brand === brand.name)
           const productCount = brandProducts.length
           return (

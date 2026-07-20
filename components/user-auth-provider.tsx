@@ -1,13 +1,14 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 import {
   type UserSession,
   getUserSession,
   saveUserSession,
   clearUserSession,
   extractFirstName,
+  supabaseUserToUserSession,
 } from "@/lib/auth"
 
 /* ─── Context ────────────────────────────────────────────────── */
@@ -37,48 +38,122 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setSession(getUserSession())
-    setMounted(true)
+    const supabase = createClient()
+
+    if (!supabase) {
+      // Dev-only mock mode (no Supabase env vars)
+      setSession(getUserSession())
+      setMounted(true)
+      return
+    }
+
+    // Supabase is live — never trust leftover mock localStorage sessions
+    clearUserSession()
+
+    async function buildSession(user: import("@supabase/supabase-js").User) {
+      const base = supabaseUserToUserSession(user)
+      // Hydrate with accurate profile row (name may have been updated after sign-up)
+      const { data: profile } = await supabase!
+        .from("profiles")
+        .select("full_name, first_name, phone")
+        .eq("id", user.id)
+        .single()
+      if (!profile) return base
+      const firstName = profile.first_name ?? extractFirstName(profile.full_name ?? user.email ?? "")
+      return {
+        ...base,
+        name: profile.full_name ?? base.name,
+        firstName,
+      }
+    }
+
+    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+      if (s?.user) {
+        setSession(await buildSession(s.user))
+      }
+      setMounted(true)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, s) => {
+      if (s?.user) {
+        setSession(await buildSession(s.user))
+      } else {
+        setSession(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
+  /* ── signIn ── */
   async function signIn(email: string, password: string): Promise<string | null> {
-    await new Promise(r => setTimeout(r, 800))
-    if (!email || !password) return "Please enter your email and password."
-    // Demo: accept any valid-looking credentials
-    const firstName = extractFirstName(email)
-    const s: UserSession = {
-      email,
-      name: firstName,
-      firstName,
-      signedInAt: Date.now(),
-    }
-    saveUserSession(s)
-    setSession(s)
-    return null
-  }
+    const supabase = createClient()
 
-  async function signUp(name: string, email: string, password: string): Promise<string | null> {
-    await new Promise(r => setTimeout(r, 800))
-    if (!name || !email || !password) return "Please fill in all fields."
-    const firstName = extractFirstName(name)
-    const s: UserSession = {
-      email,
-      name,
-      firstName,
-      signedInAt: Date.now(),
+    if (!supabase) {
+      // Mock path
+      await new Promise(r => setTimeout(r, 800))
+      if (!email || !password) return "Please enter your email and password."
+      const firstName = extractFirstName(email)
+      const s: UserSession = { email, name: firstName, firstName, signedInAt: Date.now() }
+      saveUserSession(s)
+      setSession(s)
+      return null
     }
-    saveUserSession(s)
-    setSession(s)
-    return null
-  }
 
-  function signOut() {
     clearUserSession()
-    setSession(null)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      if ((error as { code?: string }).code === "email_not_confirmed") {
+        return "email_not_confirmed"
+      }
+      return error.message
+    }
+    return null
   }
 
-  // Render children immediately — no guard here (guard is in account layout)
-  // Pass null session before mount to avoid hydration mismatch
+  /* ── signUp ── */
+  async function signUp(name: string, email: string, password: string): Promise<string | null> {
+    const supabase = createClient()
+
+    if (!supabase) {
+      // Mock path
+      await new Promise(r => setTimeout(r, 800))
+      if (!name || !email || !password) return "Please fill in all fields."
+      const firstName = extractFirstName(name)
+      const s: UserSession = { email, name, firstName, signedInAt: Date.now() }
+      saveUserSession(s)
+      setSession(s)
+      return null
+    }
+
+    const firstName = extractFirstName(name)
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: name, first_name: firstName },
+      },
+    })
+    if (error) return error.message
+    return null
+  }
+
+  /* ── signOut ── */
+  function signOut() {
+    const supabase = createClient()
+
+    if (!supabase) {
+      clearUserSession()
+      setSession(null)
+      return
+    }
+
+    clearUserSession()
+    supabase.auth.signOut().then(() => setSession(null))
+  }
+
   return (
     <UserAuthContext.Provider value={{ session: mounted ? session : null, signIn, signUp, signOut }}>
       {children}

@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { Plus, Search, Edit2, Trash2, Tag, ToggleLeft, ToggleRight, Archive } from "lucide-react"
-import { deals as initialDeals, type Deal } from "@/lib/deals"
+import { Plus, Search, Edit2, Trash2, Tag, ToggleLeft, ToggleRight, RefreshCw } from "lucide-react"
+import { type Deal } from "@/lib/deals"
+import { getAllDeals, deleteDeal, toggleDealStatus } from "@/lib/supabase/deals"
 import { cn } from "@/lib/utils"
 
 const STATUS_STYLE: Record<Deal["status"], { label: string; cls: string }> = {
@@ -13,7 +14,17 @@ const STATUS_STYLE: Record<Deal["status"], { label: string; cls: string }> = {
 }
 
 export default function AdminDealsPage() {
-  const [deals, setDeals] = useState<Deal[]>(initialDeals)
+  const [deals, setDeals] = useState<Deal[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const data = await getAllDeals()
+    setDeals(data)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | Deal["status"]>("all")
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -26,15 +37,16 @@ export default function AdminDealsPage() {
     return matchSearch && matchStatus
   })
 
-  function toggleStatus(id: string) {
-    setDeals(prev => prev.map(d => {
-      if (d.id !== id) return d
-      const next: Deal["status"] = d.status === "active" ? "draft" : "active"
-      return { ...d, status: next }
-    }))
+  async function toggleStatus(id: string) {
+    const deal = deals.find(d => d.id === id)
+    if (!deal) return
+    const isActive = deal.status !== "active"
+    setDeals(prev => prev.map(d => d.id !== id ? d : { ...d, status: isActive ? "active" : "draft" }))
+    await toggleDealStatus(id, isActive)
   }
 
-  function confirmDelete(id: string) {
+  async function confirmDelete(id: string) {
+    try { await deleteDeal(id) } catch { /* fall through */ }
     setDeals(prev => prev.filter(d => d.id !== id))
     setDeleteId(null)
   }
@@ -48,15 +60,26 @@ export default function AdminDealsPage() {
         <div>
           <h1 className="font-serif text-2xl font-medium">Deals & Bundles</h1>
           <p className="text-xs font-light text-muted-foreground mt-0.5">
-            {deals.length} deals — {activeCount} live on storefront
+            {loading ? "Loading…" : `${deals.length} deals — ${activeCount} live on storefront`}
           </p>
         </div>
-        <Link
-          href="/admin/deals/new"
-          className="flex items-center gap-2 bg-foreground px-5 py-2.5 text-xs font-medium uppercase tracking-[0.15em] text-background transition-colors hover:bg-gold hover:text-gold-foreground"
-        >
-          <Plus className="size-3.5" /> New Deal
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={load}
+            disabled={loading}
+            aria-label="Refresh"
+            className="flex size-9 items-center justify-center border border-border text-muted-foreground hover:border-foreground hover:text-foreground disabled:opacity-40 transition-colors"
+          >
+            <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+          </button>
+          <Link
+            href="/admin/deals/new"
+            className="flex items-center gap-2 bg-foreground px-5 py-2.5 text-xs font-medium uppercase tracking-[0.15em] text-background transition-colors hover:bg-gold hover:text-gold-foreground"
+          >
+            <Plus className="size-3.5" /> New Deal
+          </Link>
+        </div>
       </div>
 
       <div className="px-6 py-6 lg:px-8 lg:py-8">

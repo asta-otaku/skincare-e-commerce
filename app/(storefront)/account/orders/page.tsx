@@ -1,63 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Search, Package, ArrowRight, ShoppingBag } from "lucide-react"
+import { Search, ArrowRight, ShoppingBag } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-type OrderStatus = "fulfilled" | "shipped" | "processing" | "pending" | "cancelled"
-
-type CustomerOrder = {
-  id: string
-  date: string
-  total: number
-  status: OrderStatus
-  items: { name: string; image: string; price: number; qty: number }[]
-  shippingMethod: string
-}
-
-const ORDERS: CustomerOrder[] = [
-  {
-    id: "ORD-8842", date: "2024-12-14", total: 257.76, status: "fulfilled",
-    shippingMethod: "Express",
-    items: [
-      { name: "Radiance Renewal Serum", image: "/product-serum.png", price: 128, qty: 1 },
-      { name: "Velvet Hydration Cream", image: "/product-cream.png", price: 94,  qty: 1 },
-    ],
-  },
-  {
-    id: "ORD-8837", date: "2024-12-10", total: 216.72, status: "fulfilled",
-    shippingMethod: "Express",
-    items: [
-      { name: "Radiance Renewal Serum",    image: "/product-serum.png",    price: 128, qty: 1 },
-      { name: "Gentle Resurfacing Cleanser", image: "/product-cleanser.png", price: 56,  qty: 1 },
-    ],
-  },
-  {
-    id: "ORD-8830", date: "2024-11-22", total: 128.00, status: "fulfilled",
-    shippingMethod: "Standard",
-    items: [{ name: "Gold Infusion Face Oil", image: "/product-oil.png", price: 156, qty: 1 }],
-  },
-  {
-    id: "ORD-8821", date: "2024-10-30", total: 94.00, status: "fulfilled",
-    shippingMethod: "Standard",
-    items: [{ name: "Velvet Hydration Cream", image: "/product-cream.png", price: 94, qty: 1 }],
-  },
-  {
-    id: "ORD-8810", date: "2024-10-08", total: 184.96, status: "fulfilled",
-    shippingMethod: "Express",
-    items: [
-      { name: "Illuminating Eye Concentrate", image: "/product-eye.png",     price: 112, qty: 1 },
-      { name: "Lavender Calm Toner",           image: "/product-toner.png",   price: 68,  qty: 1 },
-    ],
-  },
-  {
-    id: "ORD-8798", date: "2024-09-15", total: 128.00, status: "cancelled",
-    shippingMethod: "Standard",
-    items: [{ name: "Radiance Renewal Serum", image: "/product-serum.png", price: 128, qty: 1 }],
-  },
-]
+import { getMyOrders } from "@/lib/supabase/orders"
+import type { Order, OrderStatus } from "@/lib/orders"
+import { formatPrice } from "@/lib/products"
 
 const STATUS_STYLE: Record<OrderStatus, { label: string; cls: string }> = {
   fulfilled:  { label: "Delivered",  cls: "text-green-700 bg-green-50 border-green-200" },
@@ -65,15 +15,27 @@ const STATUS_STYLE: Record<OrderStatus, { label: string; cls: string }> = {
   processing: { label: "Processing", cls: "text-blue-700 bg-blue-50 border-blue-200" },
   pending:    { label: "Pending",    cls: "text-gold-foreground bg-gold/10 border-gold/30" },
   cancelled:  { label: "Cancelled",  cls: "text-muted-foreground bg-muted border-border" },
+  refunded:   { label: "Refunded",   cls: "text-destructive bg-destructive/10 border-destructive/20" },
 }
 
 export default function AccountOrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState<"all" | OrderStatus>("all")
 
-  const filtered = ORDERS.filter(o => {
+  useEffect(() => {
+    getMyOrders().then(data => {
+      setOrders(data)
+      setLoading(false)
+    })
+  }, [])
+
+  const filtered = orders.filter(o => {
     const q = search.toLowerCase()
-    const matchSearch = !search || o.id.toLowerCase().includes(q) || o.items.some(i => i.name.toLowerCase().includes(q))
+    const matchSearch = !search ||
+      o.id.toLowerCase().includes(q) ||
+      o.items.some(i => i.name.toLowerCase().includes(q))
     const matchFilter = filter === "all" || o.status === filter
     return matchSearch && matchFilter
   })
@@ -82,10 +44,11 @@ export default function AccountOrdersPage() {
     <div className="space-y-6">
       <div>
         <h2 className="font-serif text-2xl font-medium">Order History</h2>
-        <p className="mt-1 text-sm font-light text-muted-foreground">{ORDERS.length} orders placed</p>
+        <p className="mt-1 text-sm font-light text-muted-foreground">
+          {loading ? "Loading…" : `${orders.length} order${orders.length !== 1 ? "s" : ""} placed`}
+        </p>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative max-w-xs flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -97,7 +60,7 @@ export default function AccountOrdersPage() {
             className="w-full border border-border bg-background py-2.5 pl-10 pr-4 text-sm font-light outline-none focus:border-foreground transition-colors"
           />
         </div>
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+        <div className="flex gap-1.5 overflow-x-auto">
           {(["all", "fulfilled", "shipped", "processing", "pending", "cancelled"] as const).map(s => (
             <button
               key={s}
@@ -116,46 +79,61 @@ export default function AccountOrdersPage() {
         </div>
       </div>
 
-      {/* Orders list */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-24 border border-border bg-muted/20 animate-pulse" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center border border-dashed border-border py-16 text-center">
           <ShoppingBag className="size-10 text-muted-foreground mb-3" />
           <p className="font-serif text-lg font-medium">No orders found</p>
-          <p className="mt-1 text-sm font-light text-muted-foreground">Try adjusting your search.</p>
+          <p className="mt-1 text-sm font-light text-muted-foreground">
+            {orders.length === 0 ? "Orders you place will appear here." : "Try adjusting your search."}
+          </p>
+          {orders.length === 0 && (
+            <Link href="/shop" className="mt-4 text-xs uppercase tracking-[0.15em] text-gold hover:underline">
+              Shop now
+            </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.map(order => {
             const s = STATUS_STYLE[order.status]
+            const unpaid = order.paymentStatus === "pending"
             return (
               <Link
-                key={order.id}
-                href={`/account/orders/${order.id}`}
+                key={order.reference}
+                href={`/account/orders/${order.reference}`}
                 className="group block border border-border hover:border-gold/40 transition-colors"
               >
-                {/* Order header */}
                 <div className="flex items-center justify-between border-b border-border px-5 py-3">
-                  <div className="flex items-center gap-4">
-                    <p className="font-mono text-xs font-medium">{order.id}</p>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <p className="font-mono text-xs font-medium">{order.reference}</p>
                     <span className={cn("border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em]", s.cls)}>
                       {s.label}
                     </span>
+                    {unpaid && (
+                      <span className="border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] text-amber-800">
+                        Payment pending — open to confirm
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <p className="text-xs font-light text-muted-foreground">
-                      {new Date(order.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {new Date(order.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </p>
-                    <p className="text-sm font-medium">${order.total.toFixed(2)}</p>
+                    <p className="text-sm font-medium">{formatPrice(order.total)}</p>
                     <ArrowRight className="size-3.5 text-muted-foreground group-hover:text-gold transition-colors" />
                   </div>
                 </div>
-
-                {/* Items preview */}
                 <div className="flex items-center gap-3 px-5 py-3.5">
                   <div className="flex -space-x-2">
                     {order.items.slice(0, 3).map((item, i) => (
                       <div key={i} className="relative size-10 overflow-hidden border border-background bg-muted/40 ring-1 ring-background">
-                        <Image src={item.image} alt={item.name} fill sizes="40px" className="object-cover" />
+                        <Image src={item.image || "/placeholder.svg"} alt={item.name} fill sizes="40px" className="object-cover" />
                       </div>
                     ))}
                   </div>
@@ -163,9 +141,10 @@ export default function AccountOrdersPage() {
                     <p className="text-xs font-light text-muted-foreground truncate">
                       {order.items.map(i => i.name).join(", ")}
                     </p>
-                    <p className="text-[10px] font-light text-muted-foreground mt-0.5">
-                      {order.items.reduce((s, i) => s + i.qty, 0)} item{order.items.reduce((s, i) => s + i.qty, 0) !== 1 ? "s" : ""}
-                      {" · "}{order.shippingMethod} Shipping
+                    <p className="text-[10px] font-light text-muted-foreground mt-0.5 capitalize">
+                      {order.items.reduce((sum, i) => sum + i.quantity, 0)} item
+                      {order.items.reduce((sum, i) => sum + i.quantity, 0) !== 1 ? "s" : ""}
+                      {" · "}{order.shippingMethod} shipping
                     </p>
                   </div>
                 </div>

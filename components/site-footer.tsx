@@ -90,7 +90,7 @@ function PaystackIcon() {
 function VisaIcon() {
   return (
     <svg viewBox="0 0 48 16" className="h-4 w-auto" aria-label="Visa">
-      <rect width="48" height="16" rx="3" fill="#1A1F71"/>
+      <rect width="48" height="16" rx="3" fill="#1A1F71" />
       <text x="8" y="12" fontFamily="Georgia, serif" fontSize="12" fontWeight="700" fontStyle="italic" fill="#fff">VISA</text>
     </svg>
   )
@@ -98,16 +98,16 @@ function VisaIcon() {
 function MastercardIcon() {
   return (
     <svg viewBox="0 0 38 24" className="h-5 w-auto" aria-label="Mastercard">
-      <circle cx="14" cy="12" r="10" fill="#EB001B"/>
-      <circle cx="24" cy="12" r="10" fill="#F79E1B"/>
-      <path d="M19 5.3a10 10 0 0 1 0 13.4A10 10 0 0 1 19 5.3z" fill="#FF5F00"/>
+      <circle cx="14" cy="12" r="10" fill="#EB001B" />
+      <circle cx="24" cy="12" r="10" fill="#F79E1B" />
+      <path d="M19 5.3a10 10 0 0 1 0 13.4A10 10 0 0 1 19 5.3z" fill="#FF5F00" />
     </svg>
   )
 }
 function VerveIcon() {
   return (
     <svg viewBox="0 0 60 20" className="h-4 w-auto" aria-label="Verve">
-      <rect width="60" height="20" rx="3" fill="#004B87"/>
+      <rect width="60" height="20" rx="3" fill="#004B87" />
       <text x="6" y="14" fontFamily="system-ui, sans-serif" fontSize="11" fontWeight="700" fill="#fff">VERVE</text>
     </svg>
   )
@@ -183,7 +183,7 @@ export function SiteFooter() {
             </p>
             <p className="mt-4 text-sm font-light text-muted-foreground">
               📍 Lagos, Nigeria<br />
-              📞 <a href="tel:+2348000000000" className="hover:text-gold transition-colors">+234 800 000 0000</a><br />
+              📞 <a href="tel:+2348137309609" className="hover:text-gold transition-colors">+234 813 730 9609</a><br />
               ✉️ <a href="mailto:hello@haydaskinco.com" className="hover:text-gold transition-colors">hello@haydaskinco.com</a>
             </p>
             {/* Social */}

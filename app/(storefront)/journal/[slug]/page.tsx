@@ -2,19 +2,21 @@ import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, Clock, User, Tag, Share2, Link2 } from "lucide-react"
-import { journals } from "@/lib/journals"
+import { ArrowLeft, Clock, User, Tag } from "lucide-react"
+import { getJournalBySlug, getPublishedJournals, getPublishedSlugs } from "@/lib/supabase/journals"
+
+/** Revalidate article pages every 60s; admin saves also call revalidatePath. */
+export const revalidate = 60
 
 /* ─── Static params ─────────────────────────────────────────── */
-export function generateStaticParams() {
-  return journals
-    .filter(j => j.status === "published")
-    .map(j => ({ slug: j.slug }))
+export async function generateStaticParams() {
+  const slugs = await getPublishedSlugs()
+  return slugs.map(slug => ({ slug }))
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  const article = journals.find(j => j.slug === slug)
+  const article = await getJournalBySlug(slug)
   if (!article) return {}
   return {
     title: `${article.title} — HAYDA Skin Blog`,
@@ -84,15 +86,18 @@ import { ShareButtons } from "./share-buttons"
 /* ─── Page ──────────────────────────────────────────────────── */
 export default async function JournalArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const article = journals.find(j => j.slug === slug)
+  const [article, allPublished] = await Promise.all([
+    getJournalBySlug(slug),
+    getPublishedJournals(),
+  ])
   if (!article || article.status !== "published") notFound()
 
-  const related = journals
-    .filter(j => j.id !== article.id && j.status === "published" && j.category === article.category)
+  const related = allPublished
+    .filter(j => j.id !== article.id && j.category === article.category)
     .slice(0, 2)
 
   const otherRelated = related.length < 2
-    ? journals.filter(j => j.id !== article.id && j.status === "published" && !related.find(r => r.id === j.id)).slice(0, 2 - related.length)
+    ? allPublished.filter(j => j.id !== article.id && !related.find(r => r.id === j.id)).slice(0, 2 - related.length)
     : []
 
   const suggestions = [...related, ...otherRelated]

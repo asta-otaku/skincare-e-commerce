@@ -3,8 +3,10 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, Lock, Mail, User, ArrowRight, Check } from "lucide-react"
+import { Eye, EyeOff, Lock, Mail, User, ArrowRight, Check, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { createAdminBrowserClient } from "@/lib/supabase/client"
+import { extractFirstName } from "@/lib/auth"
 
 const PASSWORD_RULES = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
@@ -18,6 +20,7 @@ export default function AdminRegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [done, setDone] = useState(false)
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -27,13 +30,87 @@ export default function AdminRegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
+
     if (form.password !== form.confirm) {
       setError("Passwords do not match.")
       return
     }
+
+    const allRulesPassed = PASSWORD_RULES.every(r => r.test(form.password))
+    if (!allRulesPassed) {
+      setError("Password does not meet all requirements.")
+      return
+    }
+
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 900))
-    router.push("/admin/dashboard")
+
+    const supabase = createAdminBrowserClient()
+
+    if (!supabase) {
+      // No Supabase configured — mock path
+      await new Promise(r => setTimeout(r, 900))
+      router.push("/admin/dashboard")
+      return
+    }
+
+    const { error: signUpError } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: {
+        data: {
+          full_name: form.name,
+          first_name: extractFirstName(form.name),
+        },
+      },
+    })
+
+    setLoading(false)
+
+    if (signUpError) {
+      setError(signUpError.message)
+      return
+    }
+
+    // Account created — show the "grant admin role" reminder before redirecting
+    setDone(true)
+  }
+
+  if (done) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center px-5 py-12">
+        <div className="w-full max-w-md text-center">
+          <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-full bg-green-50 border border-green-200">
+            <ShieldCheck className="size-8 text-green-600" />
+          </div>
+          <h1 className="font-serif text-3xl font-medium mb-2">Account created</h1>
+          <p className="text-sm font-light text-muted-foreground mb-8">
+            Your account for <span className="text-foreground font-medium">{form.email}</span> has been registered.
+            Before you can access the admin dashboard, a super-admin must grant your account the admin role.
+          </p>
+
+          <div className="mb-8 border border-border bg-muted/30 p-5 text-left">
+            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-gold mb-3">
+              One more step — grant admin access
+            </p>
+            <p className="text-xs font-light text-muted-foreground mb-3">
+              Run this query in the Supabase SQL Editor:
+            </p>
+            <pre className="overflow-x-auto rounded-sm bg-foreground/5 border border-border p-3 text-[11px] font-mono leading-relaxed text-foreground">
+{`UPDATE public.profiles
+SET role = 'admin'
+WHERE email = '${form.email}';`}
+            </pre>
+          </div>
+
+          <Link
+            href="/admin/login"
+            className="inline-flex items-center gap-2 bg-foreground px-8 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-background hover:bg-gold hover:text-gold-foreground transition-colors"
+          >
+            Go to Sign In <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (

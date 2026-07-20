@@ -1,12 +1,13 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { getProduct, products } from "@/lib/products"
+import { getProductById, getProductIds } from "@/lib/supabase/products"
 import { ProductDetail } from "@/components/product-detail"
 import { ProductReviews } from "@/components/product-reviews"
 import { RelatedProducts } from "@/components/related-products"
 
-export function generateStaticParams() {
-  return products.map((product) => ({ id: product.id }))
+export async function generateStaticParams() {
+  const ids = await getProductIds()
+  return ids.map((id) => ({ id }))
 }
 
 export async function generateMetadata({
@@ -15,7 +16,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>
 }): Promise<Metadata> {
   const { id } = await params
-  const product = getProduct(id)
+  const product = await getProductById(id)
   if (!product) return { title: "Product Not Found — HAYDA SKINCo." }
   return {
     title: `${product.name} — HAYDA SKINCo.`,
@@ -29,7 +30,7 @@ export default async function ProductPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const product = getProduct(id)
+  const product = await getProductById(id)
   if (!product) notFound()
 
   return (

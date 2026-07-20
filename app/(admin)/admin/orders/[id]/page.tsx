@@ -1,26 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, use } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { notFound, useRouter } from "next/navigation"
-import { use } from "react"
 import {
   ArrowLeft, MapPin, Mail, Phone, Package, CreditCard,
-  Truck, Clock, CheckCircle2, XCircle, RotateCcw,
-  ChevronDown, ExternalLink, Copy, Check,
+  Truck, Clock, CheckCircle2, ChevronDown, Copy, Check,
 } from "lucide-react"
 import {
-  orders,
   ORDER_STATUS_META,
   PAYMENT_STATUS_META,
   PAYMENT_METHOD_LABELS,
+  type Order,
   type OrderStatus,
 } from "@/lib/orders"
+import { getOrderByReference, updateOrderStatus } from "@/lib/supabase/orders"
 import { cn } from "@/lib/utils"
 
 function formatCurrency(n: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n)
+  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(n)
 }
 
 function formatDateTime(iso: string) {
@@ -30,344 +28,212 @@ function formatDateTime(iso: string) {
   })
 }
 
-/* Order status timeline */
 const STATUS_TIMELINE: { status: OrderStatus; label: string; icon: React.ElementType }[] = [
-  { status: "pending",    label: "Order placed",   icon: Clock },
-  { status: "processing", label: "Processing",      icon: Package },
-  { status: "shipped",    label: "Shipped",         icon: Truck },
-  { status: "fulfilled",  label: "Delivered",       icon: CheckCircle2 },
+  { status: "pending",    label: "Order placed", icon: Clock },
+  { status: "processing", label: "Processing",   icon: Package },
+  { status: "shipped",    label: "Shipped",      icon: Truck },
+  { status: "fulfilled",  label: "Delivered",    icon: CheckCircle2 },
 ]
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const router = useRouter()
-
-  const [orderList, setOrderList] = useState(orders)
+  const [order, setOrder] = useState<Order | null>(null)
+  const [loading, setLoading] = useState(true)
   const [statusOpen, setStatusOpen] = useState(false)
   const [copiedRef, setCopiedRef] = useState(false)
-  const [noteValue, setNoteValue] = useState("")
-  const [saving, setSaving] = useState(false)
 
-  const order = orderList.find(o => o.id === id)
-  if (!order) notFound()
+  useEffect(() => {
+    getOrderByReference(id).then(o => {
+      setOrder(o)
+      setLoading(false)
+    })
+  }, [id])
+
+  if (loading) {
+    return (
+      <div className="flex-1 overflow-auto px-6 py-8 lg:px-8">
+        <div className="h-8 w-48 bg-muted/50 animate-pulse mb-6" />
+        <div className="h-64 w-full bg-muted/30 animate-pulse" />
+      </div>
+    )
+  }
+
+  if (!order) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 py-20">
+        <p className="font-serif text-2xl font-medium">Order not found</p>
+        <Link href="/admin/orders" className="text-xs uppercase tracking-[0.15em] text-gold hover:underline">
+          Back to orders
+        </Link>
+      </div>
+    )
+  }
 
   const statusMeta = ORDER_STATUS_META[order.status]
   const paymentMeta = PAYMENT_STATUS_META[order.paymentStatus]
   const isCancelled = order.status === "cancelled" || order.status === "refunded"
+  const progressStatuses: OrderStatus[] = ["pending", "processing", "shipped", "fulfilled"]
+  const progressIdx = isCancelled ? -1 : progressStatuses.indexOf(order.status)
 
-  function updateStatus(status: OrderStatus) {
-    setOrderList(prev => prev.map(o => o.id === id ? { ...o, status, updatedAt: new Date().toISOString() } : o))
+  async function updateStatus(status: OrderStatus) {
+    setOrder(prev => prev ? { ...prev, status, updatedAt: new Date().toISOString() } : prev)
     setStatusOpen(false)
+    await updateOrderStatus(order!.id, status)
   }
 
   function copyRef() {
-    navigator.clipboard.writeText(order.reference)
+    navigator.clipboard.writeText(order!.reference)
     setCopiedRef(true)
     setTimeout(() => setCopiedRef(false), 1800)
   }
 
-  async function saveNote() {
-    if (!noteValue.trim()) return
-    setSaving(true)
-    await new Promise(r => setTimeout(r, 600))
-    setOrderList(prev => prev.map(o => o.id === id ? { ...o, notes: (o.notes ? o.notes + "\n" : "") + `[${new Date().toLocaleDateString()}] ${noteValue}` } : o))
-    setNoteValue("")
-    setSaving(false)
-  }
-
-  /* Determine timeline progress */
-  const progressStatuses: OrderStatus[] = ["pending", "processing", "shipped", "fulfilled"]
-  const progressIdx = isCancelled ? -1 : progressStatuses.indexOf(order.status)
-
   return (
     <div className="flex-1 overflow-auto" onClick={() => setStatusOpen(false)}>
-      {/* Header */}
       <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background px-6 py-4 lg:px-8">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="flex items-center gap-1.5 text-xs font-light text-muted-foreground hover:text-foreground transition-colors uppercase tracking-[0.15em]"
+        <div className="flex items-center gap-4">
+          <Link
+            href="/admin/orders"
+            className="flex size-8 items-center justify-center border border-border text-muted-foreground hover:border-foreground hover:text-foreground"
           >
-            <ArrowLeft className="size-3.5" /> Orders
-          </button>
-          <span className="text-border">/</span>
-          <h1 className="font-mono text-sm font-medium">{order.id}</h1>
-          <span className={cn(
-            "border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.1em]",
-            statusMeta.bg, statusMeta.color, statusMeta.border,
-          )}>
-            {statusMeta.label}
-          </span>
+            <ArrowLeft className="size-4" />
+          </Link>
+          <div>
+            <h1 className="font-serif text-2xl font-medium font-mono">{order.id}</h1>
+            <p className="text-xs font-light text-muted-foreground">{formatDateTime(order.createdAt)}</p>
+          </div>
         </div>
-
-        {/* Status changer */}
         <div className="relative" onClick={e => e.stopPropagation()}>
           <button
             type="button"
             onClick={() => setStatusOpen(v => !v)}
-            className="flex items-center gap-2 border border-border bg-background px-4 py-2 text-xs font-medium uppercase tracking-[0.15em] hover:border-foreground transition-colors"
+            className={cn(
+              "flex items-center gap-2 border px-4 py-2 text-xs font-medium uppercase tracking-[0.12em]",
+              statusMeta.border, statusMeta.bg, statusMeta.color,
+            )}
           >
-            Update Status <ChevronDown className="size-3.5" />
+            {statusMeta.label} <ChevronDown className="size-3.5" />
           </button>
           {statusOpen && (
-            <div className="absolute right-0 top-11 z-40 min-w-44 border border-border bg-background shadow-lg">
-              {(Object.keys(ORDER_STATUS_META) as OrderStatus[]).map(s => {
-                const m = ORDER_STATUS_META[s]
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => updateStatus(s)}
-                    className={cn(
-                      "flex w-full items-center gap-3 px-4 py-2.5 text-xs transition-colors hover:bg-muted",
-                      order.status === s ? "font-medium" : "font-light text-muted-foreground",
-                    )}
-                  >
-                    <span className={cn("size-2 rounded-full shrink-0 border", m.bg, m.border)} />
-                    {m.label}
-                    {order.status === s && <Check className="ml-auto size-3 text-gold" />}
-                  </button>
-                )
-              })}
+            <div className="absolute right-0 top-full z-30 mt-1 w-44 border border-border bg-background shadow-lg">
+              {(Object.keys(ORDER_STATUS_META) as OrderStatus[]).map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => updateStatus(s)}
+                  className="block w-full px-4 py-2.5 text-left text-xs font-light capitalize hover:bg-muted/40"
+                >
+                  {ORDER_STATUS_META[s].label}
+                </button>
+              ))}
             </div>
           )}
         </div>
       </div>
 
-      <div className="px-6 py-6 lg:px-8 lg:py-8">
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">
-          {/* Left column */}
-          <div className="space-y-6">
-            {/* Order timeline */}
-            {!isCancelled ? (
-              <section className="border border-border p-6">
-                <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.18em]">Order Progress</h2>
-                <div className="relative flex items-start">
-                  {/* Connecting line */}
-                  <div className="absolute left-4 top-4 h-0.5 w-[calc(100%-2rem)] bg-border" />
-                  <div
-                    className="absolute left-4 top-4 h-0.5 bg-gold transition-all duration-700"
-                    style={{ width: progressIdx >= 0 ? `${(progressIdx / (STATUS_TIMELINE.length - 1)) * 100}%` : "0%" }}
-                  />
-                  {STATUS_TIMELINE.map((step, i) => {
-                    const done = i <= progressIdx
-                    const current = i === progressIdx
-                    return (
-                      <div key={step.status} className="relative flex flex-1 flex-col items-center gap-2 text-center">
-                        <div className={cn(
-                          "relative z-10 flex size-8 items-center justify-center rounded-full border-2 transition-all",
-                          done
-                            ? "border-gold bg-gold text-gold-foreground"
-                            : "border-border bg-background text-muted-foreground",
-                          current && "ring-2 ring-gold/30 ring-offset-1",
-                        )}>
-                          <step.icon className="size-3.5" />
-                        </div>
-                        <div>
-                          <p className={cn("text-[10px] font-medium uppercase tracking-[0.12em]", done ? "text-foreground" : "text-muted-foreground")}>
-                            {step.label}
-                          </p>
-                          {current && (
-                            <p className="text-[9px] font-light text-gold mt-0.5">Current</p>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </section>
-            ) : (
-              <section className="border border-destructive/30 bg-destructive/5 p-5">
-                <div className="flex items-center gap-3">
-                  {order.status === "refunded" ? (
-                    <RotateCcw className="size-5 text-destructive shrink-0" />
-                  ) : (
-                    <XCircle className="size-5 text-destructive shrink-0" />
-                  )}
-                  <div>
-                    <p className="text-sm font-medium text-destructive capitalize">{order.status}</p>
-                    {order.notes && <p className="text-xs font-light text-muted-foreground mt-0.5">{order.notes}</p>}
+      <div className="px-6 py-8 lg:px-8 grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
+          {/* Timeline */}
+          <div className="border border-border p-6">
+            <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.15em]">Status</h2>
+            <div className="flex justify-between gap-2">
+              {STATUS_TIMELINE.map((step, i) => {
+                const done = progressIdx >= i
+                const Icon = step.icon
+                return (
+                  <div key={step.status} className="flex flex-1 flex-col items-center gap-2 text-center">
+                    <div className={cn(
+                      "flex size-9 items-center justify-center rounded-full border",
+                      done ? "border-gold bg-gold/10 text-gold" : "border-border text-muted-foreground",
+                    )}>
+                      <Icon className="size-4" />
+                    </div>
+                    <p className={cn("text-[10px] uppercase tracking-[0.12em]", done ? "text-foreground" : "text-muted-foreground")}>
+                      {step.label}
+                    </p>
                   </div>
-                </div>
-              </section>
-            )}
-
-            {/* Items */}
-            <section className="border border-border">
-              <div className="flex items-center justify-between border-b border-border px-6 py-4">
-                <h2 className="text-xs font-medium uppercase tracking-[0.18em]">
-                  Items ({order.items.reduce((s, i) => s + i.quantity, 0)})
-                </h2>
-                <Link
-                  href="/admin/products"
-                  className="flex items-center gap-1 text-[11px] font-light text-muted-foreground hover:text-gold transition-colors"
-                >
-                  Manage products <ExternalLink className="size-3" />
-                </Link>
-              </div>
-              <ul className="divide-y divide-border">
-                {order.items.map((item, i) => (
-                  <li key={i} className="flex items-center gap-4 px-6 py-4">
-                    <div className="relative size-16 shrink-0 overflow-hidden border border-border bg-muted/40">
-                      <Image src={item.image || "/placeholder.svg"} alt={item.name} fill sizes="64px" className="object-cover" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/admin/products/${item.productId}/edit`} className="text-sm font-medium hover:text-gold transition-colors">
-                        {item.name}
-                      </Link>
-                      <p className="text-[10px] font-light uppercase tracking-[0.18em] text-gold mt-0.5">{item.category}</p>
-                      <p className="text-xs font-light text-muted-foreground mt-0.5">
-                        {formatCurrency(item.price)} × {item.quantity}
-                      </p>
-                    </div>
-                    <p className="text-sm font-medium shrink-0">{formatCurrency(item.price * item.quantity)}</p>
-                  </li>
-                ))}
-              </ul>
-
-              {/* Pricing breakdown */}
-              <div className="border-t border-border px-6 py-4 space-y-2">
-                <PriceLine label="Subtotal" value={formatCurrency(order.subtotal)} />
-                <PriceLine
-                  label={order.shippingMethod === "express" ? "Express Shipping" : "Standard Shipping"}
-                  value={order.shippingCost === 0 ? "Free" : formatCurrency(order.shippingCost)}
-                />
-                <PriceLine label="Tax" value={formatCurrency(order.tax)} />
-                <div className="border-t border-border pt-2 mt-1">
-                  <PriceLine label="Total" value={formatCurrency(order.total)} bold />
-                </div>
-              </div>
-            </section>
-
-            {/* Notes */}
-            <section className="border border-border p-6">
-              <h2 className="mb-4 text-xs font-medium uppercase tracking-[0.18em]">Internal Notes</h2>
-              {order.notes && (
-                <div className="mb-4 whitespace-pre-line rounded-sm border border-border bg-muted/30 px-4 py-3 text-xs font-light text-muted-foreground">
-                  {order.notes}
-                </div>
-              )}
-              <div className="flex gap-2">
-                <textarea
-                  value={noteValue}
-                  onChange={e => setNoteValue(e.target.value)}
-                  placeholder="Add a note about this order…"
-                  rows={2}
-                  className="flex-1 resize-none border border-border bg-background px-4 py-3 text-sm font-light outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground/40"
-                />
-                <button
-                  type="button"
-                  onClick={saveNote}
-                  disabled={saving || !noteValue.trim()}
-                  className={cn(
-                    "shrink-0 self-stretch px-4 text-xs font-medium uppercase tracking-[0.15em] transition-all",
-                    saving || !noteValue.trim()
-                      ? "bg-muted text-muted-foreground cursor-not-allowed"
-                      : "bg-foreground text-background hover:bg-gold hover:text-gold-foreground",
-                  )}
-                >
-                  {saving ? <span className="size-4 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground animate-spin block" /> : "Save"}
-                </button>
-              </div>
-            </section>
+                )
+              })}
+            </div>
           </div>
 
-          {/* Right column */}
-          <div className="space-y-5">
-            {/* Customer */}
-            <section className="border border-border p-5">
-              <h2 className="mb-4 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Customer</h2>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
-                  {order.customer.initials}
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{order.customer.name}</p>
-                  <p className="text-xs font-light text-muted-foreground">{order.customer.email}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <a href={`mailto:${order.customer.email}`} className="flex items-center gap-2 text-xs font-light text-muted-foreground hover:text-gold transition-colors">
-                  <Mail className="size-3.5 shrink-0" /> {order.customer.email}
-                </a>
-                {order.shippingAddress.phone && (
-                  <div className="flex items-center gap-2 text-xs font-light text-muted-foreground">
-                    <Phone className="size-3.5 shrink-0" /> {order.shippingAddress.phone}
+          {/* Items */}
+          <div className="border border-border">
+            <div className="border-b border-border px-6 py-4">
+              <h2 className="text-xs font-medium uppercase tracking-[0.15em]">Items</h2>
+            </div>
+            <ul className="divide-y divide-border">
+              {order.items.map(item => (
+                <li key={item.productId + item.name} className="flex items-center gap-4 px-6 py-4">
+                  <div className="relative size-14 shrink-0 overflow-hidden border border-border bg-muted/40">
+                    <Image src={item.image || "/placeholder.svg"} alt={item.name} fill sizes="56px" className="object-cover" />
                   </div>
-                )}
-              </div>
-              <Link
-                href={`/admin/users`}
-                className="mt-4 flex items-center gap-1.5 text-[11px] font-light text-gold hover:underline underline-offset-2"
-              >
-                View customer profile <ExternalLink className="size-3" />
-              </Link>
-            </section>
-
-            {/* Shipping address */}
-            <section className="border border-border p-5">
-              <h2 className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Shipping Address</h2>
-              <div className="flex items-start gap-2">
-                <MapPin className="size-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-                <div className="text-xs font-light leading-relaxed text-muted-foreground">
-                  <p className="font-medium text-foreground">{order.shippingAddress.firstName} {order.shippingAddress.lastName}</p>
-                  <p>{order.shippingAddress.address}{order.shippingAddress.apartment && `, ${order.shippingAddress.apartment}`}</p>
-                  <p>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zip}</p>
-                  <p>{order.shippingAddress.country}</p>
-                </div>
-              </div>
-              <div className="mt-3 flex items-center gap-1.5 text-[11px] font-light text-muted-foreground">
-                <Truck className="size-3.5" />
-                {order.shippingMethod === "express" ? "Express (2–3 days)" : "Standard (5–7 days)"}
-              </div>
-            </section>
-
-            {/* Payment */}
-            <section className="border border-border p-5">
-              <h2 className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Payment</h2>
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="flex size-5 items-center justify-center rounded-full bg-[#00C3F7]">
-                      <span className="text-[9px] font-bold text-white">P</span>
-                    </div>
-                    <span className="text-xs font-light text-muted-foreground">Paystack</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{item.name}</p>
+                    <p className="text-xs font-light text-muted-foreground">{item.category} · Qty {item.quantity}</p>
                   </div>
-                  <span className={cn("text-xs font-medium", paymentMeta.color)}>{paymentMeta.label}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-light text-muted-foreground">Method</span>
-                  <span className="text-xs font-medium">{PAYMENT_METHOD_LABELS[order.paymentMethod]}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-light text-muted-foreground">Reference</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-[10px] text-muted-foreground truncate max-w-28">{order.reference}</span>
-                    <button
-                      type="button"
-                      onClick={copyRef}
-                      className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label="Copy reference"
-                    >
-                      {copiedRef ? <Check className="size-3 text-green-600" /> : <Copy className="size-3" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-light text-muted-foreground">Amount charged</span>
-                  <span className="text-sm font-semibold">{formatCurrency(order.total)}</span>
-                </div>
-              </div>
-            </section>
+                  <p className="text-sm font-medium">{formatCurrency(item.price * item.quantity)}</p>
+                </li>
+              ))}
+            </ul>
+            <div className="border-t border-border px-6 py-4 space-y-1.5">
+              <Row label="Subtotal" value={formatCurrency(order.subtotal)} />
+              <Row label="Shipping" value={order.shippingCost === 0 ? "Free" : formatCurrency(order.shippingCost)} />
+              <Row label="Tax" value={formatCurrency(order.tax)} />
+              <Row label="Total" value={formatCurrency(order.total)} bold />
+            </div>
+          </div>
+        </div>
 
-            {/* Meta */}
-            <section className="border border-border p-5 space-y-2.5">
-              <h2 className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Order Info</h2>
-              <MetaLine label="Placed" value={formatDateTime(order.createdAt)} />
-              <MetaLine label="Updated" value={formatDateTime(order.updatedAt)} />
-              <MetaLine label="Order ID" value={order.id} mono />
-            </section>
+        <div className="space-y-5">
+          <div className="border border-border p-5 space-y-3">
+            <h2 className="text-xs font-medium uppercase tracking-[0.15em]">Customer</h2>
+            <p className="text-sm font-medium">{order.customer.name}</p>
+            <p className="flex items-center gap-2 text-xs font-light text-muted-foreground">
+              <Mail className="size-3.5" /> {order.customer.email}
+            </p>
+            {order.shippingAddress.phone && (
+              <p className="flex items-center gap-2 text-xs font-light text-muted-foreground">
+                <Phone className="size-3.5" /> {order.shippingAddress.phone}
+              </p>
+            )}
+          </div>
+
+          <div className="border border-border p-5 space-y-2">
+            <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.15em] flex items-center gap-2">
+              <MapPin className="size-3.5" /> Shipping
+            </h2>
+            <p className="text-sm font-light">
+              {order.shippingAddress.firstName} {order.shippingAddress.lastName}
+            </p>
+            <p className="text-xs font-light text-muted-foreground leading-relaxed">
+              {order.shippingAddress.address}
+              {order.shippingAddress.apartment ? `, ${order.shippingAddress.apartment}` : ""}
+              <br />
+              {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zip}
+              <br />
+              {order.shippingAddress.country}
+            </p>
+            <p className="text-xs font-light text-muted-foreground pt-1 capitalize">
+              {order.shippingMethod} shipping
+            </p>
+          </div>
+
+          <div className="border border-border p-5 space-y-2">
+            <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.15em] flex items-center gap-2">
+              <CreditCard className="size-3.5" /> Payment
+            </h2>
+            <p className={cn("text-sm font-medium", paymentMeta.color)}>{paymentMeta.label}</p>
+            <p className="text-xs font-light text-muted-foreground">
+              {PAYMENT_METHOD_LABELS[order.paymentMethod] ?? order.paymentMethod}
+            </p>
+            <button
+              type="button"
+              onClick={copyRef}
+              className="mt-2 flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground hover:text-foreground"
+            >
+              {copiedRef ? <Check className="size-3" /> : <Copy className="size-3" />}
+              {order.reference}
+            </button>
           </div>
         </div>
       </div>
@@ -375,20 +241,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   )
 }
 
-function PriceLine({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className={cn("text-xs font-light", bold ? "font-medium uppercase tracking-[0.1em]" : "text-muted-foreground")}>{label}</span>
-      <span className={cn(bold ? "font-serif text-lg font-medium" : "text-sm font-light")}>{value}</span>
-    </div>
-  )
-}
-
-function MetaLine({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <span className="text-[10px] font-light uppercase tracking-[0.15em] text-muted-foreground shrink-0">{label}</span>
-      <span className={cn("text-[11px] text-right", mono ? "font-mono text-muted-foreground" : "font-light")}>{value}</span>
+    <div className="flex justify-between text-sm">
+      <span className="font-light text-muted-foreground">{label}</span>
+      <span className={bold ? "font-medium" : "font-light"}>{value}</span>
     </div>
   )
 }

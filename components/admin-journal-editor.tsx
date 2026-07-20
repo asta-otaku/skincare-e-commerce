@@ -9,6 +9,9 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Journal } from "@/lib/journals"
+import { saveJournal } from "@/lib/supabase/journals"
+import { uploadProductImage } from "@/lib/supabase/storage"
+import { revalidateJournal } from "@/app/actions/revalidate"
 
 type FormState = {
   title: string
@@ -56,9 +59,12 @@ export function AdminJournalEditor({ journal }: { journal?: Journal }) {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
+  const [imageFile, setImageFile] = useState<File | null>(null)
+
   function handleImageFile(file: File) {
     const url = URL.createObjectURL(file)
     setImagePreview(url)
+    setImageFile(file)
     setForm((f) => ({ ...f, image: url }))
   }
 
@@ -91,22 +97,86 @@ export function AdminJournalEditor({ journal }: { journal?: Journal }) {
 
   async function handleSave(status: "published" | "draft") {
     setSaving(true)
-    setForm((f) => ({ ...f, status }))
-    await new Promise((r) => setTimeout(r, 800))
-    router.push("/admin/journals")
+    try {
+      let coverUrl = form.image
+
+      // Upload new cover image to Supabase Storage if a file was selected
+      if (imageFile) {
+        const slug = form.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40) || "journal"
+        coverUrl = await uploadProductImage(imageFile, `journals/${slug}`)
+      }
+
+      const slug =
+        form.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") ||
+        journal?.slug
+
+      await saveJournal(
+        { ...form, slug, image: coverUrl, status, readTime: Number(form.readTime) || 5 },
+        journal?.id,
+      )
+      await revalidateJournal(slug)
+      router.push("/admin/journals")
+    } catch (err) {
+      console.error("Save failed:", err)
+      setSaving(false)
+    }
   }
 
-  /* ── Markdown preview renderer (basic) ── */
-  function renderPreview(md: string) {
-    return md
-      .replace(/^## (.+)$/gm, "<h2 class='font-serif text-2xl font-medium mt-8 mb-3'>$1</h2>")
-      .replace(/^### (.+)$/gm, "<h3 class='font-serif text-lg font-medium mt-6 mb-2'>$1</h3>")
-      .replace(/\*\*(.+?)\*\*/g, "<strong class='font-medium'>$1</strong>")
-      .replace(/\*(.+?)\*/g, "<em class='italic'>$1</em>")
-      .replace(/^> (.+)$/gm, "<blockquote class='border-l-2 border-gold pl-4 italic text-muted-foreground my-4'>$1</blockquote>")
-      .replace(/^- (.+)$/gm, "<li class='ml-4 font-light'>$1</li>")
-      .replace(/\n\n/g, "</p><p class='mb-4 font-light leading-relaxed'>")
-      .replace(/^(?!<[hbli])(.+)$/gm, "<p class='mb-4 font-light leading-relaxed'>$1</p>")
+  /* ── Markdown preview renderer ── */
+  function formatInline(text: string): string {
+    // Escape HTML first so user content can't inject tags
+    let s = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+
+    // Bold (**text**) then italic (*text*) — no lookbehind (Safari-safe)
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>')
+    s = s.replace(/\*([^*]+)\*/g, '<em class="italic text-foreground/90">$1</em>')
+    s = s.replace(/`([^`]+)`/g, '<code class="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground">$1</code>')
+    return s
+  }
+
+  function renderPreview(md: string): string {
+    if (!md.trim()) {
+      return '<p class="text-sm text-muted-foreground/50 italic">Nothing to preview yet — start writing above.</p>'
+    }
+
+    const lines = md.split("\n")
+    const html: string[] = []
+    let inList = false
+
+    for (const raw of lines) {
+      // Detect block type from the raw line BEFORE inline formatting
+      if (raw.startsWith("## ")) {
+        if (inList) { html.push("</ul>"); inList = false }
+        html.push(`<h2 class="font-serif text-2xl font-medium mt-8 mb-3 text-foreground">${formatInline(raw.slice(3))}</h2>`)
+      } else if (raw.startsWith("### ")) {
+        if (inList) { html.push("</ul>"); inList = false }
+        html.push(`<h3 class="font-serif text-lg font-medium mt-6 mb-2 text-foreground">${formatInline(raw.slice(4))}</h3>`)
+      } else if (raw.startsWith("> ")) {
+        if (inList) { html.push("</ul>"); inList = false }
+        html.push(`<blockquote class="border-l-2 border-gold pl-5 py-0.5 my-4 font-serif italic text-muted-foreground">${formatInline(raw.slice(2))}</blockquote>`)
+      } else if (raw.startsWith("- ") || raw.startsWith("* ")) {
+        if (!inList) { html.push('<ul class="my-3 list-none space-y-1.5">'); inList = true }
+        html.push(
+          `<li class="flex gap-2.5 text-base leading-[1.8] text-muted-foreground"><span class="mt-2.5 size-1.5 shrink-0 rounded-full bg-gold"></span><span>${formatInline(raw.slice(2))}</span></li>`,
+        )
+      } else if (/^---+$/.test(raw.trim())) {
+        if (inList) { html.push("</ul>"); inList = false }
+        html.push('<hr class="my-8 border-border" />')
+      } else if (raw.trim() === "") {
+        if (inList) { html.push("</ul>"); inList = false }
+        html.push('<div class="h-3"></div>')
+      } else {
+        if (inList) { html.push("</ul>"); inList = false }
+        // Use font-normal so nested strong/em weights are visible
+        html.push(`<p class="mb-1 text-base font-normal leading-[1.9] text-muted-foreground">${formatInline(raw)}</p>`)
+      }
+    }
+
+    if (inList) html.push("</ul>")
+    return html.join("\n")
   }
 
   return (
@@ -224,7 +294,7 @@ export function AdminJournalEditor({ journal }: { journal?: Journal }) {
 
               {preview ? (
                 <div
-                  className="min-h-96 p-6 prose max-w-none"
+                  className="min-h-96 p-6 [&_strong]:font-semibold [&_em]:italic"
                   dangerouslySetInnerHTML={{ __html: renderPreview(form.content) }}
                 />
               ) : (

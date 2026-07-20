@@ -11,6 +11,13 @@ import { ALL_CATEGORIES, ALL_CONCERNS, ALL_INGREDIENTS, BRANDS } from "@/lib/pro
 /* ─── Form types ─────────────────────────────────────────────── */
 type VariantRow = { label: string; price: string }
 
+/**
+ * An image entry in the form.
+ * - `preview`  — always set: a blob URL (new file) or a real storage URL (existing)
+ * - `file`     — only set when the user just picked the file; undefined for existing images
+ */
+type ImageEntry = { preview: string; file?: File }
+
 type FormState = {
   name: string
   brand: string
@@ -25,7 +32,7 @@ type FormState = {
   benefits: string[]
   ingredients: string[]
   concerns: string[]
-  images: string[]        // ordered list of preview URLs / paths
+  images: ImageEntry[]
   hasVariants: boolean
   variants: VariantRow[]
 }
@@ -35,6 +42,7 @@ const TAGS: Array<Product["tag"] | ""> = ["", "Bestseller", "New", "Sale", "Low 
 /* ─── Helpers ────────────────────────────────────────────────── */
 function toFormState(product?: Product): FormState {
   const hasVariants = !!(product?.variants && product.variants.length > 0)
+  const rawImages = product?.images ?? (product?.image ? [product.image] : [])
   return {
     name:        product?.name        ?? "",
     brand:       product?.brand       ?? "",
@@ -45,11 +53,12 @@ function toFormState(product?: Product): FormState {
     size:        product?.size        ?? "",
     stock:       product              ? String(product.stock) : "",
     description: product?.description ?? "",
-    howToUse:    "",
-    benefits:    product?.benefits?.length   ? product.benefits   : [""],
+    howToUse:    (product as (Product & { howToUse?: string }) | undefined)?.howToUse ?? "",
+    benefits:    product?.benefits?.length    ? product.benefits    : [""],
     ingredients: product?.ingredients?.length ? product.ingredients : [""],
     concerns:    product?.concerns    ?? [],
-    images:      (product?.images ?? (product?.image ? [product.image] : [])),
+    // Existing images become entries without a file (they're already uploaded)
+    images:      rawImages.map(url => ({ preview: url })),
     hasVariants,
     variants:    hasVariants
       ? product!.variants!.map(v => ({ label: v.label, price: String(v.price) }))
@@ -79,6 +88,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
   const [form, setForm] = useState<FormState>(toFormState(product))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [uploadError, setUploadError] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const isEdit = !!product
@@ -91,14 +101,19 @@ export function AdminProductForm({ product }: { product?: Product }) {
   /* ── Image handling ── */
   function addImageFiles(files: FileList | null) {
     if (!files) return
-    const urls = Array.from(files)
+    const entries: ImageEntry[] = Array.from(files)
       .filter(f => f.type.startsWith("image/"))
-      .map(f => URL.createObjectURL(f))
-    setForm(f => ({ ...f, images: [...f.images, ...urls] }))
+      .map(f => ({ preview: URL.createObjectURL(f), file: f }))
+    setForm(f => ({ ...f, images: [...f.images, ...entries] }))
   }
 
   function removeImage(i: number) {
-    setForm(f => ({ ...f, images: f.images.filter((_, idx) => idx !== i) }))
+    setForm(f => {
+      const entry = f.images[i]
+      // Revoke blob URL to free memory
+      if (entry?.file) URL.revokeObjectURL(entry.preview)
+      return { ...f, images: f.images.filter((_, idx) => idx !== i) }
+    })
   }
 
   function moveImage(from: number, to: number) {
@@ -168,8 +183,65 @@ export function AdminProductForm({ product }: { product?: Product }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    // Simulate save — replace with API call when backend is ready
-    await new Promise(r => setTimeout(r, 700))
+    setUploadError("")
+
+    try {
+      // ── Step 1: Upload any new files to Supabase Storage ──────────
+      const productSlug =
+        product?.id ??
+        form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+
+      const { uploadProductImage } = await import("@/lib/supabase/storage")
+
+      const resolvedImages: string[] = await Promise.all(
+        form.images.map(entry => {
+          if (entry.file) {
+            // New file — upload it
+            return uploadProductImage(entry.file, productSlug)
+          }
+          // Already a real URL — keep as-is
+          return Promise.resolve(entry.preview)
+        }),
+      )
+
+      // ── Step 2: Save product row with resolved URLs ────────────────
+      const { saveProduct } = await import("@/lib/supabase/products")
+
+      const payload = {
+        id: productSlug,
+        name: form.name,
+        brand: form.brand,
+        tagline: form.tagline,
+        description: form.description,
+        price: parseFloat(form.price) || 0,
+        image: resolvedImages[0] ?? "/product-cleanser.png",
+        images: resolvedImages.length > 0 ? resolvedImages : undefined,
+        category: form.category,
+        tag: (form.tag || undefined) as Product["tag"] | undefined,
+        benefits: form.benefits.filter(Boolean),
+        ingredients: form.ingredients.filter(Boolean),
+        concerns: form.concerns,
+        stock: parseInt(form.stock) || 0,
+        size: form.size || undefined,
+        howToUse: form.howToUse || undefined,
+        variants:
+          form.hasVariants && form.variants.some(v => v.label && v.price)
+            ? form.variants
+                .filter(v => v.label && v.price)
+                .map(v => ({ label: v.label, price: parseFloat(v.price) }))
+            : undefined,
+      } as Parameters<typeof saveProduct>[0]
+
+      await saveProduct(payload, product?.id)
+      const { revalidateProducts } = await import("@/app/actions/revalidate")
+      await revalidateProducts()
+    } catch (err) {
+      console.error("Failed to save product:", err)
+      setUploadError(err instanceof Error ? err.message : "Something went wrong. Please try again.")
+      setSaving(false)
+      return
+    }
+
     setSaving(false)
     setSaved(true)
     setTimeout(() => {
@@ -220,7 +292,10 @@ export function AdminProductForm({ product }: { product?: Product }) {
             {saved ? (
               <><Check className="size-3.5" /> Saved!</>
             ) : saving ? (
-              <><span className="size-3.5 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground animate-spin" />Saving…</>
+              <>
+                <span className="size-3.5 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground animate-spin" />
+                {form.images.some(img => img.file) ? "Uploading…" : "Saving…"}
+              </>
             ) : (
               <><Save className="size-3.5" /> {isEdit ? "Save Changes" : "Add Product"}</>
             )}
@@ -429,19 +504,24 @@ export function AdminProductForm({ product }: { product?: Product }) {
                 {/* Thumbnails grid */}
                 {form.images.length > 0 && (
                   <div className="mb-3 grid grid-cols-3 gap-2">
-                    {form.images.map((src, i) => (
+                    {form.images.map((entry, i) => (
                       <div key={i} className="group relative aspect-square overflow-hidden border border-border bg-muted/30">
                         {i === 0 && (
                           <span className="absolute left-1 top-1 z-10 bg-foreground px-1.5 py-0.5 text-[9px] font-medium text-background uppercase tracking-[0.1em]">
                             Primary
                           </span>
                         )}
-                        <Image
-                          src={src}
+                        {entry.file && (
+                          <span className="absolute right-1 top-1 z-10 bg-gold/90 px-1.5 py-0.5 text-[9px] font-medium text-white uppercase tracking-[0.1em]">
+                            New
+                          </span>
+                        )}
+                        {/* Use plain <img> so blob: URLs work without next/image config */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={entry.preview}
                           alt={`Product image ${i + 1}`}
-                          fill
-                          sizes="100px"
-                          className="object-contain mix-blend-multiply"
+                          className="absolute inset-0 h-full w-full object-contain mix-blend-multiply"
                         />
                         {/* Overlay actions on hover */}
                         <div className="absolute inset-0 flex items-center justify-center gap-1 bg-foreground/50 opacity-0 transition-opacity group-hover:opacity-100">
@@ -496,8 +576,13 @@ export function AdminProductForm({ product }: { product?: Product }) {
                   onChange={e => addImageFiles(e.target.files)}
                 />
                 <p className="text-[10px] font-light text-muted-foreground/70 text-center">
-                  S3 upload will be configured in a later release.
+                  Images are uploaded to Supabase Storage on save. Max 5 MB per file.
                 </p>
+                {uploadError && (
+                  <p className="mt-2 text-xs text-destructive bg-destructive/10 border border-destructive/20 px-3 py-2">
+                    {uploadError}
+                  </p>
+                )}
               </section>
 
               {/* Pricing & meta */}
@@ -644,7 +729,8 @@ export function AdminProductForm({ product }: { product?: Product }) {
                   <div className="flex items-center gap-3">
                     {form.images[0] && (
                       <div className="relative size-14 shrink-0 overflow-hidden border border-border bg-muted/30">
-                        <Image src={form.images[0]} alt="" fill sizes="56px" className="object-contain mix-blend-multiply" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={form.images[0].preview} alt="" className="absolute inset-0 h-full w-full object-contain mix-blend-multiply" />
                       </div>
                     )}
                     <div className="min-w-0">

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUserAuth } from "@/components/user-auth-provider"
+import { createClient } from "@/lib/supabase/client"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -15,6 +16,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [unconfirmed, setUnconfirmed] = useState(false)
+  const [resendSent, setResendSent] = useState(false)
 
   // Already signed in → go to account
   useEffect(() => {
@@ -24,14 +27,25 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
+    setUnconfirmed(false)
     setLoading(true)
     const err = await signIn(email, password)
-    if (err) {
+    if (err === "email_not_confirmed") {
+      setUnconfirmed(true)
+      setLoading(false)
+    } else if (err) {
       setError(err)
       setLoading(false)
     } else {
       router.push("/account")
     }
+  }
+
+  async function handleResend() {
+    const supabase = createClient()
+    if (!supabase || !email) return
+    await supabase.auth.resend({ type: "signup", email })
+    setResendSent(true)
   }
 
   return (
@@ -95,6 +109,28 @@ export default function LoginPage() {
           </div>
         </div>
 
+        {/* Email not confirmed */}
+        {unconfirmed && (
+          <div className="border border-gold/40 bg-gold/10 px-4 py-3 space-y-2">
+            <p className="text-xs font-medium text-foreground">Please confirm your email before signing in.</p>
+            <p className="text-[11px] font-light text-muted-foreground">
+              Check your inbox for the confirmation link.
+            </p>
+            {resendSent ? (
+              <p className="text-[11px] font-medium text-green-700">Confirmation email resent — check your inbox.</p>
+            ) : (
+              <button
+                type="button"
+                onClick={handleResend}
+                className="text-[11px] font-medium text-gold underline-offset-2 hover:underline"
+              >
+                Resend confirmation email
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Generic error */}
         {error && (
           <p className="text-xs text-muted-foreground bg-muted/50 border border-border px-4 py-3">
             {error}
@@ -141,9 +177,6 @@ export default function LoginPage() {
         </Link>
       </p>
 
-      <p className="mt-6 text-center text-[10px] font-light text-muted-foreground/40">
-        Your session is stored locally. Full auth via Supabase when backend is connected.
-      </p>
     </div>
   )
 }
