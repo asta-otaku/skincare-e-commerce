@@ -100,7 +100,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="font-serif text-2xl font-medium">Dashboard</h1>
           <p className="text-xs font-light text-muted-foreground mt-0.5">
-            Live storefront metrics from Supabase.
+            Live commerce metrics from Supabase. Site traffic uses Vercel Analytics on the storefront (production).
           </p>
         </div>
         {stats && stats.pendingOrders > 0 && (
@@ -244,7 +244,9 @@ export default function DashboardPage() {
               <div className="lg:col-span-3 border border-border bg-card p-6">
                 <div className="mb-5">
                   <h2 className="text-sm font-medium">Orders this week</h2>
-                  <p className="text-xs font-light text-muted-foreground mt-0.5">Paid orders & revenue by weekday</p>
+                  <p className="text-xs font-light text-muted-foreground mt-0.5">
+                    Commerce activity (paid orders) — not website traffic. Storefront visits are tracked with Vercel Analytics in production.
+                  </p>
                 </div>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={stats.ordersByWeekday} margin={{ top: 5, right: 5, left: 0, bottom: 0 }} barGap={4}>

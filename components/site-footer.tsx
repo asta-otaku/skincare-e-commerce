@@ -44,8 +44,8 @@ const COLUMNS = [
     links: [
       { label: "About HAYDA", href: "/about" },
       { label: "Wholesale", href: "/wholesale" },
-      { label: "Privacy Policy", href: "#" },
-      { label: "Terms of Use", href: "#" },
+      { label: "Privacy Policy", href: "/privacy" },
+      { label: "Terms of Use", href: "/terms" },
     ],
   },
 ]
@@ -110,13 +110,6 @@ function VerveIcon() {
     <svg viewBox="0 0 60 20" className="h-4 w-auto" aria-label="Verve">
       <rect width="60" height="20" rx="3" fill="#004B87" />
       <text x="6" y="14" fontFamily="system-ui, sans-serif" fontSize="11" fontWeight="700" fill="#fff">VERVE</text>
-    </svg>
-  )
-}
-function FlutterwaveIcon() {
-  return (
-    <svg viewBox="0 0 90 20" className="h-4 w-auto" aria-label="Flutterwave">
-      <text x="0" y="15" fontFamily="system-ui, sans-serif" fontSize="12" fontWeight="700" fill="#F5A623">Flutterwave</text>
     </svg>
   )
 }
@@ -251,7 +244,7 @@ export function SiteFooter() {
 
           {/* Payment icons */}
           <div className="flex flex-wrap items-center justify-center gap-3">
-            {[PaystackIcon, FlutterwaveIcon, VisaIcon, MastercardIcon, VerveIcon].map((Icon, i) => (
+            {[PaystackIcon, VisaIcon, MastercardIcon, VerveIcon].map((Icon, i) => (
               <span key={i} className="flex items-center justify-center border border-border px-2.5 py-1.5 text-foreground/60">
                 <Icon />
               </span>
@@ -259,10 +252,14 @@ export function SiteFooter() {
           </div>
 
           <div className="flex gap-5">
-            {["Privacy", "Terms", "Accessibility"].map(l => (
-              <a key={l} href="#" className="text-xs font-light text-muted-foreground transition-colors hover:text-gold">
-                {l}
-              </a>
+            {[
+              { label: "Privacy", href: "/privacy" },
+              { label: "Terms", href: "/terms" },
+              { label: "Accessibility", href: "/accessibility" },
+            ].map(l => (
+              <Link key={l.href} href={l.href} className="text-xs font-light text-muted-foreground transition-colors hover:text-gold">
+                {l.label}
+              </Link>
             ))}
           </div>
         </div>

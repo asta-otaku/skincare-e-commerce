@@ -119,9 +119,9 @@ export default function RegisterPage() {
           </div>
           <span className="text-xs font-light text-muted-foreground leading-relaxed">
             I agree to the{" "}
-            <Link href="#" className="text-foreground underline-offset-2 hover:underline">Terms of Service</Link>{" "}
+            <Link href="/terms" className="text-foreground underline-offset-2 hover:underline">Terms of Service</Link>{" "}
             and{" "}
-            <Link href="#" className="text-foreground underline-offset-2 hover:underline">Privacy Policy</Link>.
+            <Link href="/privacy" className="text-foreground underline-offset-2 hover:underline">Privacy Policy</Link>.
           </span>
         </label>
 

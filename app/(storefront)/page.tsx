@@ -7,8 +7,10 @@ import { ArrowRight, ShoppingBag, ChevronLeft, ChevronRight, Sparkles } from "lu
 import { ProductCard } from "@/components/product-card"
 import { BRANDS, type Product } from "@/lib/products"
 import { getFeaturedProducts } from "@/lib/supabase/products"
-import { deals, dealAsProduct } from "@/lib/deals"
-import { journals } from "@/lib/journals"
+import { dealAsProduct, type Deal } from "@/lib/deals"
+import { getActiveDeals } from "@/lib/supabase/deals"
+import { getPublishedJournals } from "@/lib/supabase/journals"
+import type { Journal } from "@/lib/journals"
 import { useCart } from "@/components/cart-provider"
 import { cn } from "@/lib/utils"
 
@@ -72,9 +74,6 @@ const CONCERNS = [
   { label: "Oily Skin",       href: "/concern/oily-skin",         color: "bg-green-50 border-green-100 hover:border-green-300" },
   { label: "Sensitive Skin",  href: "/concern/sensitive-skin",    color: "bg-pink-50 border-pink-100 hover:border-pink-300" },
 ]
-
-// Pull first 3 active deals from shared data layer
-const COMBO_DEALS = deals.filter(d => d.status === "active").slice(0, 3)
 
 /* ─── Hero slider ───────────────────────────────────────────── */
 function HeroSlider() {
@@ -221,7 +220,7 @@ function HeroSlider() {
 
 /* ─── Page ──────────────────────────────────────────────────── */
 /* ─── Home deal card with cart button ───────────────────────── */
-function HomeDealCard({ deal }: { deal: typeof deals[number] }) {
+function HomeDealCard({ deal }: { deal: Deal }) {
   const { addItem, openCart } = useCart()
   const [added, setAdded] = useState(false)
 
@@ -274,10 +273,19 @@ function HomeDealCard({ deal }: { deal: typeof deals[number] }) {
 
 export default function HomePage() {
   const [newArrivals, setNewArrivals] = useState<Product[]>([])
-  const recentArticles = journals.filter(j => j.status === "published").slice(0, 3)
+  const [comboDeals, setComboDeals] = useState<Deal[]>([])
+  const [recentArticles, setRecentArticles] = useState<Journal[]>([])
 
   useEffect(() => {
-    getFeaturedProducts(4).then(setNewArrivals)
+    void Promise.all([
+      getFeaturedProducts(4),
+      getActiveDeals(),
+      getPublishedJournals(),
+    ]).then(([products, deals, journals]) => {
+      setNewArrivals(products)
+      setComboDeals(deals.slice(0, 3))
+      setRecentArticles(journals.slice(0, 3))
+    })
   }, [])
 
   return (
@@ -398,10 +406,16 @@ export default function HomePage() {
           </Link>
         </div>
         <div className="grid gap-5 md:grid-cols-3">
-          {COMBO_DEALS.map(deal => (
+          {comboDeals.map(deal => (
             <HomeDealCard key={deal.id} deal={deal} />
           ))}
         </div>
+        {comboDeals.length === 0 && (
+          <p className="mt-4 text-center text-sm font-light text-muted-foreground">
+            New bundles are on the way —{" "}
+            <Link href="/deals" className="text-gold hover:underline">browse deals</Link>.
+          </p>
+        )}
       </section>
 
       {/* ── Loyalty CTA ── */}

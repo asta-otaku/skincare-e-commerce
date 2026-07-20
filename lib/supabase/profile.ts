@@ -156,6 +156,18 @@ export async function updatePreferences(prefs: NotificationPrefs): Promise<strin
     .eq("id", user.id)
 
   if (error) return error.message
+
+  // Keep newsletter_subscribers in sync with the account toggle
+  try {
+    await fetch("/api/newsletter/prefs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newsletter: prefs.newsletter }),
+    })
+  } catch (err) {
+    console.error("[profile] newsletter prefs sync:", err)
+  }
+
   return null
 }
 
