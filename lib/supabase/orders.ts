@@ -110,22 +110,52 @@ export async function getAllOrders(): Promise<Order[]> {
 }
 
 export async function getOrderByReference(reference: string): Promise<Order | null> {
-  const supabase = createClient()
-  if (!supabase) return mockOrders.find(o => o.id === reference || o.reference === reference) ?? null
+  const adminClient = createAdminBrowserClient()
+  const customerClient = createClient()
 
-  await claimGuestOrdersForSession(supabase)
+  // Prefer admin session when signed in as admin (admin order detail).
+  if (adminClient) {
+    const { data: { user: adminUser } } = await adminClient.auth.getUser()
+    if (adminUser) {
+      return fetchOrderByRef(adminClient, reference)
+    }
+  }
 
+  if (!customerClient) {
+    return mockOrders.find(o => o.id === reference || o.reference === reference) ?? null
+  }
+
+  await claimGuestOrdersForSession(customerClient)
+  return fetchOrderByRef(customerClient, reference)
+}
+
+async function fetchOrderByRef(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  reference: string,
+): Promise<Order | null> {
   const { data, error } = await supabase
     .from("orders")
     .select("*")
     .eq("reference", reference)
     .maybeSingle()
 
-  if (error) {
-    console.error("[orders] getOrderByReference:", error.message)
+  if (!error && data) return rowToOrder(data)
+
+  const { data: byId, error: idErr } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", reference)
+    .maybeSingle()
+
+  if (idErr) {
+    console.error("[orders] getOrderByReference:", idErr.message)
     return null
   }
-  return data ? rowToOrder(data) : null
+  if (error && !byId) {
+    console.error("[orders] getOrderByReference:", error.message)
+  }
+  return byId ? rowToOrder(byId) : null
 }
 
 /** Attach guest checkouts (same email, null user_id) to the signed-in account. */
@@ -151,9 +181,8 @@ export async function getMyOrders(): Promise<Order[]> {
 
   const email = user.email?.trim().toLowerCase()
 
-  // Owned by user_id, plus any order with matching guest_email (covers mis-attribution
-  // when admin was logged in during checkout — claim RPC fixes user_id when 011 is applied).
-  const [{ data: owned, error: ownedErr }, emailResult] = await Promise.all([
+  // Owned by user_id, plus matching guest_email / shipping email
+  const [{ data: owned, error: ownedErr }, emailResult, shipResult] = await Promise.all([
     supabase
       .from("orders")
       .select("*")
@@ -166,6 +195,13 @@ export async function getMyOrders(): Promise<Order[]> {
           .ilike("guest_email", email)
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [] as unknown[], error: null }),
+    email
+      ? supabase
+          .from("orders")
+          .select("*")
+          .filter("shipping_address->>email", "ilike", email)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] as unknown[], error: null }),
   ])
 
   if (ownedErr) {
@@ -174,9 +210,16 @@ export async function getMyOrders(): Promise<Order[]> {
   if (emailResult.error) {
     console.error("[orders] getMyOrders email:", emailResult.error.message)
   }
+  if (shipResult.error) {
+    console.error("[orders] getMyOrders shipping email:", shipResult.error.message)
+  }
 
   const byRef = new Map<string, ReturnType<typeof rowToOrder>>()
-  for (const row of [...(owned ?? []), ...(emailResult.data ?? [])]) {
+  for (const row of [
+    ...(owned ?? []),
+    ...(emailResult.data ?? []),
+    ...(shipResult.data ?? []),
+  ]) {
     const order = rowToOrder(row)
     byRef.set(order.reference, order)
   }

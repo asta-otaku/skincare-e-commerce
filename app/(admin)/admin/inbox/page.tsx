@@ -49,11 +49,11 @@ export default function AdminInboxPage() {
   ]
 
   return (
-    <div className="flex-1 overflow-auto px-6 py-8 lg:px-8">
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
+    <div className="flex flex-1 flex-col gap-8 overflow-auto">
+      <div className="admin-page-header">
+        <div className="min-w-0">
           <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Inbox</p>
-          <h1 className="mt-1 font-serif text-3xl font-medium">Submissions</h1>
+          <h1 className="mt-1 font-serif text-xl font-medium sm:text-2xl">Submissions</h1>
           <p className="mt-1 text-sm font-light text-muted-foreground">
             Contact, wholesale, and newsletter signups (read-only).
           </p>
@@ -61,41 +61,43 @@ export default function AdminInboxPage() {
         <button
           type="button"
           onClick={() => void load()}
-          className="inline-flex items-center gap-2 border border-border px-4 py-2 text-xs uppercase tracking-[0.15em] hover:border-foreground"
+          className="inline-flex w-full items-center justify-center gap-2 border border-border px-4 py-2.5 text-xs uppercase tracking-[0.15em] hover:border-foreground sm:w-auto"
         >
           <RefreshCw className={cn("size-3.5", loading && "animate-spin")} /> Refresh
         </button>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-border pb-4">
-        {tabs.map(t => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "inline-flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-[0.12em] transition-colors",
-              tab === t.id
-                ? "bg-foreground text-background"
-                : "border border-border text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <t.icon className="size-3.5" />
-            {t.label}
-            <span className="tabular-nums opacity-70">({t.count})</span>
-          </button>
-        ))}
-      </div>
+      <div className="admin-page-body">
+        <div className="mb-6 flex flex-wrap gap-2 border-b border-border pb-4">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "inline-flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-[0.12em] transition-colors",
+                tab === t.id
+                  ? "bg-foreground text-background"
+                  : "border border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <t.icon className="size-3.5" />
+              {t.label}
+              <span className="tabular-nums opacity-70">({t.count})</span>
+            </button>
+          ))}
+        </div>
 
-      {loading ? (
-        <div className="h-48 animate-pulse bg-muted/30" />
-      ) : tab === "contact" ? (
-        <ContactList rows={contact} />
-      ) : tab === "wholesale" ? (
-        <WholesaleList rows={wholesale} />
-      ) : (
-        <NewsletterList rows={newsletter} />
-      )}
+        {loading ? (
+          <div className="h-48 animate-pulse bg-muted/30" />
+        ) : tab === "contact" ? (
+          <ContactList rows={contact} />
+        ) : tab === "wholesale" ? (
+          <WholesaleList rows={wholesale} />
+        ) : (
+          <NewsletterList rows={newsletter} />
+        )}
+      </div>
     </div>
   )
 }
@@ -156,9 +158,10 @@ function NewsletterList({ rows }: { rows: NewsletterRow[] }) {
     return <Empty label="No newsletter subscribers yet." />
   }
   return (
-    <div className="overflow-x-auto border border-border">
+    <>
+      <div className="hidden overflow-x-auto border border-border md:block">
       <table className="w-full text-left text-sm">
-        <thead className="border-b border-border bg-muted/30 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+        <thead className="border-b border-border bg-secondary text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
           <tr>
             <th className="px-4 py-3 font-light">Email</th>
             <th className="px-4 py-3 font-light">Source</th>
@@ -177,7 +180,17 @@ function NewsletterList({ rows }: { rows: NewsletterRow[] }) {
           ))}
         </tbody>
       </table>
-    </div>
+      </div>
+      <ul className="divide-y divide-border border border-border md:hidden">
+        {rows.map(r => (
+          <li key={r.id} className="p-4">
+            <p className="text-sm font-medium break-all">{r.email}</p>
+            <p className="mt-1 text-xs font-light text-muted-foreground">{r.source} · {formatDate(r.created_at)}</p>
+            <p className="mt-2 text-xs font-medium tracking-wider text-gold">{r.discount_code}</p>
+          </li>
+        ))}
+      </ul>
+    </>
   )
 }
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { PageHeader } from "@/components/page-header"
 import { ShopGrid } from "@/components/shop-grid"
-import { getAllProducts } from "@/lib/supabase/products"
+import { queryProducts } from "@/lib/supabase/products"
 
 export const metadata: Metadata = {
   title: "Shop — HAYDA SKINCo.",
@@ -12,8 +12,17 @@ export const metadata: Metadata = {
 
 export const revalidate = 60
 
-export default async function ShopPage() {
-  const products = await getAllProducts()
+type Props = {
+  searchParams: Promise<{ category?: string; brand?: string }>
+}
+
+export default async function ShopPage({ searchParams }: Props) {
+  const sp = await searchParams
+  const products = await queryProducts({
+    category: sp.category,
+    brand: sp.brand,
+    sort: "featured",
+  })
 
   return (
     <>

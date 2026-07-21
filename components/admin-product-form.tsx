@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Upload, X, Plus, ArrowLeft, Save, Trash2, GripVertical, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Product } from "@/lib/products"
-import { ALL_CATEGORIES, ALL_CONCERNS, ALL_INGREDIENTS, BRANDS } from "@/lib/products"
+import { ALL_CATEGORIES, ALL_CONCERNS, ALL_INGREDIENTS } from "@/lib/products"
+import { getActiveBrands, type Brand } from "@/lib/supabase/brands"
 
 /* ─── Form types ─────────────────────────────────────────────── */
 type VariantRow = { label: string; price: string }
@@ -23,6 +24,7 @@ type FormState = {
   brand: string
   tagline: string
   price: string
+  discountPct: string
   category: string
   tag: Product["tag"] | ""
   size: string
@@ -39,6 +41,9 @@ type FormState = {
 
 const TAGS: Array<Product["tag"] | ""> = ["", "Bestseller", "New", "Sale", "Low Stock"]
 
+const inputClass =
+  "w-full border border-border bg-background px-4 py-3 text-sm font-light outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground/40"
+
 /* ─── Helpers ────────────────────────────────────────────────── */
 function toFormState(product?: Product): FormState {
   const hasVariants = !!(product?.variants && product.variants.length > 0)
@@ -48,6 +53,7 @@ function toFormState(product?: Product): FormState {
     brand:       product?.brand       ?? "",
     tagline:     product?.tagline     ?? "",
     price:       product              ? String(product.price) : "",
+    discountPct: product?.discountPct ? String(product.discountPct) : "",
     category:    product?.category    ?? ALL_CATEGORIES[0],
     tag:         product?.tag         ?? "",
     size:        product?.size        ?? "",
@@ -86,12 +92,23 @@ function Field({
 export function AdminProductForm({ product }: { product?: Product }) {
   const router = useRouter()
   const [form, setForm] = useState<FormState>(toFormState(product))
+  const [brands, setBrands] = useState<Brand[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploadError, setUploadError] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const isEdit = !!product
+
+  useEffect(() => {
+    getActiveBrands().then(list => {
+      setBrands(list)
+      if (!product?.brand && list[0] && !form.brand) {
+        setForm(f => ({ ...f, brand: list[0].name }))
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   /* ── Generic field setter ── */
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -214,6 +231,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
         tagline: form.tagline,
         description: form.description,
         price: parseFloat(form.price) || 0,
+        discountPct: Math.min(100, Math.max(0, parseInt(form.discountPct, 10) || 0)),
         image: resolvedImages[0] ?? "/product-cleanser.png",
         images: resolvedImages.length > 0 ? resolvedImages : undefined,
         category: form.category,
@@ -252,23 +270,23 @@ export function AdminProductForm({ product }: { product?: Product }) {
 
   /* ─────────────────────────────────────────────────────────── */
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col gap-8 overflow-auto">
       {/* Sticky header */}
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background px-6 py-4 lg:px-8">
-        <div className="flex items-center gap-3">
+      <div className="admin-page-header">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <button
             type="button"
             onClick={() => router.push("/admin/products")}
-            className="flex items-center gap-1.5 text-xs font-light text-muted-foreground hover:text-foreground transition-colors uppercase tracking-[0.15em]"
+            className="flex shrink-0 items-center gap-1.5 text-xs font-light text-muted-foreground hover:text-foreground transition-colors uppercase tracking-[0.15em]"
           >
             <ArrowLeft className="size-3.5" /> Products
           </button>
-          <span className="text-border">/</span>
-          <h1 className="font-serif text-xl font-medium">
+          <span className="hidden text-border sm:inline">/</span>
+          <h1 className="font-serif text-lg font-medium sm:text-xl truncate">
             {isEdit ? `Edit — ${product.name}` : "Add Product"}
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => router.push("/admin/products")}
@@ -304,7 +322,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
       </div>
 
       <form id="product-form" onSubmit={handleSubmit}>
-        <div className="px-6 py-8 lg:px-8 lg:py-10">
+        <div className="admin-page-body">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_340px]">
 
             {/* ── LEFT COLUMN ──────────────────────────────────── */}
@@ -329,13 +347,19 @@ export function AdminProductForm({ product }: { product?: Product }) {
                       <select
                         value={form.brand}
                         onChange={e => setField("brand", e.target.value)}
-                        className="input-field"
+                        className={inputClass}
+                        required
                       >
                         <option value="">Select brand…</option>
-                        {BRANDS.map(b => (
+                        {brands.map(b => (
                           <option key={b.id} value={b.name}>{b.name}</option>
                         ))}
                       </select>
+                      {brands.length === 0 && (
+                        <p className="mt-1 text-[10px] font-light text-muted-foreground">
+                          No brands yet — add some under Admin → Brands.
+                        </p>
+                      )}
                     </Field>
                   </div>
                   <Field label="Tagline" required hint="Appears below the product name as a one-liner summary">
@@ -425,7 +449,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
                       className={cn(
                         "border px-2.5 py-1 text-[11px] font-light transition-all",
                         form.ingredients.includes(tag)
-                          ? "border-gold bg-gold/10 text-gold"
+                          ? "border-gold bg-lavender text-gold"
                           : "border-border text-muted-foreground hover:border-gold/60",
                       )}
                     >
@@ -480,7 +504,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
                       className={cn(
                         "border px-3 py-1.5 text-xs font-light transition-all",
                         form.concerns.includes(c)
-                          ? "border-gold bg-gold/10 text-gold"
+                          ? "border-gold bg-lavender text-gold"
                           : "border-border text-muted-foreground hover:border-gold/60",
                       )}
                     >
@@ -505,7 +529,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
                 {form.images.length > 0 && (
                   <div className="mb-3 grid grid-cols-3 gap-2">
                     {form.images.map((entry, i) => (
-                      <div key={i} className="group relative aspect-square overflow-hidden border border-border bg-muted/30">
+                      <div key={i} className="group relative aspect-square overflow-hidden border border-border bg-secondary">
                         {i === 0 && (
                           <span className="absolute left-1 top-1 z-10 bg-foreground px-1.5 py-0.5 text-[9px] font-medium text-background uppercase tracking-[0.1em]">
                             Primary
@@ -557,7 +581,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
                   onClick={() => fileRef.current?.click()}
                   className={cn(
                     "mb-3 flex cursor-pointer flex-col items-center justify-center gap-2 border-2 border-dashed py-6 transition-colors",
-                    dragOver ? "border-gold bg-gold/5" : "border-border hover:border-foreground/40",
+                    dragOver ? "border-gold bg-lavender" : "border-border hover:border-foreground/40",
                   )}
                 >
                   <Upload className="size-6 text-muted-foreground" />
@@ -589,20 +613,47 @@ export function AdminProductForm({ product }: { product?: Product }) {
               <section className="border border-border p-6">
                 <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.18em]">Pricing & Details</h2>
                 <div className="space-y-4">
-                  <Field label="Price (₦)" required>
+                  <Field label="List price (₦)" required>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₦</span>
+                      {!form.price && (
+                        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                          ₦
+                        </span>
+                      )}
                       <input
                         type="number"
                         value={form.price}
                         onChange={e => setField("price", e.target.value)}
-                        placeholder="0"
+                        placeholder={!form.price ? "0" : undefined}
                         min="0"
                         step="100"
                         required
-                        className="input-field pl-8"
+                        className={cn("input-field", !form.price && "pl-8")}
                       />
                     </div>
+                  </Field>
+
+                  <Field
+                    label="Discount (%)"
+                    hint="0–100. Storefront shows list price struck through and the discounted price."
+                  >
+                    <input
+                      type="number"
+                      value={form.discountPct}
+                      onChange={e => {
+                        const n = e.target.value
+                        if (n === "") {
+                          setField("discountPct", "")
+                          return
+                        }
+                        const v = Math.min(100, Math.max(0, parseInt(n, 10) || 0))
+                        setField("discountPct", String(v))
+                      }}
+                      placeholder="0"
+                      min="0"
+                      max="100"
+                      className="input-field"
+                    />
                   </Field>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -658,13 +709,13 @@ export function AdminProductForm({ product }: { product?: Product }) {
 
                     {form.hasVariants && (
                       <div className="space-y-2">
-                        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 mb-1">
+                        <div className="grid grid-cols-1 gap-2 mb-1 sm:grid-cols-[1fr_1fr_auto]">
                           <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Label</p>
                           <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Price (₦)</p>
                           <span />
                         </div>
                         {form.variants.map((v, i) => (
-                          <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-center gap-2">
+                          <div key={i} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_1fr_auto]">
                             <input
                               type="text"
                               value={v.label}
@@ -728,7 +779,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
                   <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Preview</p>
                   <div className="flex items-center gap-3">
                     {form.images[0] && (
-                      <div className="relative size-14 shrink-0 overflow-hidden border border-border bg-muted/30">
+                      <div className="relative size-14 shrink-0 overflow-hidden border border-border bg-secondary">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={form.images[0].preview} alt="" className="absolute inset-0 h-full w-full object-contain mix-blend-multiply" />
                       </div>
@@ -738,7 +789,23 @@ export function AdminProductForm({ product }: { product?: Product }) {
                       <p className="text-sm font-medium truncate">{form.name || "Product name"}</p>
                       <p className="text-xs font-light text-muted-foreground truncate">{form.tagline}</p>
                       <p className="mt-1 text-sm font-light">
-                        {form.price ? `₦${Number(form.price).toLocaleString()}` : "₦—"}
+                        {form.price ? (
+                          Number(form.discountPct) > 0 ? (
+                            <span className="flex items-baseline gap-2">
+                              <span className="text-sm line-through text-muted-foreground">
+                                ₦{Number(form.price).toLocaleString()}
+                              </span>
+                              <span>
+                                ₦{Math.round(Number(form.price) * (1 - Math.min(100, Number(form.discountPct)) / 100)).toLocaleString()}
+                              </span>
+                              <span className="text-xs text-gold">-{form.discountPct}%</span>
+                            </span>
+                          ) : (
+                            `₦${Number(form.price).toLocaleString()}`
+                          )
+                        ) : (
+                          "₦—"
+                        )}
                       </p>
                     </div>
                   </div>
@@ -756,23 +823,23 @@ export function AdminProductForm({ product }: { product?: Product }) {
         </div>
       </form>
 
-      {/* Global input styles injected once */}
+      {/* Ensure inputs always show a visible border in admin */}
       <style jsx global>{`
-        .input-field {
+        form#product-form .input-field {
           width: 100%;
-          border: 1px solid hsl(var(--border));
-          background: hsl(var(--background));
+          border: 1px solid var(--border);
+          background: var(--background);
           padding: 0.625rem 1rem;
           font-size: 0.875rem;
           font-weight: 300;
           outline: none;
           transition: border-color 0.15s;
         }
-        .input-field:focus {
-          border-color: hsl(var(--foreground));
+        form#product-form .input-field:focus {
+          border-color: var(--foreground);
         }
-        .input-field select {
-          appearance: none;
+        form#product-form .input-field.pl-8 {
+          padding-left: 2rem;
         }
       `}</style>
     </div>

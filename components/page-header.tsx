@@ -8,7 +8,7 @@ export function PageHeader({
   description?: string
 }) {
   return (
-    <section className="border-b border-border bg-muted/30">
+    <section className="border-b border-border bg-secondary">
       <div className="mx-auto max-w-3xl px-5 py-16 text-center md:py-24 lg:px-8">
         {eyebrow && (
           <p className="animate-fade-up text-[11px] font-light uppercase tracking-[0.28em] text-gold">

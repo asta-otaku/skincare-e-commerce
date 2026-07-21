@@ -201,7 +201,7 @@ export default async function JournalArticlePage({ params }: { params: Promise<{
               <div className="space-y-5">
                 {suggestions.map(s => (
                   <Link key={s.id} href={`/journal/${s.slug}`} className="group flex gap-3">
-                    <div className="relative size-16 shrink-0 overflow-hidden border border-border bg-muted/40 group-hover:border-gold/60 transition-colors">
+                    <div className="relative size-16 shrink-0 overflow-hidden border border-border bg-muted group-hover:border-gold/60 transition-colors">
                       <Image src={s.image || "/placeholder.svg"} alt={s.title} fill sizes="64px" className="object-cover transition-transform duration-500 group-hover:scale-105" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -216,7 +216,7 @@ export default async function JournalArticlePage({ params }: { params: Promise<{
           )}
 
           {/* CTA */}
-          <div className="border border-border bg-muted/20 p-5">
+          <div className="border border-border bg-secondary p-5">
             <p className="font-serif text-lg font-medium leading-snug">Explore our collection</p>
             <p className="mt-1.5 text-xs font-light text-muted-foreground leading-relaxed">
               Discover the products behind the rituals described in our journal.

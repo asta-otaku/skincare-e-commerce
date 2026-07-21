@@ -53,7 +53,7 @@ export default async function ConcernPage({ params }: { params: Promise<{ concer
         {info && (
           <>
             <p className="mt-3 text-base font-light text-muted-foreground max-w-xl">{info.desc}</p>
-            <div className="mt-4 inline-flex items-center gap-2 border border-gold/30 bg-gold/10 px-4 py-2.5">
+            <div className="mt-4 inline-flex items-center gap-2 border border-gold/30 bg-lavender px-4 py-2.5">
               <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-gold">Pro tip:</span>
               <span className="text-xs font-light text-foreground/80">{info.tip}</span>
             </div>

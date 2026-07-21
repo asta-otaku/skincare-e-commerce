@@ -73,7 +73,7 @@ export default function RewardsPage() {
 
   return (
     <div className="space-y-10">
-      <div className="border border-gold/40 bg-gradient-to-br from-gold/5 via-background to-gold/10 p-6 md:p-8">
+      <div className="border border-gold/40 bg-gradient-to-br from-lavender via-background to-secondary p-6 md:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">HAYDA Rewards</p>
@@ -81,7 +81,7 @@ export default function RewardsPage() {
             <p className="mt-1 text-sm font-light text-muted-foreground">points available</p>
           </div>
           <div className="text-right">
-            <span className="inline-flex items-center gap-1.5 border border-gold/40 bg-gold/10 px-3 py-1 text-xs font-medium text-gold">
+            <span className="inline-flex items-center gap-1.5 border border-gold/40 bg-lavender px-3 py-1 text-xs font-medium text-gold">
               <Gift className="size-3.5" /> {summary.tier} Member
             </span>
           </div>
@@ -105,7 +105,7 @@ export default function RewardsPage() {
       </div>
 
       {message && (
-        <p className="border border-border bg-muted/20 px-4 py-3 text-sm font-light">{message}</p>
+        <p className="border border-border bg-secondary px-4 py-3 text-sm font-light">{message}</p>
       )}
 
       <div>
@@ -149,7 +149,7 @@ export default function RewardsPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {WAYS_TO_EARN.map(w => (
             <div key={w.label} className="flex items-start gap-4 border border-border p-4">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gold/10 text-gold">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-lavender text-gold">
                 <w.icon className="size-4" />
               </span>
               <div>

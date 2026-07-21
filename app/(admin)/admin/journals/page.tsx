@@ -44,9 +44,9 @@ export default function AdminJournalsPage() {
   const drafts = articles.filter((a) => a.status === "draft").length
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col gap-8 overflow-auto">
       {/* Header */}
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background px-6 py-4 lg:px-8">
+      <div className="admin-page-header">
         <div>
           <h1 className="font-serif text-2xl font-medium">Journal</h1>
           <p className="text-xs font-light text-muted-foreground mt-0.5">
@@ -72,7 +72,7 @@ export default function AdminJournalsPage() {
         </div>
       </div>
 
-      <div className="px-6 py-6 lg:px-8 lg:py-8">
+      <div className="admin-page-body">
         {/* Stats */}
         <div className="mb-6 grid grid-cols-3 gap-4">
           {[
@@ -146,7 +146,7 @@ export default function AdminJournalsPage() {
             {filtered.map((article) => (
               <div key={article.id} className="group border border-border bg-card flex flex-col overflow-hidden">
                 {/* Image */}
-                <div className="relative aspect-video overflow-hidden bg-muted/40">
+                <div className="relative aspect-video overflow-hidden bg-muted">
                   <Image
                     src={article.image || "/placeholder.svg"}
                     alt={article.title}

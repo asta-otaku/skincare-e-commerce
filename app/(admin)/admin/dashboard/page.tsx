@@ -18,9 +18,9 @@ import {
 
 const STATUS_STYLES: Record<string, string> = {
   fulfilled: "bg-green-50 text-green-700 border-green-200",
-  processing: "bg-gold/10 text-gold-foreground border-gold/30",
+  processing: "bg-lavender text-gold border-gold/30",
   shipped: "bg-lavender text-lavender-foreground border-lavender",
-  pending: "bg-muted text-muted-foreground border-border",
+  pending: "bg-gray-50 text-gray-500 border-gray-200",
   cancelled: "bg-destructive/10 text-destructive border-destructive/20",
   refunded: "bg-destructive/10 text-destructive border-destructive/20",
 }
@@ -95,34 +95,34 @@ export default function DashboardPage() {
   const year = new Date().getFullYear()
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background px-6 py-4 lg:px-8">
-        <div>
-          <h1 className="font-serif text-2xl font-medium">Dashboard</h1>
-          <p className="text-xs font-light text-muted-foreground mt-0.5">
-            Live commerce metrics from Supabase. Site traffic uses Vercel Analytics on the storefront (production).
+    <div className="flex flex-1 flex-col gap-8 overflow-auto">
+      <div className="admin-page-header">
+        <div className="min-w-0">
+          <h1 className="font-serif text-xl font-medium sm:text-2xl">Dashboard</h1>
+          <p className="mt-0.5 max-w-xl text-xs font-light text-muted-foreground">
+            Live commerce metrics from Supabase. Traffic uses Vercel Analytics in production.
           </p>
         </div>
         {stats && stats.pendingOrders > 0 && (
           <Link
             href="/admin/orders"
-            className="border border-gold/40 bg-gold/10 px-4 py-2 text-xs font-medium text-gold-foreground hover:bg-gold/20 transition-colors"
+            className="inline-flex w-full items-center justify-center border border-gold/40 bg-lavender px-4 py-2.5 text-xs font-medium text-gold hover:bg-secondary transition-colors sm:w-auto"
           >
             {stats.pendingOrders} pending order{stats.pendingOrders !== 1 ? "s" : ""}
           </Link>
         )}
       </div>
 
-      <div className="px-6 py-6 lg:px-8 lg:py-8 space-y-8">
+      <div className="admin-page-body space-y-8">
         {loading || !stats ? (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="h-36 border border-border bg-muted/20 animate-pulse" />
             ))}
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
                 label="Revenue (30d)"
                 value={formatPrice(stats.revenue30d)}
@@ -297,10 +297,10 @@ export default function DashboardPage() {
                   View all <ArrowUpRight className="size-3" />
                 </Link>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto hidden lg:block">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-border bg-muted/30">
+                    <tr className="border-b border-border bg-secondary">
                       <th className="px-6 py-3 text-left font-medium uppercase tracking-[0.15em] text-muted-foreground">Order</th>
                       <th className="px-6 py-3 text-left font-medium uppercase tracking-[0.15em] text-muted-foreground">Customer</th>
                       <th className="px-6 py-3 text-left font-medium uppercase tracking-[0.15em] text-muted-foreground hidden sm:table-cell">Product</th>
@@ -317,7 +317,7 @@ export default function DashboardPage() {
                       </tr>
                     ) : (
                       stats.recentOrders.map((order) => (
-                        <tr key={order.reference} className="hover:bg-muted/20 transition-colors">
+                        <tr key={order.reference} className="hover:bg-secondary transition-colors">
                           <td className="px-6 py-4 font-mono text-muted-foreground">
                             <Link href={`/admin/orders/${order.reference}`} className="hover:text-foreground">
                               {order.reference}
@@ -342,6 +342,37 @@ export default function DashboardPage() {
                     )}
                   </tbody>
                 </table>
+              </div>
+              <div className="divide-y divide-border lg:hidden">
+                {stats.recentOrders.length === 0 ? (
+                  <p className="px-4 py-10 text-center text-sm font-light text-muted-foreground">No orders yet</p>
+                ) : (
+                  stats.recentOrders.map((order) => (
+                    <Link
+                      key={order.reference}
+                      href={`/admin/orders/${order.reference}`}
+                      className="flex flex-col gap-2 px-4 py-4 transition-colors hover:bg-secondary sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-mono text-xs text-muted-foreground">{order.reference}</p>
+                        <p className="text-sm font-medium">{order.customer.name}</p>
+                        <p className="truncate text-xs font-light text-muted-foreground">
+                          {order.items[0]?.name ?? "—"}
+                          {order.items.length > 1 ? ` +${order.items.length - 1}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
+                        <p className="text-sm font-medium">{formatPrice(order.total)}</p>
+                        <span className={cn(
+                          "border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em]",
+                          STATUS_STYLES[order.status] ?? STATUS_STYLES.pending,
+                        )}>
+                          {order.status}
+                        </span>
+                      </div>
+                    </Link>
+                  ))
+                )}
               </div>
             </div>
           </>

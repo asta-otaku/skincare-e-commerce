@@ -24,7 +24,7 @@ const STATUS_STYLES: Record<AdminUserStatus, string> = {
 
 const ROLE_STYLES: Record<AdminUserRole, string> = {
   admin: "bg-lavender text-lavender-foreground border-lavender-foreground/20",
-  staff: "bg-gold/10 text-gold-foreground border-gold/30",
+  staff: "bg-lavender text-gold border-gold/30",
   customer: "bg-muted text-muted-foreground border-border",
 }
 
@@ -103,22 +103,22 @@ export default function AdminUsersPage() {
   const admins = users.filter((u) => u.role === "admin").length
 
   return (
-    <div className="flex-1 overflow-auto" onClick={() => setOpenMenu(null)}>
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background px-6 py-4 lg:px-8">
+    <div className="flex flex-1 flex-col gap-8 overflow-auto" onClick={() => setOpenMenu(null)}>
+      <div className="admin-page-header">
         <div>
           <h1 className="font-serif text-2xl font-medium">Users</h1>
           <p className="text-xs font-light text-muted-foreground mt-0.5">
             {loading ? "Loading…" : `${users.length} profiles from Supabase`}
           </p>
         </div>
-        <span className="hidden sm:flex items-center gap-1.5 border border-border/60 bg-muted/30 px-3 py-1.5 text-[10px] font-light uppercase tracking-[0.15em] text-muted-foreground">
+        <span className="hidden sm:flex items-center gap-1.5 border border-border/60 bg-secondary px-3 py-1.5 text-[10px] font-light uppercase tracking-[0.15em] text-muted-foreground">
           <ShieldCheck className="size-3" /> Live
         </span>
       </div>
 
-      <div className="px-6 py-6 lg:px-8 lg:py-8">
+      <div className="admin-page-body">
         {message && (
-          <p className="mb-4 border border-border bg-muted/20 px-4 py-3 text-sm font-light">{message}</p>
+          <p className="mb-4 border border-border bg-secondary px-4 py-3 text-sm font-light">{message}</p>
         )}
 
         <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -186,7 +186,7 @@ export default function AdminUsersPage() {
         </div>
 
         {selectedIds.size > 0 && (
-          <div className="mb-4 flex items-center gap-3 border border-gold/30 bg-gold/5 px-4 py-3">
+          <div className="mb-4 flex items-center gap-3 border border-gold/30 bg-lavender px-4 py-3">
             <span className="text-xs font-medium">{selectedIds.size} selected</span>
             <button
               type="button"
@@ -230,7 +230,7 @@ export default function AdminUsersPage() {
               <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-border bg-muted/30">
+                    <tr className="border-b border-border bg-secondary">
                       <th className="px-4 py-3 text-left w-10">
                         <div
                           onClick={selectAll}
@@ -253,7 +253,7 @@ export default function AdminUsersPage() {
                   </thead>
                   <tbody className="divide-y divide-border">
                     {filtered.map((user) => (
-                      <tr key={user.id} className={cn("hover:bg-muted/20 transition-colors", selectedIds.has(user.id) && "bg-muted/30")}>
+                      <tr key={user.id} className={cn("hover:bg-secondary transition-colors", selectedIds.has(user.id) && "bg-secondary")}>
                         <td className="px-4 py-4">
                           <div
                             onClick={() => toggleSelect(user.id)}
@@ -343,14 +343,14 @@ export default function AdminUsersPage() {
 
               <div className="divide-y divide-border lg:hidden">
                 {filtered.map((user) => (
-                  <div key={user.id} className="flex items-center gap-3 p-4">
+                  <div key={user.id} className="relative flex items-center gap-3 p-4">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
                       {user.avatar}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{user.name}</p>
                       <p className="text-xs font-light text-muted-foreground truncate">{user.email}</p>
-                      <div className="mt-1 flex items-center gap-1.5">
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
                         <span className={cn("border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.1em]", STATUS_STYLES[user.status])}>
                           {user.status}
                         </span>
@@ -359,13 +359,49 @@ export default function AdminUsersPage() {
                         </span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === user.id ? null : user.id) }}
-                      className="shrink-0 text-muted-foreground hover:text-foreground"
-                    >
-                      <MoreHorizontal className="size-4" />
-                    </button>
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === user.id ? null : user.id) }}
+                        className="flex size-9 items-center justify-center text-muted-foreground hover:text-foreground"
+                        aria-label="User actions"
+                      >
+                        <MoreHorizontal className="size-4" />
+                      </button>
+                      {openMenu === user.id && (
+                        <div
+                          className="absolute right-0 top-full z-30 mt-1 min-w-44 border border-border bg-background shadow-md"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => toggleStatus(user.id)}
+                            className={cn(
+                              "flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-light transition-colors hover:bg-muted",
+                              user.status === "active" ? "text-destructive" : "text-green-600",
+                            )}
+                          >
+                            {user.status === "active" ? <ShieldOff className="size-3.5" /> : <ShieldCheck className="size-3.5" />}
+                            {user.status === "active" ? "Suspend User" : "Activate User"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleRole(user.id)}
+                            className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-light text-foreground transition-colors hover:bg-muted"
+                          >
+                            <ChevronDown className="size-3.5" />
+                            {user.role === "admin" ? "Remove Admin" : "Make Admin"}
+                          </button>
+                          <a
+                            href={`mailto:${user.email}`}
+                            className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-light text-foreground transition-colors hover:bg-muted"
+                            onClick={() => setOpenMenu(null)}
+                          >
+                            <Mail className="size-3.5" /> Send Email
+                          </a>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

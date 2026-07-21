@@ -98,7 +98,7 @@ export function NewsletterPopup() {
 
           {submitted ? (
             <div className="mt-7 flex flex-col items-center gap-2">
-              <div className="flex size-12 items-center justify-center rounded-full bg-gold/10">
+              <div className="flex size-12 items-center justify-center rounded-full bg-lavender">
                 <Check className="size-6 text-gold" />
               </div>
               <p className="text-sm font-medium">You're on the list!</p>

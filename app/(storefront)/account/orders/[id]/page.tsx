@@ -1,7 +1,6 @@
 "use client"
 
 import { use, useEffect, useState } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import { ArrowLeft, Package } from "lucide-react"
 import { getOrderByReference } from "@/lib/supabase/orders"
@@ -10,6 +9,7 @@ import { formatPrice } from "@/lib/products"
 import { ORDER_STATUS_META } from "@/lib/orders"
 import { cn } from "@/lib/utils"
 import { useCart } from "@/components/cart-provider"
+import { OrderItemThumb } from "@/components/order-item-thumb"
 
 export default function AccountOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -99,7 +99,7 @@ export default function AccountOrderDetailPage({ params }: { params: Promise<{ i
       </div>
 
       {unpaid && (
-        <div className="border border-border bg-muted/20 p-4 space-y-3">
+        <div className="border border-border bg-secondary p-4 space-y-3">
           <p className="text-sm font-light text-muted-foreground">
             If Paystack already charged you, confirm the payment here to update this order and clear your cart.
           </p>
@@ -120,12 +120,19 @@ export default function AccountOrderDetailPage({ params }: { params: Promise<{ i
       <div className="border border-border divide-y divide-border">
         {order.items.map(item => (
           <div key={item.productId + item.name} className="flex items-center gap-4 p-4">
-            <div className="relative size-16 shrink-0 overflow-hidden border border-border bg-muted/40">
-              <Image src={item.image || "/placeholder.svg"} alt={item.name} fill sizes="64px" className="object-cover" />
-            </div>
+            <OrderItemThumb
+              productId={item.productId}
+              image={item.image}
+              name={item.name}
+              size="xl"
+              sizes="64px"
+            />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{item.name}</p>
-              <p className="text-xs font-light text-muted-foreground">Qty {item.quantity}</p>
+              <p className="text-xs font-light text-muted-foreground">
+                {item.productId.startsWith("deal__") ? "Bundle Deal" : item.category}
+                {" · "}Qty {item.quantity}
+              </p>
             </div>
             <p className="text-sm font-medium">{formatPrice(item.price * item.quantity)}</p>
           </div>

@@ -129,9 +129,9 @@ export default function NewDealPage() {
   }
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col gap-8 overflow-auto">
       {/* Header */}
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background px-6 py-4 lg:px-8">
+      <div className="admin-page-header">
         <div className="flex items-center gap-4">
           <Link
             href="/admin/deals"
@@ -167,7 +167,7 @@ export default function NewDealPage() {
         </div>
       </div>
 
-      <form id="deal-form" onSubmit={handleSubmit} className="px-6 py-8 lg:px-8 lg:py-10">
+      <form id="deal-form" onSubmit={handleSubmit} className="admin-page-body">
         {saveError && (
           <p className="mb-6 text-xs text-destructive bg-destructive/10 border border-destructive/20 px-4 py-2.5">
             {saveError}

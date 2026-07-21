@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
 import { useFavorites } from "@/components/favorites-provider"
-import { formatPrice, type Product } from "@/lib/products"
+import { formatPrice, getEffectivePrice, hasDiscount, type Product } from "@/lib/products"
 import { cn } from "@/lib/utils"
 
 type Tab = "description" | "how-to-use" | "ingredients" | "reviews"
@@ -43,14 +43,20 @@ export function ProductDetail({ product }: { product: Product }) {
   )
   const favorited = isFavorited(product.id)
 
-  const activePrice = selectedVariant !== null && product.variants
+  const listPrice = selectedVariant !== null && product.variants
     ? product.variants[selectedVariant].price
     : product.price
+  const activePrice = getEffectivePrice({ price: listPrice, discountPct: product.discountPct })
 
   function handleAdd() {
-    const item = selectedVariant !== null && product.variants
-      ? { ...product, price: product.variants[selectedVariant].price, name: `${product.name} — ${product.variants[selectedVariant].label}` }
-      : product
+    const item =
+      selectedVariant !== null && product.variants
+        ? {
+            ...product,
+            price: product.variants[selectedVariant].price,
+            name: `${product.name} — ${product.variants[selectedVariant].label}`,
+          }
+        : product
     for (let i = 0; i < qty; i++) addItem(item)
     setAdded(true)
     window.setTimeout(() => setAdded(false), 1800)
@@ -106,7 +112,7 @@ export function ProductDetail({ product }: { product: Product }) {
           )}
 
           {/* Main image */}
-          <div className="relative flex-1 overflow-hidden border border-border bg-muted/30">
+          <div className="relative flex-1 overflow-hidden border border-border bg-secondary">
             {product.tag && (
               <span className={cn(
                 "absolute left-4 top-4 z-10 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em]",
@@ -161,9 +167,21 @@ export function ProductDetail({ product }: { product: Product }) {
           </div>
 
           {/* Price */}
-          <p className="mt-5 font-serif text-3xl font-medium text-foreground">
-            {formatPrice(activePrice)}
-          </p>
+          <div className="mt-5 flex flex-wrap items-baseline gap-3">
+            {hasDiscount(product) && (
+              <p className="font-serif text-xl font-light text-muted-foreground line-through">
+                {formatPrice(listPrice)}
+              </p>
+            )}
+            <p className="font-serif text-3xl font-medium text-foreground">
+              {formatPrice(activePrice)}
+            </p>
+            {hasDiscount(product) && (
+              <span className="border border-gold/40 bg-gold/10 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-gold">
+                {product.discountPct}% off
+              </span>
+            )}
+          </div>
 
           {/* Stock status */}
           <p className={cn(
@@ -246,7 +264,7 @@ export function ProductDetail({ product }: { product: Product }) {
               className={cn(
                 "flex items-center justify-center size-12 border transition-all duration-300 shrink-0",
                 favorited
-                  ? "border-gold bg-gold/10 text-gold"
+                  ? "border-gold bg-lavender text-gold"
                   : "border-border text-muted-foreground hover:border-gold hover:text-gold",
               )}
             >
@@ -401,7 +419,7 @@ export function ProductDetail({ product }: { product: Product }) {
                   <Link
                     key={i}
                     href={`/ingredient/${i.toLowerCase().replace(/\s+/g, "-").replace("/", "-")}`}
-                    className="border border-gold/40 bg-gold/5 px-3 py-1.5 text-xs font-light text-gold transition-colors hover:bg-gold/10"
+                    className="border border-gold/40 bg-lavender px-3 py-1.5 text-xs font-light text-gold transition-colors hover:bg-lavender"
                   >
                     {i}
                   </Link>

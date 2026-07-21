@@ -19,7 +19,7 @@ export function RelatedProducts({ currentId }: { currentId: string }) {
   if (!loading && related.length === 0) return null
 
   return (
-    <section className="border-t border-border bg-muted/30">
+    <section className="border-t border-border bg-secondary">
       <div className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
         <div className="mb-12 flex flex-col items-center text-center">
           <p className="text-xs font-light uppercase tracking-[0.3em] text-gold">Complete the Ritual</p>

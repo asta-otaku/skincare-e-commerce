@@ -67,7 +67,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                     "group flex items-center justify-between rounded-sm px-3 py-2.5 text-sm transition-all",
                     active
                       ? "bg-muted font-medium text-foreground"
-                      : "font-light text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                      : "font-light text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
                   <div className="flex items-center gap-2.5">

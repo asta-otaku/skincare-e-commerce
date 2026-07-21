@@ -13,6 +13,10 @@
   --color-gold-foreground: var(--gold-foreground);
   --color-lavender: var(--lavender);
   --color-lavender-foreground: var(--lavender-foreground);
+  --color-mustard: var(--mustard);
+  --color-mustard-foreground: var(--mustard-foreground);
+  --color-tangerine: var(--tangerine);
+  --color-tangerine-foreground: var(--tangerine-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -64,35 +68,39 @@
   --popover-foreground: oklch(0.15 0 0);
   --primary: oklch(0.15 0 0);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.96 0.015 305);
+  --secondary: #F3E8FF;                          /* vivid violet wash */
   --secondary-foreground: oklch(0.15 0 0);
-  --muted: oklch(0.95 0.018 305);               /* #F0EBF5 light mauve */
+  --muted: #EDE9FE;                              /* saturated lavender tint */
   --muted-foreground: oklch(0.66 0 0);           /* #A8A8A8 silver-grey */
-  --accent: oklch(0.95 0.018 305);               /* light mauve backgrounds */
-  --accent-foreground: oklch(0.32 0.04 305);
+  --accent: #EDE9FE;
+  --accent-foreground: #6D28D9;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.90 0.022 305);               /* soft mauve border */
-  --input: oklch(0.90 0.022 305);
-  --ring: oklch(0.77 0.05 305);
-  /* Primary accent: Dusty Mauve #C9B8D4 — replaces gold throughout */
-  --gold: oklch(0.77 0.05 305);                  /* #C9B8D4 dusty mauve */
-  --gold-foreground: oklch(0.15 0 0);            /* near-black on mauve */
-  --lavender: oklch(0.92 0.03 305);
-  --lavender-foreground: oklch(0.35 0.05 305);
-  --chart-1: oklch(0.77 0.05 305);
-  --chart-2: oklch(0.65 0.07 305);
-  --chart-3: oklch(0.52 0.05 305);
-  --chart-4: oklch(0.40 0.03 305);
-  --chart-5: oklch(0.28 0.02 305);
-  --radius: 0.3rem;
+  --border: #DDD6FE;                             /* bold violet border */
+  --input: #DDD6FE;
+  --ring: #9333EA;
+  /* Primary accent: max-saturation electric violet / amethyst */
+  --gold: #9333EA;                               /* electric amethyst */
+  --gold-foreground: #FFFFFF;
+  --lavender: #E9D5FF;                           /* bright violet surface */
+  --lavender-foreground: #6D28D9;                /* deep amethyst text */
+  /* Complements — mustard & tangerine make lavender jump */
+  --mustard: #EAB308;
+  --mustard-foreground: #422006;
+  --tangerine: #F97316;
+  --tangerine-foreground: #FFFFFF;
+  --chart-1: #9333EA;
+  --chart-2: #F97316;
+  --chart-3: #EAB308;
+  --chart-4: #7C3AED;
+  --admin-mobile-nav-height: 3.5rem;
   --sidebar: oklch(0.99 0 0);
   --sidebar-foreground: oklch(0.15 0 0);
   --sidebar-primary: oklch(0.15 0 0);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.95 0.018 305);
-  --sidebar-accent-foreground: oklch(0.32 0.04 305);
-  --sidebar-border: oklch(0.90 0.022 305);
-  --sidebar-ring: oklch(0.77 0.05 305);
+  --sidebar-accent: #EDE9FE;
+  --sidebar-accent-foreground: #6D28D9;
+  --sidebar-border: #DDD6FE;
+  --sidebar-ring: #9333EA;
 }
 
 .dark {
@@ -226,5 +234,58 @@
 @layer components {
   .input-field {
     @apply w-full border border-border bg-background px-4 py-3 text-sm font-light outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground/40;
+  }
+  /* Rich purple surfaces — use instead of bg-gold/10 or bg-muted/30 */
+  .surface-muted {
+    @apply bg-secondary;
+  }
+  .surface-accent {
+    @apply bg-lavender;
+  }
+  .surface-accent-badge {
+    @apply border border-gold/40 bg-lavender text-gold;
+  }
+}
+
+/* Admin page chrome — unlayered so spacing always wins over preflight/utilities */
+.admin-page-header {
+  position: sticky;
+  z-index: 20;
+  top: var(--admin-mobile-nav-height);
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--background);
+  padding: 1rem 1rem 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06);
+}
+.admin-page-body {
+  flex: 1;
+  min-width: 0;
+  padding: 0 1rem 1.5rem;
+}
+@media (min-width: 640px) {
+  .admin-page-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    box-shadow: none;
+  }
+  .admin-page-body {
+    padding: 0 1.5rem 2rem;
+  }
+}
+@media (min-width: 1024px) {
+  .admin-page-header {
+    top: 0;
+    padding-inline: 2rem;
+  }
+  .admin-page-body {
+    padding-inline: 2rem;
   }
 }

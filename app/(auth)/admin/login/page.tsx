@@ -159,7 +159,7 @@ export default function AdminLoginPage() {
 
             {/* Email not confirmed banner */}
             {unconfirmed && (
-              <div className="border border-gold/40 bg-gold/10 px-4 py-3 space-y-2">
+              <div className="border border-gold/40 bg-lavender px-4 py-3 space-y-2">
                 <p className="text-xs font-medium text-foreground">
                   Please confirm your email before signing in.
                 </p>
@@ -226,7 +226,7 @@ export default function AdminLoginPage() {
             </p>
           </div>
 
-          <div className="mt-4 rounded-sm border border-border/60 bg-muted/40 px-4 py-3">
+          <div className="mt-4 rounded-sm border border-border/60 bg-muted px-4 py-3">
             <p className="text-[10px] font-light text-muted-foreground text-center">
               Demo credentials: admin@haydaskinco.com / password
             </p>

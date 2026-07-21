@@ -126,7 +126,7 @@ export function Hero() {
       </div>
 
       {/* Marquee-style trust bar */}
-      <div className="border-y border-border bg-muted/40">
+      <div className="border-y border-border bg-muted">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-10 gap-y-3 px-5 py-4 text-center text-[11px] font-light uppercase tracking-[0.22em] text-muted-foreground lg:justify-between lg:px-8">
           <span>Clinically Proven Actives</span>
           <span className="hidden sm:inline">Cruelty-Free &amp; Vegan</span>

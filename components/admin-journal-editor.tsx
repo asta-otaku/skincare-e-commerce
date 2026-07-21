@@ -180,19 +180,19 @@ export function AdminJournalEditor({ journal }: { journal?: Journal }) {
   }
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col gap-8 overflow-auto">
       {/* Header */}
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background px-6 py-4 lg:px-8">
-        <div className="flex items-center gap-3">
+      <div className="admin-page-header">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex items-center gap-1.5 text-xs font-light text-muted-foreground hover:text-foreground transition-colors uppercase tracking-[0.15em]"
+            className="flex shrink-0 items-center gap-1.5 text-xs font-light text-muted-foreground hover:text-foreground transition-colors uppercase tracking-[0.15em]"
           >
             <ArrowLeft className="size-3.5" /> Journal
           </button>
-          <span className="text-border">/</span>
-          <h1 className="font-serif text-xl font-medium">
+          <span className="hidden text-border sm:inline">/</span>
+          <h1 className="font-serif text-lg font-medium sm:text-xl">
             {isEdit ? "Edit Article" : "Write Article"}
           </h1>
           {form.status === "draft" && (
@@ -201,12 +201,12 @@ export function AdminJournalEditor({ journal }: { journal?: Journal }) {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setPreview((v) => !v)}
             className={cn(
-              "hidden sm:flex items-center gap-2 border px-4 py-2 text-xs font-light uppercase tracking-[0.15em] transition-colors",
+              "flex items-center gap-2 border px-4 py-2 text-xs font-light uppercase tracking-[0.15em] transition-colors",
               preview ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground",
             )}
           >
@@ -241,7 +241,7 @@ export function AdminJournalEditor({ journal }: { journal?: Journal }) {
         </div>
       </div>
 
-      <div className="px-6 py-6 lg:px-8 lg:py-8">
+      <div className="admin-page-body">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_300px]">
           {/* Main editor */}
           <div className="space-y-5">
@@ -267,7 +267,7 @@ export function AdminJournalEditor({ journal }: { journal?: Journal }) {
             <div className="border border-border">
               {/* Markdown toolbar */}
               {!preview && (
-                <div className="flex items-center gap-0.5 border-b border-border bg-muted/30 px-3 py-2">
+                <div className="flex items-center gap-0.5 border-b border-border bg-secondary px-3 py-2">
                   <ToolbarBtn onClick={() => insertMarkdown("**", "**")} title="Bold">
                     <Bold className="size-3.5" />
                   </ToolbarBtn>
@@ -323,7 +323,7 @@ Use **bold** or *italic* for emphasis.
             <section className="border border-border p-5">
               <h3 className="mb-3 text-[11px] font-medium uppercase tracking-[0.18em]">Cover Image</h3>
               {imagePreview ? (
-                <div className="relative aspect-video overflow-hidden border border-border bg-muted/40 mb-3">
+                <div className="relative aspect-video overflow-hidden border border-border bg-muted mb-3">
                   <Image src={imagePreview} alt="Cover" fill sizes="300px" className="object-cover" />
                   <button
                     type="button"
@@ -341,7 +341,7 @@ Use **bold** or *italic* for emphasis.
                   onClick={() => fileRef.current?.click()}
                   className={cn(
                     "mb-3 flex aspect-video cursor-pointer flex-col items-center justify-center border-2 border-dashed transition-colors",
-                    dragOver ? "border-gold bg-gold/5" : "border-border hover:border-foreground/50",
+                    dragOver ? "border-gold bg-lavender" : "border-border hover:border-foreground/50",
                   )}
                 >
                   <Upload className="size-6 text-muted-foreground mb-2" />
@@ -386,7 +386,7 @@ Use **bold** or *italic* for emphasis.
                 <label className="text-[10px] font-light uppercase tracking-[0.15em] text-muted-foreground">Tags</label>
                 <div className="flex gap-1.5 flex-wrap mb-1.5">
                   {form.tags.map((tag) => (
-                    <span key={tag} className="flex items-center gap-1 border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-light">
+                    <span key={tag} className="flex items-center gap-1 border border-border bg-muted px-2 py-0.5 text-[10px] font-light">
                       {tag}
                       <button type="button" onClick={() => removeTag(tag)} className="text-muted-foreground hover:text-destructive">
                         <X className="size-2.5" />

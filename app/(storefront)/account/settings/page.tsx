@@ -1,16 +1,28 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Check, Eye, EyeOff, Plus, Trash2, MapPin } from "lucide-react"
+import { Check, Eye, EyeOff, Plus, Trash2, MapPin, Pencil } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   getProfile, updateProfile, updatePassword, updatePreferences,
-  getAddresses, addAddress, deleteAddress, claimProfileBonus,
+  getAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress, claimProfileBonus,
   DEFAULT_PREFS,
   type Profile, type Address, type NotificationPrefs,
 } from "@/lib/supabase/profile"
 
 type Section = "profile" | "password" | "addresses" | "preferences"
+
+const EMPTY_ADDR: Omit<Address, "id" | "is_default"> = {
+  label: "Home",
+  full_name: "",
+  line1: "",
+  line2: "",
+  city: "",
+  state: "",
+  postal_code: "",
+  country: "Nigeria",
+  phone: "",
+}
 
 export default function AccountSettingsPage() {
   const [activeSection, setActiveSection] = useState<Section>("profile")
@@ -32,10 +44,10 @@ export default function AccountSettingsPage() {
 
   // Address form state
   const [addingAddress, setAddingAddress] = useState(false)
-  const [newAddr, setNewAddr] = useState<Omit<Address, "id" | "is_default">>({
-    label: "Home", full_name: "", line1: "", city: "", state: "", country: "Nigeria",
-  })
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [newAddr, setNewAddr] = useState<Omit<Address, "id" | "is_default">>({ ...EMPTY_ADDR })
   const [addrSaving, setAddrSaving] = useState(false)
+  const [defaultSavingId, setDefaultSavingId] = useState<string | null>(null)
 
   const [prefs, setPrefs] = useState<NotificationPrefs>({ ...DEFAULT_PREFS })
   const [prefsSaving, setPrefsSaving] = useState(false)
@@ -95,21 +107,52 @@ export default function AccountSettingsPage() {
     setTimeout(() => setPwMsg(null), 3000)
   }
 
-  async function handleAddAddress() {
+  function resetAddressForm() {
+    setAddingAddress(false)
+    setEditingId(null)
+    setNewAddr({ ...EMPTY_ADDR, full_name: fullName })
+  }
+
+  function startEditAddress(addr: Address) {
+    setAddingAddress(false)
+    setEditingId(addr.id)
+    setNewAddr({
+      label: addr.label,
+      full_name: addr.full_name,
+      line1: addr.line1,
+      line2: addr.line2 ?? "",
+      city: addr.city,
+      state: addr.state,
+      postal_code: addr.postal_code ?? "",
+      country: addr.country,
+      phone: addr.phone ?? "",
+    })
+  }
+
+  async function handleSaveAddress() {
     if (!newAddr.line1 || !newAddr.city) return
     setAddrSaving(true)
-    const err = await addAddress({ ...newAddr, is_default: addresses.length === 0 })
+    const err = editingId
+      ? await updateAddress(editingId, newAddr)
+      : await addAddress({ ...newAddr, is_default: addresses.length === 0 })
     if (!err) {
       await load()
-      setAddingAddress(false)
-      setNewAddr({ label: "Home", full_name: fullName, line1: "", city: "", state: "", country: "Nigeria" })
+      resetAddressForm()
     }
     setAddrSaving(false)
   }
 
   async function handleDeleteAddress(id: string) {
+    if (editingId === id) resetAddressForm()
     await deleteAddress(id)
-    setAddresses(prev => prev.filter(a => a.id !== id))
+    await load()
+  }
+
+  async function handleSetDefault(id: string) {
+    setDefaultSavingId(id)
+    const err = await setDefaultAddress(id)
+    if (!err) await load()
+    setDefaultSavingId(null)
   }
 
   const SECTIONS: { id: Section; label: string }[] = [
@@ -242,85 +285,114 @@ export default function AccountSettingsPage() {
       {/* Addresses */}
       {activeSection === "addresses" && (
         <section className="space-y-4">
-          {addresses.length === 0 && !addingAddress && (
+          {addresses.length === 0 && !addingAddress && !editingId && (
             <p className="text-sm font-light text-muted-foreground">No saved addresses yet.</p>
           )}
           {addresses.map(addr => (
-            <div key={addr.id} className={cn("border p-5", addr.is_default ? "border-gold/40 bg-gold/5" : "border-border")}>
+            editingId === addr.id ? (
+            <div key={addr.id} className="border border-border p-5 space-y-4">
+              <h3 className="text-xs font-medium uppercase tracking-[0.18em]">Edit Address</h3>
+              <AddressFields addr={newAddr} onChange={setNewAddr} />
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleSaveAddress}
+                  disabled={addrSaving || !newAddr.line1 || !newAddr.city}
+                  className="bg-foreground px-5 py-2.5 text-xs font-medium uppercase tracking-[0.15em] text-background hover:bg-gold hover:text-gold-foreground transition-colors disabled:opacity-50"
+                >
+                  {addrSaving ? "Saving…" : "Update Address"}
+                </button>
+                <button type="button" onClick={resetAddressForm} className="border border-border px-5 py-2.5 text-xs font-light uppercase tracking-[0.15em] hover:border-foreground transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+            ) : (
+            <div key={addr.id} className={cn("border p-5", addr.is_default ? "border-gold/40 bg-lavender" : "border-border")}>
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <MapPin className="size-4 text-muted-foreground" />
                   <span className="text-xs font-medium uppercase tracking-[0.15em]">{addr.label}</span>
                   {addr.is_default && (
-                    <span className="border border-gold/40 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-widest text-gold-foreground bg-gold/10">
+                    <span className="border border-gold/40 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-widest text-gold bg-lavender">
                       Default
                     </span>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteAddress(addr.id)}
-                  disabled={addr.is_default}
-                  className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-30"
-                >
-                  <Trash2 className="size-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => startEditAddress(addr)}
+                    disabled={!!editingId || addingAddress}
+                    className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30"
+                    aria-label="Edit address"
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteAddress(addr.id)}
+                    className="text-muted-foreground hover:text-destructive transition-colors"
+                    aria-label="Delete address"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
               </div>
               <div className="text-sm font-light text-muted-foreground leading-relaxed pl-6">
                 <p className="font-medium text-foreground">{addr.full_name}</p>
-                <p>{addr.line1}{addr.line2 && `, ${addr.line2}`}</p>
-                <p>{addr.city}, {addr.state}</p>
+                <p>{addr.line1}</p>
+                {addr.line2 && <p>{addr.line2}</p>}
+                <p>
+                  {addr.city}, {addr.state}
+                  {addr.postal_code ? ` ${addr.postal_code}` : ""}
+                </p>
                 <p>{addr.country}</p>
                 {addr.phone && <p>{addr.phone}</p>}
               </div>
+              {!addr.is_default && (
+                <div className="mt-4 pl-6">
+                  <button
+                    type="button"
+                    onClick={() => handleSetDefault(addr.id)}
+                    disabled={defaultSavingId === addr.id}
+                    className="border border-border px-3 py-1.5 text-[11px] font-light uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:border-gold hover:text-gold disabled:opacity-50"
+                  >
+                    {defaultSavingId === addr.id ? "Saving…" : "Set as default"}
+                  </button>
+                </div>
+              )}
             </div>
+            )
           ))}
 
           {addingAddress ? (
             <div className="border border-border p-5 space-y-4">
               <h3 className="text-xs font-medium uppercase tracking-[0.18em]">New Address</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Label">
-                  <input type="text" value={newAddr.label} onChange={e => setNewAddr(a => ({ ...a, label: e.target.value }))} placeholder="Home / Work" className="input-field" />
-                </Field>
-                <Field label="Full Name">
-                  <input type="text" value={newAddr.full_name} onChange={e => setNewAddr(a => ({ ...a, full_name: e.target.value }))} className="input-field" />
-                </Field>
-              </div>
-              <Field label="Address Line 1">
-                <input type="text" value={newAddr.line1} onChange={e => setNewAddr(a => ({ ...a, line1: e.target.value }))} className="input-field" />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="City"><input type="text" value={newAddr.city} onChange={e => setNewAddr(a => ({ ...a, city: e.target.value }))} className="input-field" /></Field>
-                <Field label="State"><input type="text" value={newAddr.state} onChange={e => setNewAddr(a => ({ ...a, state: e.target.value }))} className="input-field" /></Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Country"><input type="text" value={newAddr.country} onChange={e => setNewAddr(a => ({ ...a, country: e.target.value }))} className="input-field" /></Field>
-                <Field label="Phone (optional)"><input type="tel" value={newAddr.phone ?? ""} onChange={e => setNewAddr(a => ({ ...a, phone: e.target.value }))} className="input-field" /></Field>
-              </div>
+              <AddressFields addr={newAddr} onChange={setNewAddr} />
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={handleAddAddress}
+                  onClick={handleSaveAddress}
                   disabled={addrSaving || !newAddr.line1 || !newAddr.city}
                   className="bg-foreground px-5 py-2.5 text-xs font-medium uppercase tracking-[0.15em] text-background hover:bg-gold hover:text-gold-foreground transition-colors disabled:opacity-50"
                 >
                   {addrSaving ? "Saving…" : "Save Address"}
                 </button>
-                <button type="button" onClick={() => setAddingAddress(false)} className="border border-border px-5 py-2.5 text-xs font-light uppercase tracking-[0.15em] hover:border-foreground transition-colors">
+                <button type="button" onClick={resetAddressForm} className="border border-border px-5 py-2.5 text-xs font-light uppercase tracking-[0.15em] hover:border-foreground transition-colors">
                   Cancel
                 </button>
               </div>
             </div>
-          ) : (
+          ) : !editingId ? (
             <button
               type="button"
-              onClick={() => { setNewAddr(a => ({ ...a, full_name: fullName })); setAddingAddress(true) }}
+              onClick={() => { setEditingId(null); setNewAddr({ ...EMPTY_ADDR, full_name: fullName }); setAddingAddress(true) }}
               className="flex w-full items-center justify-center gap-2 border border-dashed border-border py-4 text-xs font-light uppercase tracking-[0.15em] text-muted-foreground hover:border-foreground hover:text-foreground transition-colors"
             >
               <Plus className="size-3.5" /> Add New Address
             </button>
-          )}
+          ) : null}
         </section>
       )}
 
@@ -336,7 +408,7 @@ export default function AccountSettingsPage() {
                 { key: "newProducts",  label: "New product launches",    desc: "Be first to know about new arrivals" },
                 { key: "saleAlerts",   label: "Promotions & offers",     desc: "Exclusive offers for HAYDA SKINCo. members" },
               ] as const).map(({ key, label, desc }) => (
-                <label key={key} className="flex cursor-pointer items-start justify-between gap-4 border border-border p-4 hover:bg-muted/20 transition-colors">
+                <label key={key} className="flex cursor-pointer items-start justify-between gap-4 border border-border p-4 hover:bg-secondary transition-colors">
                   <div>
                     <p className="text-sm font-medium">{label}</p>
                     <p className="text-xs font-light text-muted-foreground mt-0.5">{desc}</p>
@@ -391,6 +463,57 @@ export default function AccountSettingsPage() {
         .input-field:focus { border-color: hsl(var(--foreground)); }
       `}</style>
     </div>
+  )
+}
+
+function AddressFields({
+  addr,
+  onChange,
+}: {
+  addr: Omit<Address, "id" | "is_default">
+  onChange: React.Dispatch<React.SetStateAction<Omit<Address, "id" | "is_default">>>
+}) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Label">
+          <input type="text" value={addr.label} onChange={e => onChange(a => ({ ...a, label: e.target.value }))} placeholder="Home / Work" className="input-field" />
+        </Field>
+        <Field label="Full Name">
+          <input type="text" value={addr.full_name} onChange={e => onChange(a => ({ ...a, full_name: e.target.value }))} className="input-field" />
+        </Field>
+      </div>
+      <Field label="Address Line 1">
+        <input type="text" value={addr.line1} onChange={e => onChange(a => ({ ...a, line1: e.target.value }))} className="input-field" />
+      </Field>
+      <Field label="Apartment, suite, etc. (optional)">
+        <input
+          type="text"
+          value={addr.line2 ?? ""}
+          onChange={e => onChange(a => ({ ...a, line2: e.target.value }))}
+          placeholder="Apt, floor, suite…"
+          className="input-field"
+        />
+      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="City"><input type="text" value={addr.city} onChange={e => onChange(a => ({ ...a, city: e.target.value }))} className="input-field" /></Field>
+        <Field label="State"><input type="text" value={addr.state} onChange={e => onChange(a => ({ ...a, state: e.target.value }))} className="input-field" /></Field>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="ZIP / Postal Code">
+          <input
+            type="text"
+            value={addr.postal_code ?? ""}
+            onChange={e => onChange(a => ({ ...a, postal_code: e.target.value }))}
+            className="input-field"
+          />
+        </Field>
+        <Field label="Country"><input type="text" value={addr.country} onChange={e => onChange(a => ({ ...a, country: e.target.value }))} className="input-field" /></Field>
+      </div>
+      <Field label="Phone (optional)">
+        <input type="tel" value={addr.phone ?? ""} onChange={e => onChange(a => ({ ...a, phone: e.target.value }))} className="input-field" />
+      </Field>
+    </>
   )
 }
 

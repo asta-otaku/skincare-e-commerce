@@ -42,7 +42,7 @@ export function ContactForm() {
 
   if (sent) {
     return (
-      <div className="flex flex-col items-center justify-center border border-gold/50 bg-accent/40 px-6 py-16 text-center">
+      <div className="flex flex-col items-center justify-center border border-gold/50 bg-accent px-6 py-16 text-center">
         <span className="flex size-12 items-center justify-center rounded-full bg-gold text-gold-foreground">
           <Check className="size-5" />
         </span>

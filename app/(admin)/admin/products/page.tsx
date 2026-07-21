@@ -56,9 +56,9 @@ export default function AdminProductsPage() {
   }
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col gap-8 overflow-auto">
       {/* Header */}
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background px-6 py-4 lg:px-8">
+      <div className="admin-page-header">
         <div>
           <h1 className="font-serif text-2xl font-medium">Products</h1>
           <p className="text-xs font-light text-muted-foreground mt-0.5">
@@ -84,7 +84,7 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      <div className="px-6 py-6 lg:px-8 lg:py-8">
+      <div className="admin-page-body">
         {/* Filters */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-xs">
@@ -143,7 +143,7 @@ export default function AdminProductsPage() {
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border bg-muted/30">
+                  <tr className="border-b border-border bg-secondary">
                     <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Product</th>
                     <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Category</th>
                     <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Price</th>
@@ -156,10 +156,10 @@ export default function AdminProductsPage() {
                   {filtered.map(product => {
                     const stock = stockLabel(product.stock)
                     return (
-                      <tr key={product.id} className="hover:bg-muted/20 transition-colors">
+                      <tr key={product.id} className="hover:bg-secondary transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="relative size-12 shrink-0 overflow-hidden border border-border bg-muted/40">
+                            <div className="relative size-12 shrink-0 overflow-hidden border border-border bg-muted">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={product.image || "/placeholder.svg"}
@@ -184,7 +184,7 @@ export default function AdminProductsPage() {
                             <span className={cn(
                               "border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em]",
                               product.tag === "Bestseller"
-                                ? "border-gold/40 bg-gold/10 text-gold-foreground"
+                                ? "border-gold/40 bg-lavender text-gold"
                                 : product.tag === "Sale"
                                 ? "border-destructive/30 bg-destructive/10 text-destructive"
                                 : "border-border text-muted-foreground",
@@ -242,7 +242,7 @@ export default function AdminProductsPage() {
                 const stock = stockLabel(product.stock)
                 return (
                   <div key={product.id} className="flex items-center gap-3 p-4">
-                    <div className="relative size-14 shrink-0 overflow-hidden border border-border bg-muted/40">
+                    <div className="relative size-14 shrink-0 overflow-hidden border border-border bg-muted">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={product.image || "/placeholder.svg"}

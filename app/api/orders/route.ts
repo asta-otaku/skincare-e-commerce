@@ -118,7 +118,7 @@ export async function POST(request: Request) {
     const orderRow = {
       reference,
       user_id: userId,
-      guest_email: shipping.email,
+      guest_email: shipping.email.trim().toLowerCase(),
       items: items.map(i => ({
         productId: i.productId,
         name: i.name,

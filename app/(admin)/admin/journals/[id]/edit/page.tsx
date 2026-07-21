@@ -35,11 +35,13 @@ export default function EditJournalPage({ params }: { params: Promise<{ id: stri
 
   if (status === "loading") {
     return (
-      <div className="flex-1 overflow-auto px-6 py-8 lg:px-8">
-        <div className="space-y-4 max-w-2xl animate-pulse">
-          <div className="h-8 w-48 bg-muted/50" />
-          <div className="h-4 w-72 bg-muted/30" />
-          <div className="h-96 w-full bg-muted/20 mt-6" />
+      <div className="flex flex-1 flex-col gap-8 overflow-auto">
+        <div className="admin-page-body">
+          <div className="space-y-4 max-w-2xl animate-pulse">
+            <div className="h-8 w-48 bg-muted" />
+            <div className="h-4 w-72 bg-secondary" />
+            <div className="h-96 w-full bg-secondary mt-6" />
+          </div>
         </div>
       </div>
     )

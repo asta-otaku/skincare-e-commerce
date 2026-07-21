@@ -88,7 +88,7 @@ export default function AdminRegisterPage() {
             Before you can access the admin dashboard, a super-admin must grant your account the admin role.
           </p>
 
-          <div className="mb-8 border border-border bg-muted/30 p-5 text-left">
+          <div className="mb-8 border border-border bg-secondary p-5 text-left">
             <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-gold mb-3">
               One more step — grant admin access
             </p>

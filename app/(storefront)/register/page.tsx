@@ -126,7 +126,7 @@ export default function RegisterPage() {
         </label>
 
         {error && (
-          <p className="text-xs text-muted-foreground bg-muted/50 border border-border px-4 py-3">{error}</p>
+          <p className="text-xs text-muted-foreground bg-muted border border-border px-4 py-3">{error}</p>
         )}
 
         <button type="submit" disabled={loading}

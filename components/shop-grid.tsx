@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { SlidersHorizontal, X, ChevronDown } from "lucide-react"
-import { BRANDS, ALL_CONCERNS, ALL_INGREDIENTS, ALL_CATEGORIES, type Product } from "@/lib/products"
+import { ALL_CONCERNS, ALL_INGREDIENTS, ALL_CATEGORIES, type Product } from "@/lib/products"
 import { queryProducts } from "@/lib/supabase/products"
+import { getActiveBrands } from "@/lib/supabase/brands"
 import { ProductCard } from "@/components/product-card"
 import { cn } from "@/lib/utils"
 
@@ -32,6 +33,11 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
   const [minRating, setMinRating]     = useState(0)
   const [filtered, setFiltered] = useState<Product[]>(initialProducts ?? [])
   const [loading, setLoading] = useState(false)
+  const [brandNames, setBrandNames] = useState<string[]>([])
+
+  useEffect(() => {
+    getActiveBrands().then(list => setBrandNames(list.map(b => b.name)))
+  }, [])
 
   // Query Supabase with filters (DB-level), not client-side array filtering
   useEffect(() => {
@@ -108,9 +114,9 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
 
       {/* Filter panel */}
       {filtersOpen && (
-        <div className="mb-8 grid gap-6 border border-border bg-muted/20 p-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="mb-8 grid gap-6 border border-border bg-secondary p-4 sm:p-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <FilterSelect label="Category"   value={category}   onChange={setCategory}   options={["All", ...ALL_CATEGORIES]} />
-          <FilterSelect label="Brand"      value={brand}      onChange={setBrand}      options={["All", ...BRANDS.map(b => b.name)]} />
+          <FilterSelect label="Brand"      value={brand}      onChange={setBrand}      options={["All", ...brandNames]} />
           <FilterSelect label="Concern"    value={concern}    onChange={setConcern}    options={["All", ...ALL_CONCERNS]} />
           <FilterSelect label="Ingredient" value={ingredient} onChange={setIngredient} options={["All", ...ALL_INGREDIENTS]} />
           {/* Min Rating filter */}
@@ -125,7 +131,7 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
                   className={cn(
                     "flex-1 border py-1.5 text-[10px] font-light transition-all",
                     minRating === r
-                      ? "border-gold bg-gold/10 text-gold"
+                      ? "border-gold bg-lavender text-gold"
                       : "border-border text-muted-foreground hover:border-gold/60",
                   )}
                 >
@@ -158,7 +164,7 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
       {/* Active filter chips */}
       {activeCount > 0 && (
         <div className="mb-5 flex flex-wrap gap-2">
-          {[
+          {([
             category !== "All" && { label: category, clear: () => setCategory("All") },
             brand !== "All"    && { label: brand,    clear: () => setBrand("All") },
             concern !== "All"  && { label: concern,  clear: () => setConcern("All") },
@@ -166,12 +172,12 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
             priceMax < 50000   && { label: `Max ₦${priceMax.toLocaleString()}`, clear: () => setPriceMax(50000) },
             inStockOnly        && { label: "In stock", clear: () => setInStockOnly(false) },
             minRating > 0      && { label: `${minRating}★+`, clear: () => setMinRating(0) },
-          ].filter(Boolean).map((chip: any) => (
+          ].filter(Boolean) as { label: string; clear: () => void }[]).map(chip => (
             <button
               key={chip.label}
               type="button"
               onClick={chip.clear}
-              className="flex items-center gap-1.5 border border-gold/40 bg-gold/10 px-3 py-1 text-[11px] font-light text-foreground transition-all hover:bg-gold/20"
+              className="flex items-center gap-1.5 border border-gold/40 bg-lavender px-3 py-1 text-[11px] font-light text-gold transition-all hover:bg-secondary"
             >
               {chip.label} <X className="size-3" />
             </button>

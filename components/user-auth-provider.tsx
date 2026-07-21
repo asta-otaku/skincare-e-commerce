@@ -110,6 +110,8 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
       }
       return error.message
     }
+    // Attach guest checkouts that used this email
+    void supabase.rpc("claim_guest_orders")
     return null
   }
 

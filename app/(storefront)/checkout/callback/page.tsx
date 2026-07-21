@@ -85,7 +85,7 @@ function CallbackInner() {
 
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-5 text-center">
-      <div className="flex size-16 items-center justify-center rounded-full bg-gold/20 mb-2">
+      <div className="flex size-16 items-center justify-center rounded-full bg-lavender mb-2">
         <Check className="size-8 text-gold" />
       </div>
       <p className="text-[11px] font-light uppercase tracking-[0.25em] text-gold">Payment Successful</p>

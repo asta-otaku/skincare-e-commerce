@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { ShoppingBag, Heart, Star, ArrowRight, Package } from "lucide-react"
 import { useFavorites } from "@/components/favorites-provider"
+import { OrderItemThumb } from "@/components/order-item-thumb"
 import { getMyOrders } from "@/lib/supabase/orders"
 import { getMyReviews } from "@/lib/supabase/reviews"
 import type { Order, OrderStatus } from "@/lib/orders"
@@ -15,7 +16,7 @@ const STATUS_STYLE: Record<OrderStatus, { label: string; cls: string }> = {
   fulfilled:  { label: "Delivered",  cls: "text-green-700 bg-green-50 border-green-200" },
   shipped:    { label: "Shipped",    cls: "text-purple-700 bg-purple-50 border-purple-200" },
   processing: { label: "Processing", cls: "text-blue-700 bg-blue-50 border-blue-200" },
-  pending:    { label: "Pending",    cls: "text-gold-foreground bg-gold/10 border-gold/30" },
+  pending:    { label: "Pending",    cls: "text-gold bg-lavender border-gold/30" },
   cancelled:  { label: "Cancelled",  cls: "text-muted-foreground bg-muted border-border" },
   refunded:   { label: "Refunded",   cls: "text-destructive bg-destructive/10 border-destructive/20" },
 }
@@ -116,7 +117,7 @@ export default function AccountPage() {
           <div className="divide-y divide-border border border-border">
             {recent.map(order => {
               const s = STATUS_STYLE[order.status]
-              const image = order.items[0]?.image || "/placeholder.svg"
+              const thumb = order.items[0]
               const date = new Date(order.createdAt).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
@@ -127,11 +128,22 @@ export default function AccountPage() {
                 <Link
                   key={order.reference}
                   href={`/account/orders/${order.reference}`}
-                  className="flex items-center gap-4 px-5 py-4 hover:bg-muted/20 transition-colors group"
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-secondary transition-colors group"
                 >
-                  <div className="relative size-12 shrink-0 overflow-hidden border border-border bg-muted/40">
-                    <Image src={image} alt="" fill sizes="48px" className="object-cover" />
-                  </div>
+                  {thumb ? (
+                    <OrderItemThumb
+                      productId={thumb.productId}
+                      image={thumb.image}
+                      name={thumb.name}
+                      size="md"
+                      className="size-12 ring-0"
+                      sizes="48px"
+                    />
+                  ) : (
+                    <div className="relative flex size-12 shrink-0 items-center justify-center border border-border bg-muted">
+                      <ShoppingBag className="size-5 text-muted-foreground" />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="font-mono text-xs font-medium">{order.reference}</p>
                     <p className="text-xs font-light text-muted-foreground mt-0.5">
@@ -171,7 +183,7 @@ export default function AccountPage() {
           <div className="flex gap-4 overflow-x-auto no-scrollbar pb-1">
             {favorites.slice(0, 4).map(product => (
               <Link key={product.id} href={`/product/${product.id}`} className="group shrink-0 w-36">
-                <div className="relative aspect-4/5 overflow-hidden border border-border bg-muted/40 group-hover:border-gold/60 transition-colors">
+                <div className="relative aspect-4/5 overflow-hidden border border-border bg-muted group-hover:border-gold/60 transition-colors">
                   <Image
                     src={product.image || "/placeholder.svg"}
                     alt={product.name}
@@ -233,7 +245,7 @@ export default function AccountPage() {
         )}
       </section>
 
-      <section className="border border-border/60 bg-muted/20 p-5">
+      <section className="border border-border/60 bg-secondary p-5">
         <p className="mb-3 text-[11px] font-light uppercase tracking-[0.18em] text-muted-foreground">
           Quick Actions
         </p>

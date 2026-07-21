@@ -45,7 +45,7 @@ const NAV = [
     label: "Makeup",
     items: [
       { label: "Lip", href: "/shop?category=lip" },
-      { label: "Face", href: "/shop?category=makeup-face" },
+      { label: "Face", href: "/shop?category=Makeup%20Face" },
       { label: "Eyes", href: "/shop?category=eyes" },
     ],
   },
@@ -359,7 +359,7 @@ export function SiteNavbar() {
                       <ChevronDown className={cn("size-4 transition-transform text-muted-foreground", expanded && "rotate-180")} />
                     </button>
                     {expanded && (
-                      <div className="bg-muted/30 pb-1">
+                      <div className="bg-secondary pb-1">
                         {item.items.map(sub => (
                           <Link
                             key={sub.label}
@@ -393,7 +393,7 @@ export function SiteNavbar() {
                       <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", expanded && "rotate-180")} />
                     </button>
                     {expanded && (
-                      <div className="bg-muted/30 pb-1">
+                      <div className="bg-secondary pb-1">
                         {items.map(item => (
                           <Link
                             key={item}

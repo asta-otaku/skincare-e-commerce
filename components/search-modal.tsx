@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, createContext, useContext, useCallback, us
 import Image from "next/image"
 import Link from "next/link"
 import { Search, X, ArrowRight } from "lucide-react"
-import { formatPrice, type Product } from "@/lib/products"
-import { queryProducts } from "@/lib/supabase/products"
+import { formatPrice, getEffectivePrice, type Product } from "@/lib/products"
+import { searchProducts } from "@/lib/supabase/products"
 import { cn } from "@/lib/utils"
 
 /* ─── Context ──────────────────────────────────────────────── */
@@ -32,33 +32,56 @@ export function useSearch() {
 }
 
 /* ─── Modal ─────────────────────────────────────────────────── */
-const CATEGORIES = ["All", "Serums", "Oils", "Moisturizers", "Toners", "Eye Care", "Cleansers"]
+const CATEGORIES = ["All", "Serums", "Cleansers", "Moisturisers", "Toners", "Eye Care", "Sunscreen"]
+const SEARCH_DEBOUNCE_MS = 400
 
 export function SearchModal() {
   const { isSearchOpen, closeSearch } = useSearch()
   const [query, setQuery] = useState("")
+  const [debouncedQuery, setDebouncedQuery] = useState("")
   const [activeCategory, setActiveCategory] = useState("All")
-  const [catalog, setCatalog] = useState<Product[]>([])
-  const [catalogLoaded, setCatalogLoaded] = useState(false)
+  const [results, setResults] = useState<Product[]>([])
+  const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const requestIdRef = useRef(0)
 
   useEffect(() => {
     if (isSearchOpen) {
       document.body.style.overflow = "hidden"
       setTimeout(() => inputRef.current?.focus(), 50)
-      if (!catalogLoaded) {
-        queryProducts({}).then(data => {
-          setCatalog(data)
-          setCatalogLoaded(true)
-        })
-      }
     } else {
       document.body.style.overflow = ""
       setQuery("")
+      setDebouncedQuery("")
       setActiveCategory("All")
+      setResults([])
+      setLoading(false)
     }
     return () => { document.body.style.overflow = "" }
-  }, [isSearchOpen, catalogLoaded])
+  }, [isSearchOpen])
+
+  // Debounce text input so we don't hit the backend on every keystroke
+  useEffect(() => {
+    if (!isSearchOpen) return
+    const t = window.setTimeout(() => setDebouncedQuery(query.trim()), SEARCH_DEBOUNCE_MS)
+    return () => window.clearTimeout(t)
+  }, [query, isSearchOpen])
+
+  useEffect(() => {
+    if (!isSearchOpen) return
+
+    const requestId = ++requestIdRef.current
+    setLoading(true)
+
+    searchProducts(debouncedQuery, activeCategory, 40)
+      .then(data => {
+        if (requestId !== requestIdRef.current) return
+        setResults(data)
+      })
+      .finally(() => {
+        if (requestId === requestIdRef.current) setLoading(false)
+      })
+  }, [isSearchOpen, debouncedQuery, activeCategory])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -67,23 +90,6 @@ export function SearchModal() {
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [closeSearch])
-
-  const results = useMemo<Product[]>(() => {
-    let pool = catalog
-    if (activeCategory !== "All") {
-      pool = pool.filter((p) => p.category.toLowerCase().includes(activeCategory.toLowerCase()))
-    }
-    if (!query.trim()) return pool.slice(0, 40)
-    const q = query.toLowerCase()
-    return pool.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.tagline.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        p.brand.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q),
-    )
-  }, [query, activeCategory, catalog])
 
   return (
     <>
@@ -159,7 +165,9 @@ export function SearchModal() {
 
         {/* Results */}
         <div className="flex-1 overflow-y-auto px-5 py-5 md:px-8">
-          {results.length === 0 ? (
+          {(loading || query.trim() !== debouncedQuery) && results.length === 0 ? (
+            <p className="py-16 text-center text-sm font-light text-muted-foreground">Searching…</p>
+          ) : results.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <p className="font-serif text-xl font-medium">No results found</p>
               <p className="mt-2 text-sm font-light text-muted-foreground">
@@ -176,10 +184,15 @@ export function SearchModal() {
           ) : (
             <>
               <p className="mb-4 text-[11px] font-light uppercase tracking-[0.18em] text-muted-foreground">
-                {results.length} result{results.length !== 1 ? "s" : ""}
+                {loading || query.trim() !== debouncedQuery
+                  ? "Updating…"
+                  : `${results.length} result${results.length !== 1 ? "s" : ""}`}
                 {query && <> for &ldquo;{query}&rdquo;</>}
               </p>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              <div className={cn(
+                "grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5",
+                (loading || query.trim() !== debouncedQuery) && "opacity-60",
+              )}>
                 {results.map((product) => (
                   <Link
                     key={product.id}
@@ -187,7 +200,7 @@ export function SearchModal() {
                     onClick={closeSearch}
                     className="group flex flex-col gap-2"
                   >
-                    <div className="relative aspect-4/5 overflow-hidden border border-border bg-muted/40 transition-colors group-hover:border-gold/60">
+                    <div className="relative aspect-4/5 overflow-hidden border border-border bg-muted transition-colors group-hover:border-gold/60">
                       <Image
                         src={product.image || "/placeholder.svg"}
                         alt={product.name}
@@ -204,7 +217,7 @@ export function SearchModal() {
                         {product.name}
                       </p>
                       <p className="mt-1 text-xs font-light text-muted-foreground">
-                        {formatPrice(product.price)}
+                        {formatPrice(getEffectivePrice(product))}
                       </p>
                     </div>
                   </Link>

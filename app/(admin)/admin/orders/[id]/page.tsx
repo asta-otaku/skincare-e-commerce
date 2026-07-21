@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, use } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import {
   ArrowLeft, MapPin, Mail, Phone, Package, CreditCard,
@@ -15,6 +14,7 @@ import {
   type OrderStatus,
 } from "@/lib/orders"
 import { getOrderByReference } from "@/lib/supabase/orders"
+import { OrderItemThumb } from "@/components/order-item-thumb"
 import { cn } from "@/lib/utils"
 
 function formatCurrency(n: number) {
@@ -51,9 +51,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
   if (loading) {
     return (
-      <div className="flex-1 overflow-auto px-6 py-8 lg:px-8">
-        <div className="h-8 w-48 bg-muted/50 animate-pulse mb-6" />
-        <div className="h-64 w-full bg-muted/30 animate-pulse" />
+      <div className="flex flex-1 flex-col gap-8 overflow-auto">
+        <div className="admin-page-body">
+          <div className="h-8 w-48 bg-muted/50 animate-pulse mb-6" />
+          <div className="h-64 w-full bg-muted/30 animate-pulse" />
+        </div>
       </div>
     )
   }
@@ -101,26 +103,26 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="flex-1 overflow-auto" onClick={() => setStatusOpen(false)}>
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background px-6 py-4 lg:px-8">
-        <div className="flex items-center gap-4">
+    <div className="flex flex-1 flex-col gap-8 overflow-auto" onClick={() => setStatusOpen(false)}>
+      <div className="admin-page-header sm:items-start lg:items-center">
+        <div className="flex min-w-0 items-start gap-3 sm:gap-4">
           <Link
             href="/admin/orders"
-            className="flex size-8 items-center justify-center border border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+            className="flex size-8 shrink-0 items-center justify-center border border-border text-muted-foreground hover:border-foreground hover:text-foreground"
           >
             <ArrowLeft className="size-4" />
           </Link>
-          <div>
-            <h1 className="font-serif text-2xl font-medium font-mono">{order.id}</h1>
+          <div className="min-w-0">
+            <h1 className="font-serif text-lg font-medium font-mono sm:text-2xl truncate">{order.id}</h1>
             <p className="text-xs font-light text-muted-foreground">{formatDateTime(order.createdAt)}</p>
           </div>
         </div>
-        <div className="relative" onClick={e => e.stopPropagation()}>
+        <div className="relative w-full sm:w-auto" onClick={e => e.stopPropagation()}>
           <button
             type="button"
             onClick={() => setStatusOpen(v => !v)}
             className={cn(
-              "flex items-center gap-2 border px-4 py-2 text-xs font-medium uppercase tracking-[0.12em]",
+              "flex w-full items-center justify-center gap-2 border px-4 py-2 text-xs font-medium uppercase tracking-[0.12em] sm:w-auto",
               statusMeta.border, statusMeta.bg, statusMeta.color,
             )}
           >
@@ -133,7 +135,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   key={s}
                   type="button"
                   onClick={() => updateStatus(s)}
-                  className="block w-full px-4 py-2.5 text-left text-xs font-light capitalize hover:bg-muted/40"
+                  className="block w-full px-4 py-2.5 text-left text-xs font-light capitalize hover:bg-muted"
                 >
                   {ORDER_STATUS_META[s].label}
                 </button>
@@ -143,12 +145,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      <div className="px-6 py-8 lg:px-8 grid gap-8 lg:grid-cols-3">
+      <div className="admin-page-body grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           {/* Timeline */}
           <div className="border border-border p-6">
             <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.15em]">Status</h2>
-            <div className="flex justify-between gap-2">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {STATUS_TIMELINE.map((step, i) => {
                 const done = progressIdx >= i
                 const Icon = step.icon
@@ -156,7 +158,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   <div key={step.status} className="flex flex-1 flex-col items-center gap-2 text-center">
                     <div className={cn(
                       "flex size-9 items-center justify-center rounded-full border",
-                      done ? "border-gold bg-gold/10 text-gold" : "border-border text-muted-foreground",
+                      done ? "border-gold bg-lavender text-gold" : "border-border text-muted-foreground",
                     )}>
                       <Icon className="size-4" />
                     </div>
@@ -177,12 +179,18 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <ul className="divide-y divide-border">
               {order.items.map(item => (
                 <li key={item.productId + item.name} className="flex items-center gap-4 px-6 py-4">
-                  <div className="relative size-14 shrink-0 overflow-hidden border border-border bg-muted/40">
-                    <Image src={item.image || "/placeholder.svg"} alt={item.name} fill sizes="56px" className="object-cover" />
-                  </div>
+                  <OrderItemThumb
+                    productId={item.productId}
+                    image={item.image}
+                    name={item.name}
+                    size="lg"
+                    sizes="56px"
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{item.name}</p>
-                    <p className="text-xs font-light text-muted-foreground">{item.category} · Qty {item.quantity}</p>
+                    <p className="text-xs font-light text-muted-foreground">
+                      {item.productId.startsWith("deal__") ? "Bundle Deal" : item.category} · Qty {item.quantity}
+                    </p>
                   </div>
                   <p className="text-sm font-medium">{formatCurrency(item.price * item.quantity)}</p>
                 </li>

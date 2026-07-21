@@ -54,16 +54,16 @@ export default function AdminDealsPage() {
   const activeCount = deals.filter(d => d.status === "active").length
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col gap-8 overflow-auto">
       {/* Header */}
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background px-6 py-4 lg:px-8">
+      <div className="admin-page-header">
         <div>
           <h1 className="font-serif text-2xl font-medium">Deals & Bundles</h1>
           <p className="text-xs font-light text-muted-foreground mt-0.5">
             {loading ? "Loading…" : `${deals.length} deals — ${activeCount} live on storefront`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={load}
@@ -82,7 +82,7 @@ export default function AdminDealsPage() {
         </div>
       </div>
 
-      <div className="px-6 py-6 lg:px-8 lg:py-8">
+      <div className="admin-page-body">
         {/* Filters */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-xs">
@@ -95,7 +95,7 @@ export default function AdminDealsPage() {
               className="w-full border border-border bg-background py-2.5 pl-10 pr-4 text-sm font-light outline-none focus:border-foreground transition-colors"
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {(["all", "active", "draft", "archived"] as const).map(s => (
               <button
                 key={s}
@@ -114,10 +114,11 @@ export default function AdminDealsPage() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden border border-border">
+        {/* Table / cards */}
+        <div className="border border-border">
+          <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-border bg-muted/40">
+            <thead className="border-b border-border bg-muted">
               <tr>
                 <th className="px-5 py-3.5 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Deal</th>
                 <th className="hidden px-5 py-3.5 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground md:table-cell">Items</th>
@@ -128,18 +129,18 @@ export default function AdminDealsPage() {
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.map(deal => (
-                <tr key={deal.id} className="group transition-colors hover:bg-muted/20">
+                <tr key={deal.id} className="group transition-colors hover:bg-secondary">
                   {/* Deal info */}
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex size-10 shrink-0 items-center justify-center border border-gold/30 bg-gold/5">
+                      <div className="flex size-10 shrink-0 items-center justify-center border border-gold/30 bg-lavender">
                         <Tag className="size-4 text-gold/70" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-medium leading-none">{deal.title}</p>
                           {deal.highlight && (
-                            <span className="border border-gold/40 bg-gold/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.15em] text-gold">
+                            <span className="border border-gold/40 bg-lavender px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.15em] text-gold">
                               Featured
                             </span>
                           )}
@@ -221,6 +222,74 @@ export default function AdminDealsPage() {
               )}
             </tbody>
           </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="divide-y divide-border md:hidden">
+            {filtered.map(deal => (
+              <div key={deal.id} className="p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center border border-gold/30 bg-lavender">
+                    <Tag className="size-4 text-gold/70" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium leading-snug">{deal.title}</p>
+                      {deal.highlight && (
+                        <span className="border border-gold/40 bg-lavender px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.15em] text-gold">
+                          Featured
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs font-light text-muted-foreground">{deal.brand} · {deal.badge}</p>
+                    <span className={cn(
+                      "mt-2 inline-flex items-center border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em]",
+                      STATUS_STYLE[deal.status].cls,
+                    )}>
+                      {STATUS_STYLE[deal.status].label}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">₦{deal.salePrice.toLocaleString()}</p>
+                    <p className="text-xs font-light line-through text-muted-foreground">₦{deal.originalPrice.toLocaleString()}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => toggleStatus(deal.id)}
+                      aria-label={deal.status === "active" ? "Set to draft" : "Set to active"}
+                      className="flex size-9 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {deal.status === "active"
+                        ? <ToggleRight className="size-4 text-green-600" />
+                        : <ToggleLeft className="size-4" />
+                      }
+                    </button>
+                    <Link
+                      href={`/admin/deals/${deal.id}/edit`}
+                      className="flex size-9 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                      aria-label="Edit deal"
+                    >
+                      <Edit2 className="size-3.5" />
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteId(deal.id)}
+                      className="flex size-9 items-center justify-center text-muted-foreground transition-colors hover:text-destructive"
+                      aria-label="Delete deal"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {filtered.length === 0 && (
+              <p className="px-4 py-16 text-center text-sm font-light text-muted-foreground">No deals found.</p>
+            )}
+          </div>
         </div>
 
         {/* Summary cards */}

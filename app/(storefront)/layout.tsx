@@ -19,7 +19,7 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
           <div className="flex min-h-screen flex-col bg-background">
             <AnnouncementBar />
             <SiteNavbar />
-            <main className="flex-1">{children}</main>
+            <main className="flex-1 overflow-x-hidden">{children}</main>
             <SiteFooter />
           </div>
           <CartDrawer />

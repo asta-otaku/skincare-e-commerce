@@ -108,14 +108,14 @@ export function CartDrawer() {
                   <li key={item.id} className="flex gap-4 py-5">
                     {/* Image — bundles show a gift icon tile instead of broken product link */}
                     {item.id.startsWith("deal__") ? (
-                      <div className="relative flex size-20 shrink-0 items-center justify-center border border-gold/30 bg-gold/5">
+                      <div className="relative flex size-20 shrink-0 items-center justify-center border border-gold/30 bg-lavender">
                         <ShoppingBag className="size-7 text-gold/60" />
                       </div>
                     ) : (
                       <Link
                         href={`/product/${item.id}`}
                         onClick={closeCart}
-                        className="relative size-20 shrink-0 overflow-hidden border border-border bg-muted/40"
+                        className="relative size-20 shrink-0 overflow-hidden border border-border bg-muted"
                       >
                         <Image
                           src={item.image || "/placeholder.svg"}

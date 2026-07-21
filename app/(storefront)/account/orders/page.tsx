@@ -1,11 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import { Search, ArrowRight, ShoppingBag } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getMyOrders } from "@/lib/supabase/orders"
+import { OrderItemThumb } from "@/components/order-item-thumb"
 import type { Order, OrderStatus } from "@/lib/orders"
 import { formatPrice } from "@/lib/products"
 
@@ -13,7 +13,7 @@ const STATUS_STYLE: Record<OrderStatus, { label: string; cls: string }> = {
   fulfilled:  { label: "Delivered",  cls: "text-green-700 bg-green-50 border-green-200" },
   shipped:    { label: "Shipped",    cls: "text-purple-700 bg-purple-50 border-purple-200" },
   processing: { label: "Processing", cls: "text-blue-700 bg-blue-50 border-blue-200" },
-  pending:    { label: "Pending",    cls: "text-gold-foreground bg-gold/10 border-gold/30" },
+  pending:    { label: "Pending",    cls: "text-gold bg-lavender border-gold/30" },
   cancelled:  { label: "Cancelled",  cls: "text-muted-foreground bg-muted border-border" },
   refunded:   { label: "Refunded",   cls: "text-destructive bg-destructive/10 border-destructive/20" },
 }
@@ -132,9 +132,15 @@ export default function AccountOrdersPage() {
                 <div className="flex items-center gap-3 px-5 py-3.5">
                   <div className="flex -space-x-2">
                     {order.items.slice(0, 3).map((item, i) => (
-                      <div key={i} className="relative size-10 overflow-hidden border border-background bg-muted/40 ring-1 ring-background">
-                        <Image src={item.image || "/placeholder.svg"} alt={item.name} fill sizes="40px" className="object-cover" />
-                      </div>
+                      <OrderItemThumb
+                        key={i}
+                        productId={item.productId}
+                        image={item.image}
+                        name={item.name}
+                        size="md"
+                        className="border-background ring-1 ring-background"
+                        sizes="40px"
+                      />
                     ))}
                   </div>
                   <div className="flex-1 min-w-0">

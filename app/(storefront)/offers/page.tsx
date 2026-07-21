@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
 import Link from "next/link"
-import { getAllProducts } from "@/lib/supabase/products"
+import { countProducts } from "@/lib/supabase/products"
 import { PageHeader } from "@/components/page-header"
 import { OffersGrid } from "./offers-grid"
 
@@ -10,16 +10,17 @@ export const metadata: Metadata = {
   description: "Shop sale items, limited-time deals, and discounted skincare at HAYDA SKINCo. Get premium skincare at the best prices.",
 }
 
+export const revalidate = 60
+
 export default async function OffersPage() {
-  const allProducts = await getAllProducts()
-  const saleCount = allProducts.filter(p => p.tag === "Sale").length
+  const discountCount = await countProducts({ discountOnly: true })
 
   return (
     <>
       <PageHeader
         eyebrow="Limited-Time Deals"
         title="Offers & Sale"
-        description={`${saleCount} products on sale now — premium skincare at reduced prices, while stocks last.`}
+        description={`${discountCount} product${discountCount !== 1 ? "s" : ""} on discount now — premium skincare at reduced prices, while stocks last.`}
       />
 
       {/* Banner strip */}

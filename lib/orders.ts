@@ -212,7 +212,7 @@ export function getOrder(id: string) {
 }
 
 export const ORDER_STATUS_META: Record<OrderStatus, { label: string; color: string; bg: string; border: string }> = {
-  pending:    { label: "Pending",    color: "text-gold-foreground",   bg: "bg-gold/10",          border: "border-gold/30" },
+  pending:    { label: "Pending",    color: "text-gray-500",   bg: "bg-gray-50",          border: "border-gray-200" },
   processing: { label: "Processing", color: "text-blue-700",          bg: "bg-blue-50",          border: "border-blue-200" },
   shipped:    { label: "Shipped",    color: "text-purple-700",        bg: "bg-purple-50",        border: "border-purple-200" },
   fulfilled:  { label: "Fulfilled",  color: "text-green-700",         bg: "bg-green-50",         border: "border-green-200" },
@@ -222,7 +222,7 @@ export const ORDER_STATUS_META: Record<OrderStatus, { label: string; color: stri
 
 export const PAYMENT_STATUS_META: Record<PaymentStatus, { label: string; color: string }> = {
   paid:     { label: "Paid",     color: "text-green-700" },
-  pending:  { label: "Pending",  color: "text-gold-foreground" },
+  pending:  { label: "Pending",  color: "text-gold" },
   failed:   { label: "Failed",   color: "text-destructive" },
   refunded: { label: "Refunded", color: "text-muted-foreground" },
 }

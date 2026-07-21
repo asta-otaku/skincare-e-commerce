@@ -34,9 +34,11 @@ export type Address = {
   label: string
   full_name: string
   line1: string
+  /** Apartment, suite, etc. */
   line2?: string | null
   city: string
   state: string
+  postal_code?: string | null
   country: string
   phone?: string | null
   is_default: boolean
@@ -203,6 +205,7 @@ export async function getAddresses(): Promise<Address[]> {
     line2: r.line2,
     city: r.city ?? "",
     state: r.state ?? "",
+    postal_code: r.postal_code ?? null,
     country: r.country ?? "Nigeria",
     phone: r.phone,
     is_default: r.is_default ?? false,
@@ -224,6 +227,16 @@ export async function addAddress(
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
 
+  const makeDefault = count === 0 ? true : addr.is_default
+
+  if (makeDefault) {
+    await supabase
+      .from("addresses")
+      .update({ is_default: false })
+      .eq("user_id", user.id)
+      .eq("is_default", true)
+  }
+
   const { error } = await supabase.from("addresses").insert({
     user_id: user.id,
     label: addr.label,
@@ -232,10 +245,68 @@ export async function addAddress(
     line2: addr.line2 ?? null,
     city: addr.city,
     state: addr.state,
+    postal_code: addr.postal_code?.trim() || null,
     country: addr.country,
     phone: addr.phone ?? null,
-    is_default: count === 0 ? true : addr.is_default,
+    is_default: makeDefault,
   })
+
+  if (error) return error.message
+  return null
+}
+
+/** Update an existing address for the signed-in user. */
+export async function updateAddress(
+  id: string,
+  addr: Omit<Address, "id" | "is_default">,
+): Promise<string | null> {
+  const supabase = createClient()
+  if (!supabase) return "Supabase not configured."
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return "Not signed in."
+
+  const { error } = await supabase
+    .from("addresses")
+    .update({
+      label: addr.label,
+      full_name: addr.full_name,
+      line1: addr.line1,
+      line2: addr.line2?.trim() || null,
+      city: addr.city,
+      state: addr.state,
+      postal_code: addr.postal_code?.trim() || null,
+      country: addr.country,
+      phone: addr.phone?.trim() || null,
+    })
+    .eq("id", id)
+    .eq("user_id", user.id)
+
+  if (error) return error.message
+  return null
+}
+
+/** Mark an address as the user's default (clears previous default). */
+export async function setDefaultAddress(id: string): Promise<string | null> {
+  const supabase = createClient()
+  if (!supabase) return "Supabase not configured."
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return "Not signed in."
+
+  const { error: clearErr } = await supabase
+    .from("addresses")
+    .update({ is_default: false })
+    .eq("user_id", user.id)
+    .eq("is_default", true)
+
+  if (clearErr) return clearErr.message
+
+  const { error } = await supabase
+    .from("addresses")
+    .update({ is_default: true })
+    .eq("id", id)
+    .eq("user_id", user.id)
 
   if (error) return error.message
   return null
@@ -246,7 +317,32 @@ export async function deleteAddress(id: string): Promise<string | null> {
   const supabase = createClient()
   if (!supabase) return "Supabase not configured."
 
-  const { error } = await supabase.from("addresses").delete().eq("id", id)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return "Not signed in."
+
+  const { data: row } = await supabase
+    .from("addresses")
+    .select("is_default")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle()
+
+  const { error } = await supabase.from("addresses").delete().eq("id", id).eq("user_id", user.id)
   if (error) return error.message
+
+  // If the default was deleted, promote another address
+  if (row?.is_default) {
+    const { data: next } = await supabase
+      .from("addresses")
+      .select("id")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    if (next?.id) {
+      await supabase.from("addresses").update({ is_default: true }).eq("id", next.id)
+    }
+  }
+
   return null
 }

@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react"
 import type { Product } from "@/lib/products"
+import { getEffectivePrice } from "@/lib/products"
 import { useUserAuth } from "@/components/user-auth-provider"
 import {
   clearCartItems,
@@ -106,21 +107,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, session])
 
   const addItem = useCallback((product: Product) => {
+    const unit = getEffectivePrice(product)
+    const toAdd = { ...product, price: unit }
+
     setItems((prev) => {
-      const existing = prev.find((item) => item.id === product.id)
+      const existing = prev.find((item) => item.id === toAdd.id)
       const nextQty = (existing?.quantity ?? 0) + 1
       const next = existing
         ? prev.map((item) =>
-            item.id === product.id ? { ...item, ...product, quantity: nextQty } : item,
+            item.id === toAdd.id ? { ...item, ...toAdd, quantity: nextQty } : item,
           )
-        : [...prev, { ...product, quantity: 1 }]
+        : [...prev, { ...toAdd, quantity: 1 }]
 
       if (session) {
-        void upsertCartItem(product, nextQty)
+        void upsertCartItem(toAdd, nextQty)
       }
       return next
     })
-    setLastAdded(product.id)
+    setLastAdded(toAdd.id)
   }, [session])
 
   const removeItem = useCallback((id: string) => {

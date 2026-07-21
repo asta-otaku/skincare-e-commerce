@@ -1,12 +1,37 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ChevronRight, Check, Lock, Truck, ArrowLeft, ShieldCheck, Zap, Building2, Smartphone } from "lucide-react"
+import { ChevronRight, Check, Lock, Truck, ArrowLeft, ShieldCheck, Zap, Building2, Smartphone, ShoppingBag } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
+import { useUserAuth } from "@/components/user-auth-provider"
 import { formatPrice } from "@/lib/products"
 import { cn } from "@/lib/utils"
+import { getAddresses, getProfile, addAddress, type Address } from "@/lib/supabase/profile"
+
+function splitName(fullName: string): { firstName: string; lastName: string } {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return { firstName: "", lastName: "" }
+  if (parts.length === 1) return { firstName: parts[0], lastName: "" }
+  return { firstName: parts[0], lastName: parts.slice(1).join(" ") }
+}
+
+function addressToShipping(addr: Address, email: string) {
+  const { firstName, lastName } = splitName(addr.full_name)
+  return {
+    firstName,
+    lastName,
+    email,
+    phone: addr.phone ?? "",
+    address: addr.line1,
+    apartment: addr.line2 ?? "",
+    city: addr.city,
+    state: addr.state,
+    zip: addr.postal_code ?? "",
+    country: addr.country || "Nigeria",
+  }
+}
 
 type Step = "shipping" | "payment" | "review" | "confirmed"
 
@@ -90,7 +115,10 @@ const SHIPPING_METHODS = [
 
 export default function CheckoutPage() {
   const { items, subtotal } = useCart()
+  const { session } = useUserAuth()
   const [step, setStep] = useState<Step>("shipping")
+  const prefilledRef = useRef(false)
+  const [savedAddressCount, setSavedAddressCount] = useState(0)
 
   const [shipping, setShipping] = useState<ShippingData>({
     firstName: "", lastName: "", email: "", phone: "",
@@ -109,6 +137,43 @@ export default function CheckoutPage() {
   const [paying, setPaying] = useState(false)
   const [payError, setPayError] = useState("")
   const [orderRef, setOrderRef] = useState<string | null>(null)
+
+  // Prefill from default saved address + profile when signed in
+  useEffect(() => {
+    if (!session || prefilledRef.current) return
+    let cancelled = false
+
+      ; (async () => {
+        const [addrs, profile] = await Promise.all([getAddresses(), getProfile()])
+        if (cancelled) return
+
+        prefilledRef.current = true
+        setSavedAddressCount(addrs.length)
+
+        const email = profile?.email || session.email || ""
+        const def = addrs.find(a => a.is_default) ?? addrs[0]
+
+        if (def) {
+          setShipping(prev => ({
+            ...prev,
+            ...addressToShipping(def, email || prev.email),
+            shippingMethod: prev.shippingMethod,
+          }))
+          return
+        }
+
+        const { firstName, lastName } = splitName(profile?.full_name ?? session.name ?? "")
+        setShipping(prev => ({
+          ...prev,
+          firstName: firstName || prev.firstName,
+          lastName: lastName || prev.lastName,
+          email: email || prev.email,
+          phone: profile?.phone || prev.phone,
+        }))
+      })()
+
+    return () => { cancelled = true }
+  }, [session])
 
   async function applyPromo() {
     const code = promoInput.trim().toUpperCase()
@@ -150,6 +215,23 @@ export default function CheckoutPage() {
     setPaying(true)
     setPayError("")
     try {
+      // First checkout with no saved addresses → persist shipping as default
+      if (session && savedAddressCount === 0 && shipping.address.trim() && shipping.city.trim()) {
+        const err = await addAddress({
+          label: "Home",
+          full_name: `${shipping.firstName} ${shipping.lastName}`.trim(),
+          line1: shipping.address.trim(),
+          line2: shipping.apartment.trim() || null,
+          city: shipping.city.trim(),
+          state: shipping.state.trim() || "—",
+          postal_code: shipping.zip.trim() || null,
+          country: shipping.country || "Nigeria",
+          phone: shipping.phone.trim() || null,
+          is_default: true,
+        })
+        if (!err) setSavedAddressCount(1)
+      }
+
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -190,7 +272,7 @@ export default function CheckoutPage() {
   if (step === "confirmed") {
     return (
       <div className="flex min-h-[80vh] flex-col items-center justify-center px-5 text-center">
-        <div className="flex size-16 items-center justify-center rounded-full bg-gold/20 mb-6">
+        <div className="flex size-16 items-center justify-center rounded-full bg-lavender mb-6">
           <Check className="size-8 text-gold" />
         </div>
         <p className="text-[11px] font-light uppercase tracking-[0.25em] text-gold mb-3">Order Confirmed</p>
@@ -266,6 +348,7 @@ export default function CheckoutPage() {
                 data={shipping}
                 onChange={setShipping}
                 onNext={() => setStep("payment")}
+                hasSavedAddress={savedAddressCount > 0}
               />
             )}
             {step === "payment" && (
@@ -315,18 +398,26 @@ export default function CheckoutPage() {
 
 /* ─── Shipping Form ────────────────────────────────────────── */
 function ShippingForm({
-  data, onChange, onNext,
+  data, onChange, onNext, hasSavedAddress,
 }: {
   data: ShippingData
   onChange: (d: ShippingData) => void
   onNext: () => void
+  hasSavedAddress?: boolean
 }) {
   const set = (key: keyof ShippingData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     onChange({ ...data, [key]: e.target.value })
 
   return (
     <div>
-      <h2 className="font-serif text-2xl font-medium mb-6">Shipping Information</h2>
+      <h2 className="font-serif text-2xl font-medium mb-2">Shipping Information</h2>
+      {hasSavedAddress ? (
+        <p className="mb-6 text-sm font-light text-muted-foreground">
+          Prefilling from your default saved address. You can edit any field before continuing.
+        </p>
+      ) : (
+        <div className="mb-6" />
+      )}
       <div className="space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <FormField label="First Name" value={data.firstName} onChange={set("firstName")} required />
@@ -368,7 +459,7 @@ function ShippingForm({
                 className={cn(
                   "flex cursor-pointer items-center justify-between border p-4 transition-colors",
                   data.shippingMethod === method.id
-                    ? "border-foreground bg-muted/30"
+                    ? "border-foreground bg-secondary"
                     : "border-border hover:border-foreground/50",
                 )}
               >
@@ -436,7 +527,7 @@ function PaystackPaymentStep({
       </p>
 
       {/* Paystack brand banner */}
-      <div className="mb-6 border border-border bg-muted/30 p-5">
+      <div className="mb-6 border border-border bg-secondary p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             {/* Paystack wordmark (text-based since no asset) */}
@@ -479,7 +570,7 @@ function PaystackPaymentStep({
               className={cn(
                 "flex cursor-pointer items-center gap-4 border p-4 transition-colors",
                 method === m.id
-                  ? "border-foreground bg-muted/30"
+                  ? "border-foreground bg-secondary"
                   : "border-border hover:border-foreground/40",
               )}
             >
@@ -498,7 +589,7 @@ function PaystackPaymentStep({
       </div>
 
       {/* Info note */}
-      <div className="mb-6 flex items-start gap-3 border border-border/60 bg-muted/20 p-4 text-xs font-light text-muted-foreground">
+      <div className="mb-6 flex items-start gap-3 border border-border/60 bg-secondary p-4 text-xs font-light text-muted-foreground">
         <Lock className="size-3.5 mt-0.5 shrink-0 text-muted-foreground" />
         <p>
           You will be redirected to a secure Paystack checkout page to complete your payment.
@@ -664,15 +755,27 @@ function OrderSummary({
         <ul className="divide-y divide-border mb-5">
           {items.map((item) => (
             <li key={item.id} className="flex gap-3 py-3.5">
-              <div className="relative size-16 shrink-0 overflow-hidden border border-border bg-muted/40">
-                <Image src={item.image || "/placeholder.svg"} alt={item.name} fill sizes="64px" className="object-cover" />
-                <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-foreground text-[9px] text-background">
+              <div className="relative size-16 shrink-0 overflow-hidden border border-border bg-muted">
+                {item.id.startsWith("deal__") || !item.image ? (
+                  <div className="flex size-full items-center justify-center bg-lavender">
+                    <ShoppingBag className="size-7 text-gold/60" />
+                  </div>
+                ) : (
+                  <Image src={item.image} alt={item.name} fill sizes="64px" className="object-cover" />
+                )}
+
+                <span className="absolute right-1.5 top-1 flex size-4 items-center justify-center rounded-full bg-foreground text-[9px] text-background">
                   {item.quantity}
                 </span>
               </div>
               <div className="flex flex-1 flex-col justify-center">
+                <p className="text-[10px] font-light uppercase tracking-[0.18em] text-gold">
+                  {item.id.startsWith("deal__") ? "Bundle Deal" : item.category}
+                </p>
                 <p className="text-xs font-medium leading-snug">{item.name}</p>
-                <p className="text-xs font-light text-muted-foreground">{item.tagline}</p>
+                {!item.id.startsWith("deal__") && (
+                  <p className="text-xs font-light text-muted-foreground">{item.tagline}</p>
+                )}
               </div>
               <p className="text-xs font-medium self-center">{formatPrice(item.price * item.quantity)}</p>
             </li>

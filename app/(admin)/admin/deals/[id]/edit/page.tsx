@@ -55,10 +55,12 @@ export default function EditDealPage({ params }: { params: Promise<{ id: string 
 
   if (status === "loading") {
     return (
-      <div className="flex-1 overflow-auto px-6 py-8 lg:px-8">
-        <div className="space-y-4 max-w-2xl">
-          <div className="h-8 w-48 bg-muted/50 animate-pulse" />
-          <div className="h-32 w-full bg-muted/30 animate-pulse" />
+      <div className="flex flex-1 flex-col gap-8 overflow-auto">
+        <div className="admin-page-body">
+          <div className="space-y-4 max-w-2xl">
+            <div className="h-8 w-48 bg-muted/50 animate-pulse" />
+            <div className="h-32 w-full bg-muted/30 animate-pulse" />
+          </div>
         </div>
       </div>
     )
@@ -191,8 +193,8 @@ function EditDealForm({ deal }: { deal: Deal }) {
   }
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background px-6 py-4 lg:px-8">
+    <div className="flex flex-1 flex-col gap-8 overflow-auto">
+      <div className="admin-page-header">
         <div className="flex items-center gap-4">
           <Link
             href="/admin/deals"
@@ -228,7 +230,7 @@ function EditDealForm({ deal }: { deal: Deal }) {
         </div>
       </div>
 
-      <form id="deal-edit-form" onSubmit={handleSubmit} className="px-6 py-8 lg:px-8 lg:py-10">
+      <form id="deal-edit-form" onSubmit={handleSubmit} className="admin-page-body">
         {saveError && (
           <p className="mb-6 text-xs text-destructive bg-destructive/10 border border-destructive/20 px-4 py-2.5">
             {saveError}

@@ -67,7 +67,7 @@ export default function WholesalePage() {
             <div className="space-y-5">
               {PERKS.map(perk => (
                 <div key={perk.title} className="flex gap-4">
-                  <div className="flex size-10 shrink-0 items-center justify-center border border-border bg-muted/30">
+                  <div className="flex size-10 shrink-0 items-center justify-center border border-border bg-secondary">
                     <perk.icon className="size-4 text-gold" />
                   </div>
                   <div>
@@ -84,10 +84,10 @@ export default function WholesalePage() {
             <h2 className="font-serif text-2xl font-medium mb-5">Pricing Tiers</h2>
             <div className="space-y-3">
               {MINIMUMS.map((tier, i) => (
-                <div key={tier.tier} className={`border p-4 ${i === 1 ? "border-gold/60 bg-gold/5" : "border-border"}`}>
+                <div key={tier.tier} className={`border p-4 ${i === 1 ? "border-gold/60 bg-lavender" : "border-border"}`}>
                   <div className="flex items-center justify-between mb-1">
                     <p className="font-medium">{tier.tier}</p>
-                    <span className="border border-gold/40 bg-gold/10 px-2.5 py-0.5 text-[11px] font-medium text-gold-foreground">
+                    <span className="border border-gold/40 bg-lavender px-2.5 py-0.5 text-[11px] font-medium text-gold">
                       {tier.discount}
                     </span>
                   </div>

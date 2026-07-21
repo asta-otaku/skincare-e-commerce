@@ -177,7 +177,7 @@ export function ProductReviews({ productId }: { productId: string }) {
           <h3 className="font-serif text-xl font-medium mb-5">Share your experience</h3>
 
           {!session ? (
-            <div className="flex flex-col items-start gap-4 rounded-sm border border-border/60 bg-muted/20 p-5">
+            <div className="flex flex-col items-start gap-4 rounded-sm border border-border/60 bg-secondary p-5">
               <div>
                 <p className="text-sm font-medium mb-1">Sign in to leave a review</p>
                 <p className="text-xs font-light text-muted-foreground leading-relaxed">

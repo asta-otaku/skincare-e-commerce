@@ -5,6 +5,8 @@ export type Product = {
   tagline: string
   description: string
   price: number
+  /** Percentage off list price (0–100). */
+  discountPct?: number
   /** Primary image — always present */
   image: string
   /** Additional gallery images; falls back to [image] if empty */
@@ -277,6 +279,36 @@ export function formatPrice(price: number) {
   return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(price)
 }
 
+/** Clamp discount and return sale price from list price. */
+export function getEffectivePrice(product: Pick<Product, "price" | "discountPct">): number {
+  const pct = Math.min(100, Math.max(0, Number(product.discountPct) || 0))
+  if (pct <= 0) return product.price
+  return Math.round(product.price * (1 - pct / 100))
+}
+
+export function hasDiscount(product: Pick<Product, "discountPct">): boolean {
+  return (Number(product.discountPct) || 0) > 0
+}
+
+/** Matches storefront navbar category links (shop?category=…). */
 export const ALL_CONCERNS = ["Acne", "Hyperpigmentation", "Anti-Ageing", "Dry Skin", "Oily Skin", "Sensitive Skin"]
 export const ALL_INGREDIENTS = ["Vitamin C", "Retinol", "Niacinamide", "AHA/BHA", "Hyaluronic Acid", "SPF", "Ceramides"]
-export const ALL_CATEGORIES = ["Cleansers", "Toners", "Serums", "Moisturisers", "Sunscreen", "Eye Care", "Treatments"]
+export const ALL_CATEGORIES = [
+  "Cleansers",
+  "Toners",
+  "Serums",
+  "Moisturisers",
+  "Sunscreen",
+  "Eye Care",
+  "Treatments",
+  "Body Lotions",
+  "Scrubs",
+  "Shower Gels",
+  "Body Oils",
+  "Perfumes",
+  "Body Mists",
+  "Roll-ons",
+  "Lip",
+  "Makeup Face",
+  "Eyes",
+]

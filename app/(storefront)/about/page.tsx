@@ -69,7 +69,7 @@ export default function AboutPage() {
       </section>
 
       {/* Values */}
-      <section className="border-y border-border bg-muted/30">
+      <section className="border-y border-border bg-secondary">
         <div className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
           <div className="mb-14 flex flex-col items-center text-center">
             <p className="text-xs font-light uppercase tracking-[0.3em] text-gold">What We Stand For</p>

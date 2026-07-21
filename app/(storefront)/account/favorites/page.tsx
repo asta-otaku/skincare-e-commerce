@@ -50,7 +50,7 @@ export default function AccountFavoritesPage() {
               const added = addedIds.has(product.id)
               return (
                 <article key={product.id} className="group flex flex-col">
-                  <div className="relative aspect-4/5 overflow-hidden border border-border bg-muted/40 transition-colors group-hover:border-gold/60">
+                  <div className="relative aspect-4/5 overflow-hidden border border-border bg-muted transition-colors group-hover:border-gold/60">
                     <Link href={`/product/${product.id}`} aria-label={`View ${product.name}`}>
                       <Image
                         src={product.image || "/placeholder.svg"}
@@ -66,7 +66,7 @@ export default function AccountFavoritesPage() {
                       type="button"
                       onClick={() => removeFavorite(product.id)}
                       aria-label={`Remove ${product.name} from favourites`}
-                      className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full border border-gold/40 bg-gold/20 text-gold backdrop-blur-sm transition-all hover:bg-destructive/20 hover:border-destructive/40 hover:text-destructive"
+                      className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full border border-gold/40 bg-lavender text-gold backdrop-blur-sm transition-all hover:bg-destructive/20 hover:border-destructive/40 hover:text-destructive"
                     >
                       <Heart className="size-3.5 fill-gold transition-colors hover:fill-transparent" />
                     </button>

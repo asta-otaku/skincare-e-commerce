@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Check, Plus, Heart, Star } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
 import { useFavorites } from "@/components/favorites-provider"
-import { formatPrice, type Product } from "@/lib/products"
+import { formatPrice, getEffectivePrice, hasDiscount, type Product } from "@/lib/products"
 import { cn } from "@/lib/utils"
 
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
@@ -32,7 +32,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
       <Link
         href={`/product/${product.id}`}
         aria-label={`View ${product.name}`}
-        className="relative aspect-4/5 overflow-hidden border border-border bg-muted/40 transition-colors duration-500 group-hover:border-gold/60"
+        className="relative aspect-4/5 overflow-hidden border border-border bg-muted transition-colors duration-500 group-hover:border-gold/60"
       >
         {product.tag && (
           <span
@@ -46,6 +46,13 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
             {product.tag}
           </span>
         )}
+        {hasDiscount(product) && (
+          <span className="absolute left-4 z-10 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] bg-foreground text-background"
+            style={{ top: product.tag ? "2.75rem" : "1rem" }}
+          >
+            -{product.discountPct}%
+          </span>
+        )}
 
         {/* Favorite button */}
         <button
@@ -55,7 +62,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           className={cn(
             "absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-full border backdrop-blur-sm transition-all duration-300",
             favorited
-              ? "border-gold/40 bg-gold/20 text-gold opacity-100"
+              ? "border-gold/40 bg-lavender text-gold opacity-100"
               : "border-background/30 bg-background/60 text-foreground/60 opacity-0 group-hover:opacity-100 hover:border-gold/40 hover:text-gold",
           )}
         >
@@ -116,8 +123,19 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           </div>
         )}
 
-        <div className="mt-3 flex items-center gap-2">
-          <p className="text-sm font-light tracking-wide text-foreground">{formatPrice(product.price)}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {hasDiscount(product) ? (
+            <>
+              <p className="text-sm font-light tracking-wide text-muted-foreground line-through">
+                {formatPrice(product.price)}
+              </p>
+              <p className="text-sm font-medium tracking-wide text-foreground">
+                {formatPrice(getEffectivePrice(product))}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm font-light tracking-wide text-foreground">{formatPrice(product.price)}</p>
+          )}
           {product.stock <= 10 && product.stock > 0 && (
             <span className="text-[10px] font-light text-amber-600">Low stock</span>
           )}

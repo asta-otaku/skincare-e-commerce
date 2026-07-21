@@ -56,7 +56,7 @@ export default function DealsPage() {
       </div>
 
       {/* Custom bundle CTA */}
-      <div className="mt-14 bg-muted/40 border border-border p-8 text-center">
+      <div className="mt-14 bg-muted border border-border p-8 text-center">
         <h3 className="font-serif text-2xl font-medium mb-2">Need a custom bundle?</h3>
         <p className="text-sm font-light text-muted-foreground mb-5 max-w-md mx-auto">
           Can't find the right combination? Chat with us on WhatsApp and we'll curate a personalised skincare kit just for you.
@@ -90,7 +90,7 @@ function DealCard({ deal }: { deal: Deal }) {
     <div
       className={cn(
         "flex flex-col border p-6 transition-all hover:shadow-md",
-        deal.highlight ? "border-gold/60 bg-gold/5" : "border-border hover:border-gold/40",
+        deal.highlight ? "border-gold/60 bg-lavender" : "border-border hover:border-gold/40",
       )}
     >
       {/* Badge + brand */}

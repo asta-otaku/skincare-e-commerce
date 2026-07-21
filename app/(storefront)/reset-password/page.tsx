@@ -97,7 +97,7 @@ export default function ResetPasswordPage() {
       </div>
 
       {done ? (
-        <div className="w-full border border-gold/40 bg-gold/5 px-6 py-10 text-center">
+        <div className="w-full border border-gold/40 bg-lavender px-6 py-10 text-center">
           <span className="inline-flex size-12 items-center justify-center rounded-full bg-gold text-gold-foreground">
             <Check className="size-5" />
           </span>

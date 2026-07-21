@@ -22,7 +22,7 @@ const HERO_SLIDES = [
     subtitle: "Discover targeted serums and treatments from The Ordinary, COSRX & Paula's Choice.",
     cta: "Shop Serums",
     href: "/shop?category=serums",
-    gradient: "from-[#E8D5F5] via-[#F0EBF5] to-[#FAF7FD]",
+    gradient: "from-[#C026D3] via-[#E879F9] to-[#FAE8FF]",
     image: "/product-serum.png",
     productName: "Niacinamide 10% + Zinc",
     productBrand: "The Ordinary",
@@ -35,7 +35,7 @@ const HERO_SLIDES = [
     subtitle: "CeraVe and La Roche-Posay formulas trusted by dermatologists worldwide.",
     cta: "Shop Moisturisers",
     href: "/shop?category=moisturisers",
-    gradient: "from-[#D5E8F5] via-[#EBF3F9] to-[#F5FAFD]",
+    gradient: "from-[#7C3AED] via-[#A78BFA] to-[#EDE9FE]",
     image: "/product-cream.png",
     productName: "Moisturising Cream",
     productBrand: "CeraVe",
@@ -48,7 +48,7 @@ const HERO_SLIDES = [
     subtitle: "Premium sunscreens for Lagos weather — lightweight, no white cast, daily protection.",
     cta: "Shop Sunscreen",
     href: "/shop?category=sunscreen",
-    gradient: "from-[#F5EBD5] via-[#FAF3EB] to-[#FFFAF5]",
+    gradient: "from-[#9333EA] via-[#D946EF] to-[#FDF4FF]",
     image: "/product-cleanser.png",
     productName: "Anthelios UVMune SPF 50+",
     productBrand: "La Roche-Posay",
@@ -58,141 +58,139 @@ const HERO_SLIDES = [
 ]
 
 const CATEGORIES = [
-  { label: "Face",         href: "/shop?category=face",        emoji: "✨", desc: "Cleanse · Treat · Protect" },
-  { label: "Bath & Body",  href: "/shop?category=bath-body",   emoji: "🛁", desc: "Lotions · Oils · Scrubs" },
-  { label: "Fragrance",    href: "/shop?category=fragrance",   emoji: "🌸", desc: "Perfumes · Mists · Roll-ons" },
-  { label: "Makeup",       href: "/shop?category=makeup",      emoji: "💄", desc: "Lips · Eyes · Face" },
-  { label: "Sunscreen",    href: "/shop?category=sunscreen",   emoji: "☀️", desc: "SPF 30 · SPF 50+ · Tinted" },
-  { label: "Combo Deals",  href: "/deals",                     emoji: "🎁", desc: "Save up to 20%" },
+  { label: "Face", href: "/shop?category=face", emoji: "✨", desc: "Cleanse · Treat · Protect" },
+  { label: "Bath & Body", href: "/shop?category=bath-body", emoji: "🛁", desc: "Lotions · Oils · Scrubs" },
+  { label: "Fragrance", href: "/shop?category=fragrance", emoji: "🌸", desc: "Perfumes · Mists · Roll-ons" },
+  { label: "Makeup", href: "/shop?category=makeup", emoji: "💄", desc: "Lips · Eyes · Face" },
+  { label: "Sunscreen", href: "/shop?category=sunscreen", emoji: "☀️", desc: "SPF 30 · SPF 50+ · Tinted" },
+  { label: "Combo Deals", href: "/deals", emoji: "🎁", desc: "Save up to 20%" },
 ]
 
 const CONCERNS = [
-  { label: "Acne",            href: "/concern/acne",              color: "bg-red-50 border-red-100 hover:border-red-300" },
+  { label: "Acne", href: "/concern/acne", color: "bg-red-50 border-red-100 hover:border-red-300" },
   { label: "Hyperpigmentation", href: "/concern/hyperpigmentation", color: "bg-amber-50 border-amber-100 hover:border-amber-300" },
-  { label: "Anti-Ageing",     href: "/concern/anti-ageing",       color: "bg-purple-50 border-purple-100 hover:border-purple-300" },
-  { label: "Dry Skin",        href: "/concern/dry-skin",          color: "bg-blue-50 border-blue-100 hover:border-blue-300" },
-  { label: "Oily Skin",       href: "/concern/oily-skin",         color: "bg-green-50 border-green-100 hover:border-green-300" },
-  { label: "Sensitive Skin",  href: "/concern/sensitive-skin",    color: "bg-pink-50 border-pink-100 hover:border-pink-300" },
+  { label: "Anti-Ageing", href: "/concern/anti-ageing", color: "bg-purple-50 border-purple-100 hover:border-purple-300" },
+  { label: "Dry Skin", href: "/concern/dry-skin", color: "bg-blue-50 border-blue-100 hover:border-blue-300" },
+  { label: "Oily Skin", href: "/concern/oily-skin", color: "bg-green-50 border-green-100 hover:border-green-300" },
+  { label: "Sensitive Skin", href: "/concern/sensitive-skin", color: "bg-pink-50 border-pink-100 hover:border-pink-300" },
 ]
 
 /* ─── Hero slider ───────────────────────────────────────────── */
 function HeroSlider() {
   const [current, setCurrent] = useState(0)
-  const [fading, setFading] = useState(false)
 
-  // Fix: use functional setState everywhere — no stale-closure bug
   function goTo(next: number) {
-    setFading(true)
-    setTimeout(() => {
-      setCurrent(next)
-      setFading(false)
-    }, 200)
+    setCurrent((next + HERO_SLIDES.length) % HERO_SLIDES.length)
   }
 
-  function advance() {
-    setCurrent(prev => {
-      const next = (prev + 1) % HERO_SLIDES.length
-      setFading(true)
-      setTimeout(() => setFading(false), 200)
-      return next
-    })
+  function next() {
+    setCurrent(prev => (prev + 1) % HERO_SLIDES.length)
+  }
+
+  function prev() {
+    setCurrent(prev => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)
   }
 
   useEffect(() => {
-    const t = setInterval(advance, 5500)
+    const t = setInterval(next, 5500)
     return () => clearInterval(t)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const slide = HERO_SLIDES[current]
-
   return (
-    <section className={cn("relative overflow-hidden transition-colors duration-700 bg-linear-to-br", slide.gradient)}>
-      <div className="mx-auto grid min-h-[82vh] max-w-7xl grid-cols-1 items-center px-5 lg:grid-cols-2 lg:px-8">
-
-        {/* ── Left: Text ── */}
-        <div className={cn(
-          "flex flex-col justify-center py-16 lg:py-0 transition-opacity duration-200",
-          fading ? "opacity-0" : "opacity-100",
-        )}>
-          <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-gold">
-            {slide.eyebrow}
-          </p>
-          <h1 className="mt-4 font-serif text-5xl font-medium leading-[1.1] text-foreground md:text-6xl lg:text-[4.5rem] whitespace-pre-line">
-            {slide.title}
-          </h1>
-          <p className="mt-5 max-w-sm text-base font-light leading-relaxed text-muted-foreground">
-            {slide.subtitle}
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href={slide.href}
-              className="flex items-center gap-2 bg-foreground px-7 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-background transition-all hover:bg-gold hover:text-gold-foreground"
-            >
-              {slide.cta} <ArrowRight className="size-3.5" />
-            </Link>
-            <Link
-              href="/shop"
-              className="flex items-center gap-2 border border-foreground/30 px-7 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-foreground transition-all hover:border-foreground"
-            >
-              View All
-            </Link>
-          </div>
-
-          {/* Slide dots */}
-          <div className="mt-10 flex items-center gap-2.5">
-            {HERO_SLIDES.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => goTo(i)}
-                aria-label={`Go to slide ${i + 1}`}
-                className={cn(
-                  "h-1 rounded-full transition-all duration-300",
-                  i === current ? "w-8 bg-foreground" : "w-2 bg-foreground/25 hover:bg-foreground/50",
-                )}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* ── Right: Product image — centered, fills height ── */}
-        <div className={cn(
-          "relative hidden lg:flex items-center justify-center h-[82vh] transition-opacity duration-200",
-          fading ? "opacity-0" : "opacity-100",
-        )}>
-          {/* Image fills the column, centered — mix-blend-mode removes white bg */}
-          <div className="relative w-[80%] h-[82%]">
-            <Image
-              src={slide.image}
-              alt={slide.productName}
-              fill
-              sizes="35vw"
-              className="object-contain mix-blend-multiply"
-              priority={current === 0}
-            />
-          </div>
-
-          {/* Product badge — bottom-left of image column */}
-          <Link
-            href={slide.productHref}
-            className={cn(
-              "absolute bottom-8 left-4 flex items-center gap-3 border border-border/60 bg-white/80 backdrop-blur-sm px-4 py-3 shadow-md transition-all hover:shadow-lg hover:border-gold/50",
-              fading ? "opacity-0" : "opacity-100",
-            )}
+    <section className="relative overflow-hidden">
+      <div
+        className="flex transition-transform duration-700 ease-in-out will-change-transform"
+        style={{ transform: `translateX(-${current * 100}%)` }}
+      >
+        {HERO_SLIDES.map((slide, index) => (
+          <div
+            key={slide.title}
+            className={cn("w-full shrink-0 bg-linear-to-br", slide.gradient)}
+            aria-hidden={index !== current}
           >
-            <div className="relative size-10 shrink-0 overflow-hidden border border-border bg-muted/40">
-              <Image src={slide.image} alt={slide.productName} fill sizes="40px" className="object-cover" />
-            </div>
-            <div>
-              <p className="text-[10px] font-light uppercase tracking-[0.15em] text-gold">{slide.productBrand}</p>
-              <p className="text-xs font-medium leading-snug">{slide.productName}</p>
-              <p className="text-[11px] font-light text-muted-foreground">{slide.productPrice}</p>
-            </div>
-            <ArrowRight className="size-3.5 ml-1 shrink-0 text-muted-foreground" />
-          </Link>
-        </div>
+            <div className="mx-auto grid min-h-[82vh] max-w-7xl grid-cols-1 items-center px-5 lg:grid-cols-2 lg:px-8">
 
+              {/* ── Left: Text ── */}
+              <div className="flex flex-col justify-center py-16 lg:py-0">
+                <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-white">
+                  {slide.eyebrow}
+                </p>
+                <h1 className="mt-4 min-h-[2.2em] font-serif text-5xl font-medium leading-[1.1] text-white md:text-6xl lg:min-h-[calc(2*1.1*4.5rem)] lg:text-[4.5rem] whitespace-pre-line">
+                  {slide.title}
+                </h1>
+                <p className="mt-5 min-h-[4.5rem] max-w-sm text-base font-light leading-relaxed text-white">
+                  {slide.subtitle}
+                </p>
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <Link
+                    href={slide.href}
+                    className="flex items-center gap-2 bg-gold px-7 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-gold-foreground transition-colors hover:bg-gold/90"
+                    tabIndex={index === current ? undefined : -1}
+                  >
+                    {slide.cta} <ArrowRight className="size-3.5" />
+                  </Link>
+                  <Link
+                    href="/shop"
+                    className="flex items-center gap-2 border border-white/30 px-7 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-white transition-colors hover:border-white"
+                    tabIndex={index === current ? undefined : -1}
+                  >
+                    View All
+                  </Link>
+                </div>
+
+                <div className="mt-10 h-1" aria-hidden />
+              </div>
+
+              {/* ── Right: Product image ── */}
+              <div className="relative hidden h-[82vh] items-center justify-center lg:flex">
+                <div className="relative h-[82%] w-[80%]">
+                  <Image
+                    src={slide.image}
+                    alt={slide.productName}
+                    fill
+                    sizes="35vw"
+                    className="object-contain mix-blend-multiply"
+                    priority={index === 0}
+                  />
+                </div>
+
+                <Link
+                  href={slide.productHref}
+                  className="absolute bottom-8 left-4 flex items-center gap-3 border border-border/60 bg-white/80 px-4 py-3 shadow-md backdrop-blur-sm transition-all hover:border-gold/50 hover:shadow-lg"
+                  tabIndex={index === current ? undefined : -1}
+                >
+                  <div className="relative size-10 shrink-0 overflow-hidden border border-border bg-muted">
+                    <Image src={slide.image} alt={slide.productName} fill sizes="40px" className="object-cover" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-light uppercase tracking-[0.15em] text-gold">{slide.productBrand}</p>
+                    <p className="text-xs font-medium leading-snug">{slide.productName}</p>
+                    <p className="text-[11px] font-light text-muted-foreground">{slide.productPrice}</p>
+                  </div>
+                  <ArrowRight className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
+                </Link>
+              </div>
+
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Slide dots — fixed, outside sliding track */}
+      <div className="pointer-events-none absolute bottom-6 left-5 flex items-center gap-2.5 lg:left-8">
+        {HERO_SLIDES.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => goTo(i)}
+            aria-label={`Go to slide ${i + 1}`}
+            aria-current={i === current ? "true" : undefined}
+            className={cn(
+              "pointer-events-auto h-1 rounded-full transition-all duration-300",
+              i === current ? "w-8 bg-gold" : "w-2 bg-white/40 hover:bg-white/70",
+            )}
+          />
+        ))}
       </div>
 
       {/* Prev / Next arrows — bottom-right corner */}
@@ -200,16 +198,16 @@ function HeroSlider() {
         <button
           type="button"
           aria-label="Previous slide"
-          onClick={() => goTo(c => (c - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)}
-          className="flex size-9 items-center justify-center border border-foreground/20 bg-background/60 backdrop-blur-sm text-foreground/60 hover:text-foreground transition-colors"
+          onClick={prev}
+          className="flex size-9 items-center justify-center border border-foreground/20 bg-background/60 text-foreground/60 backdrop-blur-sm transition-colors hover:text-foreground"
         >
           <ChevronLeft className="size-4" />
         </button>
         <button
           type="button"
           aria-label="Next slide"
-          onClick={() => goTo(c => (c + 1) % HERO_SLIDES.length)}
-          className="flex size-9 items-center justify-center border border-foreground/20 bg-background/60 backdrop-blur-sm text-foreground/60 hover:text-foreground transition-colors"
+          onClick={next}
+          className="flex size-9 items-center justify-center border border-foreground/20 bg-background/60 text-foreground/60 backdrop-blur-sm transition-colors hover:text-foreground"
         >
           <ChevronRight className="size-4" />
         </button>
@@ -231,13 +229,13 @@ function HomeDealCard({ deal }: { deal: Deal }) {
   }
 
   return (
-    <div className="group border border-border p-6 transition-all hover:border-gold/60 hover:bg-muted/20">
+    <div className="group border border-border p-6 transition-all hover:border-gold/60 hover:bg-secondary">
       <div className="flex items-start justify-between mb-4">
         <div>
           <p className="text-[10px] font-light uppercase tracking-[0.18em] text-gold">{deal.brand}</p>
           <h3 className="mt-1 font-serif text-xl font-medium">{deal.title}</h3>
         </div>
-        <span className="border border-gold/40 bg-gold/10 px-2 py-0.5 text-[11px] font-medium text-gold-foreground">
+        <span className="border border-gold/40 bg-lavender px-2 py-0.5 text-[11px] font-medium text-gold">
           {deal.badge}
         </span>
       </div>
@@ -308,7 +306,7 @@ export default function HomePage() {
             <Link
               key={cat.label}
               href={cat.href}
-              className="group flex flex-col items-center gap-3 border border-border p-5 text-center transition-all hover:border-gold/60 hover:bg-muted/30"
+              className="group flex flex-col items-center gap-3 border border-border p-5 text-center transition-all hover:border-gold/60 hover:bg-secondary"
             >
               <span className="text-3xl">{cat.emoji}</span>
               <div>
@@ -321,7 +319,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Shop by Concern ── */}
-      <section className="bg-muted/30 py-16">
+      <section className="bg-secondary py-16">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <div className="mb-8 text-center">
             <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Personalised for you</p>
@@ -377,7 +375,7 @@ export default function HomePage() {
               <Link
                 key={brand.id}
                 href={`/brands#${brand.id}`}
-                className="group flex items-center justify-center border border-border px-5 py-3 transition-all hover:border-gold/60 hover:bg-muted/30 min-w-[120px]"
+                className="group flex items-center justify-center border border-border px-5 py-3 transition-all hover:border-gold/60 hover:bg-secondary min-w-[120px]"
               >
                 <span className="text-sm font-medium text-foreground/60 group-hover:text-foreground transition-colors">
                   {brand.name}
@@ -459,7 +457,7 @@ export default function HomePage() {
           <div className="grid gap-7 md:grid-cols-3">
             {recentArticles.map(article => (
               <Link key={article.id} href={`/journal/${article.slug}`} className="group">
-                <div className="relative aspect-[4/3] w-full overflow-hidden border border-border bg-muted/40 group-hover:border-gold/60 transition-colors">
+                <div className="relative aspect-[4/3] w-full overflow-hidden border border-border bg-muted group-hover:border-gold/60 transition-colors">
                   <Image
                     src={article.image || "/placeholder.svg"}
                     alt={article.title}

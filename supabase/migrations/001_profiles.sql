@@ -59,9 +59,10 @@ create table if not exists public.addresses (
   label       text not null default 'Home',   -- Home / Work / Other
   full_name   text not null,
   line1       text not null,
-  line2       text,
+  line2       text,                           -- apartment / suite
   city        text not null,
   state       text not null,
+  postal_code text,
   country     text not null default 'Nigeria',
   phone       text,
   is_default  boolean not null default false,

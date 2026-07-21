@@ -111,7 +111,7 @@ export default function LoginPage() {
 
         {/* Email not confirmed */}
         {unconfirmed && (
-          <div className="border border-gold/40 bg-gold/10 px-4 py-3 space-y-2">
+          <div className="border border-gold/40 bg-lavender px-4 py-3 space-y-2">
             <p className="text-xs font-medium text-foreground">Please confirm your email before signing in.</p>
             <p className="text-[11px] font-light text-muted-foreground">
               Check your inbox for the confirmation link.
@@ -132,7 +132,7 @@ export default function LoginPage() {
 
         {/* Generic error */}
         {error && (
-          <p className="text-xs text-muted-foreground bg-muted/50 border border-border px-4 py-3">
+          <p className="text-xs text-muted-foreground bg-muted border border-border px-4 py-3">
             {error}
           </p>
         )}
