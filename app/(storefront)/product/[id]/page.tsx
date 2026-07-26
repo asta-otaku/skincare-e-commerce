@@ -36,8 +36,8 @@ export default async function ProductPage({
   return (
     <>
       <ProductDetail product={product} />
-      <ProductReviews productId={product.id} />
       <RelatedProducts currentId={product.id} />
+      <ProductReviews productId={product.id} />
     </>
   )
 }

@@ -1,6 +1,10 @@
 import type { Product } from "@/lib/products"
+import { getEffectivePrice } from "@/lib/products"
 
 export type DealItem = {
+  productId: string
+  /** Selected variant label when the product has variants */
+  variantLabel?: string | null
   name: string
   size: string
   price: number
@@ -9,148 +13,119 @@ export type DealItem = {
 export type Deal = {
   id: string
   badge: string
+  /** Display string — joined brand names */
   brand: string
+  brandIds: string[]
   title: string
   subtitle: string
+  description: string
+  image: string
   items: DealItem[]
+  /** Sum of selected product/variant prices (list price) */
   originalPrice: number
+  discountPct: number
+  /** List price after discount — derived for convenience */
   salePrice: number
-  concern: string
+  concerns: string[]
+  /** @deprecated use concerns — kept for older call sites during migration */
+  concern?: string
   highlight?: boolean
-  /** Admin-only: draft deals are not shown on the storefront */
   status: "active" | "draft" | "archived"
+  rating: number
+  reviewCount: number
   createdAt: string
 }
 
+/** Cart / wishlist / review id for a deal. */
+export function dealCartId(dealId: string): string {
+  return dealId.startsWith("deal__") ? dealId : `deal__${dealId}`
+}
+
+export function bareDealId(id: string): string {
+  return id.startsWith("deal__") ? id.slice(6) : id
+}
+
+export function isDealCartId(id: string): boolean {
+  return id.startsWith("deal__")
+}
+
+export function dealSalePrice(deal: Pick<Deal, "originalPrice" | "discountPct" | "salePrice">): number {
+  if (deal.discountPct > 0) {
+    return getEffectivePrice({ price: deal.originalPrice, discountPct: deal.discountPct })
+  }
+  return deal.salePrice || deal.originalPrice
+}
+
+/**
+ * Converts a deal into a Product-shaped object so it can use cart,
+ * wishlist, ProductDetail, and reviews without separate providers.
+ */
+export function dealAsProduct(deal: Deal): Product {
+  const listPrice = deal.originalPrice || deal.items.reduce((s, i) => s + i.price, 0)
+  const pct = Math.min(100, Math.max(0, deal.discountPct || 0))
+  const badgePct =
+    pct > 0
+      ? pct
+      : listPrice > 0 && deal.salePrice > 0 && deal.salePrice < listPrice
+        ? Math.round((1 - deal.salePrice / listPrice) * 100)
+        : 0
+
+  return {
+    id: dealCartId(deal.id),
+    name: deal.title,
+    brand: deal.brand,
+    tagline: deal.subtitle,
+    description: deal.description || deal.subtitle,
+    price: listPrice,
+    discountPct: badgePct || undefined,
+    image: deal.image || "/product-bundle.png",
+    images: deal.image ? [deal.image] : ["/product-bundle.png"],
+    category: "bundle",
+    tag: "Sale",
+    benefits: deal.items.map(i =>
+      i.variantLabel || i.size ? `${i.name} (${i.variantLabel || i.size})` : i.name,
+    ),
+    ingredients: [],
+    concerns: deal.concerns?.length
+      ? deal.concerns
+      : deal.concern
+        ? deal.concern.split(/\s*·\s*/).filter(Boolean)
+        : [],
+    stock: 99,
+    rating: deal.rating || 0,
+    reviewCount: deal.reviewCount || 0,
+  }
+}
+
+/** Static fallback when Supabase is not configured. */
 export const deals: Deal[] = [
   {
     id: "barrier-repair",
     badge: "Save 17%",
     brand: "CeraVe",
+    brandIds: ["cerave"],
     title: "Barrier Repair Bundle",
     subtitle: "Complete daily routine for dry & sensitive skin",
+    description:
+      "A dermatologist-recommended trio to cleanse, moisturise, and care for the eye area — ideal for dry and sensitive skin.",
+    image: "/product-bundle.png",
     items: [
-      { name: "Hydrating Facial Cleanser",  size: "237ml", price: 5500 },
-      { name: "Moisturising Cream",          size: "454g",  price: 8900 },
-      { name: "Eye Repair Cream",            size: "14.2g", price: 7200 },
+      { productId: "cerave-hydrating-cleanser", name: "Hydrating Facial Cleanser", size: "237ml", price: 5500 },
+      { productId: "cerave-moisturising-cream", name: "Moisturising Cream", size: "454g", price: 8900 },
+      { productId: "cerave-eye-repair", name: "Eye Repair Cream", size: "14.2g", price: 7200 },
     ],
     originalPrice: 21600,
+    discountPct: 17,
     salePrice: 18000,
-    concern: "Dry Skin · Sensitive Skin",
+    concerns: ["Dry Skin", "Sensitive Skin"],
     highlight: true,
     status: "active",
+    rating: 4.8,
+    reviewCount: 0,
     createdAt: "2024-11-01",
-  },
-  {
-    id: "glow-starter",
-    badge: "Save 18%",
-    brand: "The Ordinary",
-    title: "Glow Starter Kit",
-    subtitle: "Targeted actives for brighter, clearer skin",
-    items: [
-      { name: "Niacinamide 10% + Zinc 1%",           size: "30ml", price: 3800 },
-      { name: "Vitamin C Suspension 23%",             size: "30ml", price: 4200 },
-      { name: "AHA 30% + BHA 2% Peeling Solution",    size: "30ml", price: 4800 },
-    ],
-    originalPrice: 12800,
-    salePrice: 10500,
-    concern: "Acne · Hyperpigmentation",
-    status: "active",
-    createdAt: "2024-11-05",
-  },
-  {
-    id: "k-beauty",
-    badge: "Save 17%",
-    brand: "COSRX",
-    title: "K-Beauty Essentials",
-    subtitle: "Korean skincare trio for smooth, hydrated skin",
-    items: [
-      { name: "Snail 96 Mucin Power Essence", size: "100ml", price: 8900 },
-      { name: "BHA Blackhead Power Liquid",   size: "100ml", price: 7500 },
-      { name: "Low pH Good Morning Cleanser", size: "150ml", price: 5200 },
-    ],
-    originalPrice: 21600,
-    salePrice: 18000,
-    concern: "Acne · Oily Skin",
-    status: "active",
-    createdAt: "2024-11-10",
-  },
-  {
-    id: "sun-protection",
-    badge: "Save 15%",
-    brand: "La Roche-Posay",
-    title: "SPF Essentials Duo",
-    subtitle: "Daily moisturiser + premium sunscreen",
-    items: [
-      { name: "Toleriane Double Repair Moisturiser", size: "75ml",  price: 12500 },
-      { name: "Anthelios UVMune 400 SPF 50+",        size: "50ml",  price: 16000 },
-    ],
-    originalPrice: 28500,
-    salePrice: 24200,
-    concern: "Anti-Ageing · Sensitive Skin",
-    status: "active",
-    createdAt: "2024-11-12",
-  },
-  {
-    id: "acne-fighter",
-    badge: "Save 20%",
-    brand: "Mixed",
-    title: "Acne Fighter Kit",
-    subtitle: "Proven actives to clear breakouts and prevent scarring",
-    items: [
-      { name: "CeraVe Hydrating Cleanser",               size: "237ml", price: 5500 },
-      { name: "The Ordinary Niacinamide 10%",            size: "30ml",  price: 3800 },
-      { name: "Paula's Choice 2% BHA Liquid Exfoliant",  size: "118ml", price: 18500 },
-    ],
-    originalPrice: 27800,
-    salePrice: 22200,
-    concern: "Acne · Oily Skin",
-    status: "active",
-    createdAt: "2024-11-15",
-  },
-  {
-    id: "anti-ageing",
-    badge: "Save 16%",
-    brand: "Mixed",
-    title: "Anti-Ageing Routine",
-    subtitle: "Retinol + SPF + vitamin C — the core trio",
-    items: [
-      { name: "Neutrogena Rapid Wrinkle Repair Serum", size: "30ml", price: 14500 },
-      { name: "The Ordinary Vitamin C 23%",            size: "30ml", price: 4200 },
-      { name: "La Roche-Posay Anthelios SPF 50+",      size: "50ml", price: 16000 },
-    ],
-    originalPrice: 34700,
-    salePrice: 29200,
-    concern: "Anti-Ageing",
-    status: "draft",
-    createdAt: "2024-11-20",
   },
 ]
 
 export function getDeal(id: string) {
   return deals.find(d => d.id === id)
-}
-
-/**
- * Converts a deal into a Product-shaped object so it can be
- * added to the cart without changing the CartProvider interface.
- */
-export function dealAsProduct(deal: Deal): Product {
-  return {
-    id: `deal__${deal.id}`,
-    name: deal.title,
-    brand: deal.brand,
-    tagline: deal.subtitle,
-    description: `${deal.title} — ${deal.items.map(i => i.name).join(", ")}`,
-    price: deal.salePrice,
-    image: "/product-bundle.png",
-    category: "bundle",
-    tag: "Sale",
-    benefits: [],
-    ingredients: [],
-    concerns: deal.concern.split(" · "),
-    stock: 99,
-    rating: 4.8,
-    reviewCount: 0,
-  }
 }

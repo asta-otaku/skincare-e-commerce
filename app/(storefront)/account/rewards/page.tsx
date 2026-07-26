@@ -40,7 +40,7 @@ export default function RewardsPage() {
     const res = await redeemReward(id)
     setRedeeming(null)
     if (res.ok && res.promoCode) {
-      setMessage(`Redeemed! Use code ${res.promoCode} at checkout for ₦${res.discountNgn?.toLocaleString()} off.`)
+      setMessage(`Redeemed! ₦${res.discountNgn?.toLocaleString()} off will apply automatically at checkout.`)
       void fetch("/api/email/reward", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -195,16 +195,16 @@ export default function RewardsPage() {
         </p>
         <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href="/shop"
+            href="/checkout"
             className="border border-foreground px-7 py-2.5 text-xs font-medium uppercase tracking-[0.15em] text-foreground transition-all hover:bg-foreground hover:text-background"
           >
-            Shop Now
+            Go to Checkout
           </Link>
           <Link
-            href="/account/reviews"
+            href="/shop"
             className="border border-border px-7 py-2.5 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground transition-all hover:border-foreground hover:text-foreground"
           >
-            Write a Review
+            Shop Now
           </Link>
         </div>
       </div>

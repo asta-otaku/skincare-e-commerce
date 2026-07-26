@@ -1,7 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Check, Building2, Package, Truck, HeadphonesIcon } from "lucide-react"
+import type { Product } from "@/lib/products"
+import { getWholesaleProducts } from "@/lib/supabase/products"
+import { getActiveBrands, type Brand } from "@/lib/supabase/brands"
+import { WholesaleProductCard } from "@/components/wholesale-product-card"
 
 const PERKS = [
   { icon: Package, title: "Wholesale Pricing", desc: "Tiered discounts based on order volume — the more you buy, the more you save." },
@@ -23,6 +28,25 @@ export default function WholesalePage() {
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [products, setProducts] = useState<Product[]>([])
+  const [productsLoading, setProductsLoading] = useState(true)
+  const [brands, setBrands] = useState<Brand[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setProductsLoading(true)
+      const [tiered, brandList] = await Promise.all([
+        getWholesaleProducts(48),
+        getActiveBrands(),
+      ])
+      if (cancelled) return
+      setProducts(tiered)
+      setBrands(brandList)
+      setProductsLoading(false)
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -58,6 +82,58 @@ export default function WholesalePage() {
         </p>
       </div>
 
+      {/* Volume-priced products */}
+      <section className="mb-16">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="font-serif text-2xl font-medium">Volume pricing</h2>
+            <p className="mt-1 text-sm font-light text-muted-foreground max-w-xl">
+              Products with quantity breaks — buy more, pay less per unit. Tap through to order on the product page.
+            </p>
+          </div>
+          <Link
+            href="/shop"
+            className="text-xs font-medium uppercase tracking-[0.15em] text-gold hover:underline"
+          >
+            Browse full shop →
+          </Link>
+        </div>
+
+        {productsLoading ? (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="border border-border">
+                <div className="aspect-square bg-muted/50 animate-pulse" />
+                <div className="space-y-2 p-4">
+                  <div className="h-3 w-3/4 bg-muted/50 animate-pulse" />
+                  <div className="h-3 w-1/2 bg-muted/40 animate-pulse" />
+                  <div className="h-4 w-2/3 bg-muted/50 animate-pulse mt-3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : products.length === 0 ? (
+          <div className="border border-dashed border-border px-6 py-14 text-center">
+            <p className="font-serif text-xl font-medium">No volume deals yet</p>
+            <p className="mt-2 text-sm font-light text-muted-foreground max-w-md mx-auto">
+              Products with tiered wholesale pricing will appear here once they&apos;re set up in the catalogue.
+            </p>
+            <Link
+              href="/shop"
+              className="mt-6 inline-block border border-foreground px-6 py-3 text-xs font-medium uppercase tracking-[0.15em] hover:bg-foreground hover:text-background transition-colors"
+            >
+              Shop all products
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+            {products.map((product, i) => (
+              <WholesaleProductCard key={product.id} product={product} index={i} />
+            ))}
+          </div>
+        )}
+      </section>
+
       <div className="grid gap-14 lg:grid-cols-2">
         {/* Left: info */}
         <div className="space-y-10">
@@ -81,7 +157,7 @@ export default function WholesalePage() {
 
           {/* Pricing tiers */}
           <div>
-            <h2 className="font-serif text-2xl font-medium mb-5">Pricing Tiers</h2>
+            <h2 className="font-serif text-2xl font-medium mb-5">Account tiers</h2>
             <div className="space-y-3">
               {MINIMUMS.map((tier, i) => (
                 <div key={tier.tier} className={`border p-4 ${i === 1 ? "border-gold/60 bg-lavender" : "border-border"}`}>
@@ -102,7 +178,10 @@ export default function WholesalePage() {
           <div>
             <h2 className="font-serif text-xl font-medium mb-3">Brands we supply</h2>
             <div className="flex flex-wrap gap-2">
-              {["CeraVe", "The Ordinary", "La Roche-Posay", "COSRX", "Paula's Choice", "Neutrogena", "Cetaphil", "Bioderma"].map(b => (
+              {(brands.length
+                ? brands.map(b => b.name)
+                : ["CeraVe", "The Ordinary", "La Roche-Posay", "COSRX", "Paula's Choice", "Neutrogena", "Cetaphil", "Bioderma"]
+              ).map(b => (
                 <span key={b} className="border border-border px-3 py-1.5 text-xs font-light text-muted-foreground">
                   {b}
                 </span>
@@ -126,7 +205,7 @@ export default function WholesalePage() {
           ) : (
             <>
               <h2 className="font-serif text-2xl font-medium mb-1">Wholesale Enquiry</h2>
-              <p className="text-sm font-light text-muted-foreground mb-6">Fill the form and we'll be in touch within 24 hours.</p>
+              <p className="text-sm font-light text-muted-foreground mb-6">Fill the form and we&apos;ll be in touch within 24 hours.</p>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <label className="flex flex-col gap-1.5">
@@ -179,6 +258,22 @@ export default function WholesalePage() {
           )}
         </div>
       </div>
+
+      <style jsx global>{`
+        .input-field {
+          width: 100%;
+          border: 1px solid var(--border);
+          background: var(--background);
+          padding: 0.75rem 1rem;
+          font-size: 0.875rem;
+          font-weight: 300;
+          outline: none;
+          transition: border-color 0.15s;
+        }
+        .input-field:focus {
+          border-color: var(--foreground);
+        }
+      `}</style>
     </div>
   )
 }

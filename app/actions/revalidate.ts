@@ -20,7 +20,9 @@ export async function revalidateProducts() {
   revalidatePath("/brands")
 }
 
-export async function revalidateDeals() {
+export async function revalidateDeals(dealId?: string) {
   revalidatePath("/deals")
   revalidatePath("/offers")
+  revalidatePath("/")
+  if (dealId) revalidatePath(`/deal/${dealId}`)
 }

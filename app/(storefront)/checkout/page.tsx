@@ -3,12 +3,19 @@
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ChevronRight, Check, Lock, Truck, ArrowLeft, ShieldCheck, Zap, Building2, Smartphone, ShoppingBag } from "lucide-react"
+import { ChevronRight, Check, Lock, Truck, ArrowLeft, ShieldCheck, Zap, Building2, Smartphone, ShoppingBag, Gift } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
 import { useUserAuth } from "@/components/user-auth-provider"
-import { formatPrice } from "@/lib/products"
+import { formatPrice, getUnitPriceForQuantity } from "@/lib/products"
 import { cn } from "@/lib/utils"
 import { getAddresses, getProfile, addAddress, type Address } from "@/lib/supabase/profile"
+import {
+  getPendingRewardPromo,
+  getRewardsSummary,
+  redeemReward,
+  REWARD_CATALOG,
+} from "@/lib/supabase/rewards"
+import type { StockAvailability } from "@/lib/supabase/cart-stock"
 
 function splitName(fullName: string): { firstName: string; lastName: string } {
   const parts = fullName.trim().split(/\s+/).filter(Boolean)
@@ -97,6 +104,13 @@ type ShippingData = {
   shippingMethod: "standard" | "express"
 }
 
+type AppliedPromo = {
+  code: string
+  discountPct: number
+  discountNgn: number
+  label: string
+}
+
 type PaymentMethod = "card" | "bank_transfer" | "ussd" | "mobile_money"
 
 /** Express shipping in NGN — keep in sync with `/api/orders`. */
@@ -114,11 +128,12 @@ const SHIPPING_METHODS = [
 ]
 
 export default function CheckoutPage() {
-  const { items, subtotal } = useCart()
+  const { items, subtotal, stockById, hasStockIssues, refreshAvailability, removeItem, updateQuantity } = useCart()
   const { session } = useUserAuth()
   const [step, setStep] = useState<Step>("shipping")
   const prefilledRef = useRef(false)
   const [savedAddressCount, setSavedAddressCount] = useState(0)
+  const [stockReady, setStockReady] = useState(false)
 
   const [shipping, setShipping] = useState<ShippingData>({
     firstName: "", lastName: "", email: "", phone: "",
@@ -128,57 +143,113 @@ export default function CheckoutPage() {
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card")
 
-  // Promo code
+  // Promo codes / rewards (stackable)
   const [promoInput, setPromoInput] = useState("")
-  const [appliedPromo, setAppliedPromo] = useState<string | null>(null)
-  const [promoPct, setPromoPct] = useState(0)
-  const [promoNgn, setPromoNgn] = useState(0)
+  const [appliedPromos, setAppliedPromos] = useState<AppliedPromo[]>([])
   const [promoError, setPromoError] = useState("")
+  const [pointsBalance, setPointsBalance] = useState(0)
+  const [redeemingReward, setRedeemingReward] = useState<string | null>(null)
+  const [rewardMsg, setRewardMsg] = useState<string | null>(null)
   const [paying, setPaying] = useState(false)
   const [payError, setPayError] = useState("")
   const [orderRef, setOrderRef] = useState<string | null>(null)
+
+  function addPromo(code: string, discountPct: number, discountNgn: number, label?: string | null) {
+    const normalized = code.trim().toUpperCase()
+    setAppliedPromos(prev => {
+      if (prev.some(p => p.code === normalized)) return prev
+      return [
+        ...prev,
+        {
+          code: normalized,
+          discountPct: Number(discountPct) || 0,
+          discountNgn: Number(discountNgn) || 0,
+          label: label ?? (normalized.startsWith("RWD-") ? "Rewards credit" : normalized),
+        },
+      ]
+    })
+    setPromoInput("")
+    setPromoError("")
+  }
+
+  // Live stock check when landing on checkout
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      await refreshAvailability()
+      if (!cancelled) setStockReady(true)
+    })()
+    return () => { cancelled = true }
+  }, [refreshAvailability, items.length])
 
   // Prefill from default saved address + profile when signed in
   useEffect(() => {
     if (!session || prefilledRef.current) return
     let cancelled = false
 
-      ; (async () => {
-        const [addrs, profile] = await Promise.all([getAddresses(), getProfile()])
-        if (cancelled) return
+    ;(async () => {
+      const [addrs, profile] = await Promise.all([getAddresses(), getProfile()])
+      if (cancelled) return
 
-        prefilledRef.current = true
-        setSavedAddressCount(addrs.length)
+      prefilledRef.current = true
+      setSavedAddressCount(addrs.length)
 
-        const email = profile?.email || session.email || ""
-        const def = addrs.find(a => a.is_default) ?? addrs[0]
+      const email = profile?.email || session.email || ""
+      const def = addrs.find(a => a.is_default) ?? addrs[0]
 
-        if (def) {
-          setShipping(prev => ({
-            ...prev,
-            ...addressToShipping(def, email || prev.email),
-            shippingMethod: prev.shippingMethod,
-          }))
-          return
-        }
-
-        const { firstName, lastName } = splitName(profile?.full_name ?? session.name ?? "")
+      if (def) {
         setShipping(prev => ({
           ...prev,
-          firstName: firstName || prev.firstName,
-          lastName: lastName || prev.lastName,
-          email: email || prev.email,
-          phone: profile?.phone || prev.phone,
+          ...addressToShipping(def, email || prev.email),
+          shippingMethod: prev.shippingMethod,
         }))
-      })()
+        return
+      }
 
+      const { firstName, lastName } = splitName(profile?.full_name ?? session.name ?? "")
+      setShipping(prev => ({
+        ...prev,
+        firstName: firstName || prev.firstName,
+        lastName: lastName || prev.lastName,
+        email: email || prev.email,
+        phone: profile?.phone || prev.phone,
+      }))
+    })()
+
+    return () => { cancelled = true }
+  }, [session])
+
+  // Auto-apply unused reward promo + load points balance
+  useEffect(() => {
+    if (!session) {
+      setPointsBalance(0)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      const [pending, summary] = await Promise.all([
+        getPendingRewardPromo(),
+        getRewardsSummary(),
+      ])
+      if (cancelled) return
+      setPointsBalance(summary?.balance ?? 0)
+      if (pending && pending.discountNgn > 0) {
+        addPromo(pending.code, 0, pending.discountNgn, pending.label)
+        setRewardMsg(`Rewards credit applied: ${pending.label}`)
+      }
+    })()
     return () => { cancelled = true }
   }, [session])
 
   async function applyPromo() {
     const code = promoInput.trim().toUpperCase()
     if (!code) return
+    if (appliedPromos.some(p => p.code === code)) {
+      setPromoError("This code is already applied.")
+      return
+    }
     setPromoError("")
+    setRewardMsg(null)
     try {
       const res = await fetch("/api/promo", {
         method: "POST",
@@ -188,24 +259,53 @@ export default function CheckoutPage() {
       const data = await res.json()
       if (!data.valid) {
         setPromoError(data.message ?? "Invalid promo code.")
-        setAppliedPromo(null)
-        setPromoPct(0)
-        setPromoNgn(0)
         return
       }
-      setAppliedPromo(data.code)
-      setPromoPct(Number(data.discount_pct || 0) / 100)
-      setPromoNgn(Number(data.discount_ngn || 0))
+      addPromo(
+        data.code,
+        Number(data.discount_pct || 0),
+        Number(data.discount_ngn || 0),
+        data.code?.startsWith("RWD-") ? "Rewards credit" : data.code,
+      )
+      setRewardMsg(null)
     } catch {
       setPromoError("Could not validate promo code.")
     }
   }
 
-  const discount = appliedPromo
-    ? promoNgn > 0
-      ? Math.min(subtotal, promoNgn)
-      : Math.round(subtotal * promoPct)
-    : 0
+  async function handleRedeemReward(rewardId: string) {
+    if (!session) {
+      setRewardMsg("Sign in to redeem rewards.")
+      return
+    }
+    setRedeemingReward(rewardId)
+    setRewardMsg(null)
+    setPromoError("")
+    const res = await redeemReward(rewardId)
+    setRedeemingReward(null)
+    if (res.ok && res.promoCode) {
+      addPromo(res.promoCode, 0, res.discountNgn ?? 0, "Rewards credit")
+      setRewardMsg(`Redeemed! ₦${(res.discountNgn ?? 0).toLocaleString()} off added to this order.`)
+      const summary = await getRewardsSummary()
+      setPointsBalance(summary?.balance ?? 0)
+    } else {
+      setRewardMsg(res.message ?? "Could not redeem reward.")
+    }
+  }
+
+  function removePromo(code: string) {
+    setAppliedPromos(prev => prev.filter(p => p.code !== code))
+    setRewardMsg(null)
+  }
+
+  const discount = Math.min(
+    subtotal,
+    appliedPromos.reduce((sum, p) => {
+      if (p.discountNgn > 0) return sum + p.discountNgn
+      if (p.discountPct > 0) return sum + Math.round(subtotal * (p.discountPct / 100))
+      return sum
+    }, 0),
+  )
   const shippingCost =
     SHIPPING_METHODS.find((m) => m.id === shipping.shippingMethod)?.price ?? 0
   const tax = Math.round(subtotal * 0.075)
@@ -215,6 +315,13 @@ export default function CheckoutPage() {
     setPaying(true)
     setPayError("")
     try {
+      const blocked = await refreshAvailability()
+      if (blocked) {
+        setPayError("Some items are out of stock or limited. Update your cart and try again.")
+        setPaying(false)
+        setStep("shipping")
+        return
+      }
       // First checkout with no saved addresses → persist shipping as default
       if (session && savedAddressCount === 0 && shipping.address.trim() && shipping.city.trim()) {
         const err = await addAddress({
@@ -236,17 +343,31 @@ export default function CheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: items.map(i => ({
-            productId: i.id,
-            name: i.name,
-            image: i.image,
-            category: i.category,
-            price: i.price,
-            quantity: i.quantity,
-          })),
+          items: items.map(i => {
+            const basePrice = i.listPrice ?? i.price
+            const skuPrice = i.skuPrice ?? basePrice
+            const unit = getUnitPriceForQuantity(
+              {
+                price: basePrice,
+                listPrice: basePrice,
+                skuPrice,
+                priceTiers: i.priceTiers,
+                discountPct: i.discountPct,
+              },
+              i.quantity,
+            )
+            return {
+              productId: i.id,
+              name: i.name,
+              image: i.image,
+              category: i.category,
+              price: unit,
+              quantity: i.quantity,
+            }
+          }),
           shipping,
           paymentMethod,
-          promoCode: appliedPromo,
+          promoCodes: appliedPromos.map(p => p.code),
         }),
       })
       const data = await res.json()
@@ -347,8 +468,12 @@ export default function CheckoutPage() {
               <ShippingForm
                 data={shipping}
                 onChange={setShipping}
-                onNext={() => setStep("payment")}
+                onNext={() => {
+                  if (hasStockIssues) return
+                  setStep("payment")
+                }}
                 hasSavedAddress={savedAddressCount > 0}
+                stockBlocked={hasStockIssues || !stockReady}
               />
             )}
             {step === "payment" && (
@@ -367,6 +492,9 @@ export default function CheckoutPage() {
                 paymentMethod={paymentMethod}
                 shippingCost={shippingCost}
                 tax={tax}
+                discount={discount}
+                appliedPromos={appliedPromos}
+                subtotal={subtotal}
                 total={total}
                 paying={paying}
                 payError={payError}
@@ -381,14 +509,24 @@ export default function CheckoutPage() {
             items={items}
             subtotal={subtotal}
             discount={discount}
-            appliedPromo={appliedPromo}
+            appliedPromos={appliedPromos}
             promoInput={promoInput}
             setPromoInput={setPromoInput}
             applyPromo={applyPromo}
+            removePromo={removePromo}
             promoError={promoError}
+            rewardMsg={rewardMsg}
             shippingCost={shippingCost}
             tax={tax}
             total={total}
+            signedIn={Boolean(session)}
+            pointsBalance={pointsBalance}
+            redeemingReward={redeemingReward}
+            onRedeemReward={handleRedeemReward}
+            stockById={stockById}
+            hasStockIssues={hasStockIssues}
+            onRemoveItem={removeItem}
+            onUpdateQuantity={updateQuantity}
           />
         </div>
       </div>
@@ -398,12 +536,13 @@ export default function CheckoutPage() {
 
 /* ─── Shipping Form ────────────────────────────────────────── */
 function ShippingForm({
-  data, onChange, onNext, hasSavedAddress,
+  data, onChange, onNext, hasSavedAddress, stockBlocked,
 }: {
   data: ShippingData
   onChange: (d: ShippingData) => void
   onNext: () => void
   hasSavedAddress?: boolean
+  stockBlocked?: boolean
 }) {
   const set = (key: keyof ShippingData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     onChange({ ...data, [key]: e.target.value })
@@ -417,6 +556,11 @@ function ShippingForm({
         </p>
       ) : (
         <div className="mb-6" />
+      )}
+      {stockBlocked && (
+        <p className="mb-5 border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm font-light text-destructive">
+          One or more items in your cart are out of stock or exceed available quantity. Fix them in the order summary before continuing.
+        </p>
       )}
       <div className="space-y-5">
         <div className="grid grid-cols-2 gap-4">
@@ -492,9 +636,10 @@ function ShippingForm({
         <button
           type="button"
           onClick={onNext}
-          className="mt-4 w-full bg-foreground py-4 text-xs font-medium uppercase tracking-[0.18em] text-background transition-colors hover:bg-gold hover:text-gold-foreground"
+          disabled={stockBlocked}
+          className="mt-4 w-full bg-foreground py-4 text-xs font-medium uppercase tracking-[0.18em] text-background transition-colors hover:bg-gold hover:text-gold-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
         >
-          Continue to Payment
+          {stockBlocked ? "Resolve stock issues to continue" : "Continue to Payment"}
         </button>
       </div>
     </div>
@@ -626,12 +771,15 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
 }
 
 function ReviewStep({
-  shipping, paymentMethod, shippingCost, tax, total, paying, payError, onBack, onConfirm,
+  shipping, paymentMethod, shippingCost, tax, discount, appliedPromos, subtotal, total, paying, payError, onBack, onConfirm,
 }: {
   shipping: ShippingData
   paymentMethod: PaymentMethod
   shippingCost: number
   tax: number
+  discount: number
+  appliedPromos: AppliedPromo[]
+  subtotal: number
   total: number
   paying: boolean
   payError: string
@@ -688,7 +836,18 @@ function ReviewStep({
 
         {/* Totals */}
         <div className="border border-border p-5 space-y-2.5">
-          <LineItem label="Subtotal" value={formatPrice(total - shippingCost - tax)} />
+          <LineItem label="Subtotal" value={formatPrice(subtotal)} />
+          {discount > 0 && (
+            <LineItem
+              label={
+                appliedPromos.length === 1
+                  ? (appliedPromos[0].code.startsWith("RWD-") ? "Rewards discount" : `Promo (${appliedPromos[0].code})`)
+                  : `Discounts (${appliedPromos.map(p => p.code).join(", ")})`
+              }
+              value={`-${formatPrice(discount)}`}
+              className="text-green-700"
+            />
+          )}
           <LineItem label={shippingCost === 0 ? "Shipping (Free)" : "Express Shipping"} value={shippingCost === 0 ? "Free" : formatPrice(shippingCost)} />
           <LineItem label="Estimated Tax" value={formatPrice(tax)} />
           <div className="border-t border-border pt-2.5">
@@ -734,57 +893,158 @@ function ReviewStep({
 
 /* ─── Order Summary Sidebar ─────────────────────────────────── */
 function OrderSummary({
-  items, subtotal, discount, appliedPromo, promoInput, setPromoInput, applyPromo, promoError, shippingCost, tax, total,
+  items, subtotal, discount, appliedPromos, promoInput, setPromoInput, applyPromo, removePromo,
+  promoError, rewardMsg, shippingCost, tax, total,
+  signedIn, pointsBalance, redeemingReward, onRedeemReward,
+  stockById, hasStockIssues, onRemoveItem, onUpdateQuantity,
 }: {
   items: ReturnType<typeof useCart>["items"]
   subtotal: number
   discount: number
-  appliedPromo: string | null
+  appliedPromos: AppliedPromo[]
   promoInput: string
   setPromoInput: (v: string) => void
   applyPromo: () => void | Promise<void>
+  removePromo: (code: string) => void
   promoError: string
+  rewardMsg: string | null
   shippingCost: number
   tax: number
   total: number
+  signedIn: boolean
+  pointsBalance: number
+  redeemingReward: string | null
+  onRedeemReward: (id: string) => void | Promise<void>
+  stockById: Record<string, StockAvailability>
+  hasStockIssues: boolean
+  onRemoveItem: (id: string) => void
+  onUpdateQuantity: (id: string, quantity: number) => void
 }) {
+  const redeemable = REWARD_CATALOG.filter(r => pointsBalance >= r.cost)
+
   return (
     <aside className="lg:sticky lg:top-24 h-fit">
       <div className="border border-border p-6">
         <h3 className="mb-5 text-xs font-medium uppercase tracking-[0.2em]">Order Summary</h3>
+        {hasStockIssues && (
+          <p className="mb-4 border border-destructive/30 bg-destructive/5 px-3 py-2 text-[11px] font-light text-destructive">
+            Some items are unavailable or limited. Remove out-of-stock items or reduce quantities to continue.
+          </p>
+        )}
         <ul className="divide-y divide-border mb-5">
-          {items.map((item) => (
-            <li key={item.id} className="flex gap-3 py-3.5">
+          {items.map((item) => {
+            const stock = stockById[item.id]
+            const unavailable = Boolean(stock?.unavailable)
+            return (
+            <li key={item.id} className={cn("flex gap-3 py-3.5", unavailable && "opacity-70")}>
               <div className="relative size-16 shrink-0 overflow-hidden border border-border bg-muted">
-                {item.id.startsWith("deal__") || !item.image ? (
+                {item.image && item.image !== "/product-bundle.png" ? (
+                  <Image src={item.image} alt={item.name} fill sizes="64px" className="object-cover" />
+                ) : (
                   <div className="flex size-full items-center justify-center bg-lavender">
                     <ShoppingBag className="size-7 text-gold/60" />
                   </div>
-                ) : (
-                  <Image src={item.image} alt={item.name} fill sizes="64px" className="object-cover" />
                 )}
 
                 <span className="absolute right-1.5 top-1 flex size-4 items-center justify-center rounded-full bg-foreground text-[9px] text-background">
                   {item.quantity}
                 </span>
               </div>
-              <div className="flex flex-1 flex-col justify-center">
+              <div className="flex flex-1 flex-col justify-center min-w-0">
                 <p className="text-[10px] font-light uppercase tracking-[0.18em] text-gold">
                   {item.id.startsWith("deal__") ? "Bundle Deal" : item.category}
                 </p>
                 <p className="text-xs font-medium leading-snug">{item.name}</p>
-                {!item.id.startsWith("deal__") && (
+                {unavailable ? (
+                  <p className="mt-1 text-[11px] font-medium text-destructive">Out of stock</p>
+                ) : stock && stock.available <= 10 ? (
+                  <p className="mt-1 text-[11px] font-light text-amber-600">Only {stock.available} left</p>
+                ) : !item.id.startsWith("deal__") ? (
                   <p className="text-xs font-light text-muted-foreground">{item.tagline}</p>
+                ) : null}
+                {unavailable && (
+                  <button
+                    type="button"
+                    onClick={() => onRemoveItem(item.id)}
+                    className="mt-1 self-start text-[10px] font-medium uppercase tracking-[0.12em] text-destructive hover:underline"
+                  >
+                    Remove
+                  </button>
+                )}
+                {!unavailable && !item.id.startsWith("deal__") && stock && item.quantity > stock.available && (
+                  <button
+                    type="button"
+                    onClick={() => onUpdateQuantity(item.id, stock.available)}
+                    className="mt-1 self-start text-[10px] font-medium uppercase tracking-[0.12em] text-amber-700 hover:underline"
+                  >
+                    Reduce to {stock.available}
+                  </button>
                 )}
               </div>
-              <p className="text-xs font-medium self-center">{formatPrice(item.price * item.quantity)}</p>
+              <p className="text-xs font-medium self-center">
+                {unavailable
+                  ? "—"
+                  : formatPrice(
+                      getUnitPriceForQuantity(
+                        {
+                          price: item.listPrice ?? item.price,
+                          listPrice: item.listPrice ?? item.price,
+                          skuPrice: item.skuPrice ?? item.listPrice ?? item.price,
+                          priceTiers: item.priceTiers,
+                          discountPct: item.discountPct,
+                        },
+                        item.quantity,
+                      ) * item.quantity,
+                    )}
+              </p>
             </li>
-          ))}
+            )
+          })}
         </ul>
 
-        {/* Promo code */}
+        {/* Rewards */}
+        {signedIn && (
+          <div className="mb-4 border border-gold/30 bg-lavender/40 p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.15em] text-gold">
+                <Gift className="size-3.5" /> Rewards
+              </p>
+              <p className="text-[11px] font-light text-muted-foreground tabular-nums">
+                {pointsBalance.toLocaleString()} pts
+              </p>
+            </div>
+            {redeemable.length === 0 ? (
+              <p className="text-[11px] font-light text-muted-foreground">
+                Earn more points to redeem discounts here.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {redeemable.map(r => (
+                  <li key={r.id} className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-light leading-snug text-foreground">
+                      {r.label}
+                      <span className="ml-1 text-muted-foreground">({r.cost} pts)</span>
+                    </span>
+                    <button
+                      type="button"
+                      disabled={redeemingReward === r.id}
+                      onClick={() => onRedeemReward(r.id)}
+                      className="shrink-0 border border-gold/50 px-2 py-1 text-[10px] font-medium uppercase tracking-widest text-gold transition-colors hover:bg-gold hover:text-gold-foreground disabled:opacity-40"
+                    >
+                      {redeemingReward === r.id ? "…" : "Redeem"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* Promo codes — stackable */}
         <div className="mb-4">
-          <p className="mb-1.5 text-[11px] font-light uppercase tracking-[0.15em] text-muted-foreground">Promo Code</p>
+          <p className="mb-1.5 text-[11px] font-light uppercase tracking-[0.15em] text-muted-foreground">
+            Promo Codes
+          </p>
           <div className="flex gap-2">
             <input
               type="text"
@@ -797,18 +1057,52 @@ function OrderSummary({
             <button
               type="button"
               onClick={applyPromo}
-              className="shrink-0 border border-border px-3 py-2.5 text-[11px] font-medium uppercase tracking-[0.1em] hover:border-foreground transition-colors"
+              className="shrink-0 border border-border px-3 py-2.5 text-[11px] font-medium uppercase tracking-widest hover:border-foreground transition-colors"
             >
               Apply
             </button>
           </div>
           {promoError && <p className="mt-1.5 text-[11px] font-light text-destructive">{promoError}</p>}
-          {appliedPromo && <p className="mt-1.5 text-[11px] font-light text-green-700">✓ Code <strong>{appliedPromo}</strong> applied!</p>}
+          {rewardMsg && <p className="mt-1.5 text-[11px] font-light text-green-700">{rewardMsg}</p>}
+          {appliedPromos.length > 0 && (
+            <ul className="mt-2 space-y-1.5">
+              {appliedPromos.map(p => (
+                <li key={p.code} className="flex items-center justify-between gap-2 border border-border/60 bg-secondary px-2.5 py-1.5">
+                  <p className="text-[11px] font-light text-green-700">
+                    ✓ {p.label} <span className="text-muted-foreground">({p.code})</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => removePromo(p.code)}
+                    className="text-[10px] font-light uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="space-y-2 border-t border-border pt-4">
           <LineItem label="Subtotal" value={formatPrice(subtotal)} small />
-          {discount > 0 && <LineItem label={`Discount (${appliedPromo})`} value={`-${formatPrice(discount)}`} small className="text-green-700" />}
+          {appliedPromos.map(p => {
+            const amount = p.discountNgn > 0
+              ? p.discountNgn
+              : Math.round(subtotal * (p.discountPct / 100))
+            return (
+              <LineItem
+                key={p.code}
+                label={p.code.startsWith("RWD-") ? "Rewards" : p.code}
+                value={`-${formatPrice(amount)}`}
+                small
+                className="text-green-700"
+              />
+            )
+          })}
+          {discount > 0 && appliedPromos.length > 1 && (
+            <LineItem label="Total discounts" value={`-${formatPrice(discount)}`} small className="text-green-700" />
+          )}
           <LineItem label="Shipping" value={shippingCost === 0 ? "Free" : formatPrice(shippingCost)} small />
           <LineItem label="VAT (7.5%)" value={formatPrice(tax)} small />
           <div className="border-t border-border pt-2 mt-2">

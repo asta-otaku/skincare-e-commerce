@@ -5,8 +5,9 @@ import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight, ShoppingBag, ChevronLeft, ChevronRight, Sparkles } from "lucide-react"
 import { ProductCard } from "@/components/product-card"
-import { BRANDS, type Product } from "@/lib/products"
-import { getFeaturedProducts } from "@/lib/supabase/products"
+import type { Product } from "@/lib/products"
+import { getProductsByTag, getDiscountedProducts } from "@/lib/supabase/products"
+import { getActiveBrands, type Brand } from "@/lib/supabase/brands"
 import { dealAsProduct, type Deal } from "@/lib/deals"
 import { getActiveDeals } from "@/lib/supabase/deals"
 import { getPublishedJournals } from "@/lib/supabase/journals"
@@ -221,68 +222,99 @@ function HeroSlider() {
 function HomeDealCard({ deal }: { deal: Deal }) {
   const { addItem, openCart } = useCart()
   const [added, setAdded] = useState(false)
+  const sale = deal.discountPct
+    ? Math.round(deal.originalPrice * (1 - Math.min(100, deal.discountPct) / 100))
+    : deal.salePrice
 
-  function handleAdd() {
+  function handleAdd(e: React.MouseEvent) {
+    e.preventDefault()
     addItem(dealAsProduct(deal))
     setAdded(true)
     setTimeout(() => { setAdded(false); openCart() }, 400)
   }
 
   return (
-    <div className="group border border-border p-6 transition-all hover:border-gold/60 hover:bg-secondary">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <p className="text-[10px] font-light uppercase tracking-[0.18em] text-gold">{deal.brand}</p>
-          <h3 className="mt-1 font-serif text-xl font-medium">{deal.title}</h3>
-        </div>
-        <span className="border border-gold/40 bg-lavender px-2 py-0.5 text-[11px] font-medium text-gold">
-          {deal.badge}
-        </span>
+    <Link
+      href={`/deal/${deal.id}`}
+      className="group border border-border overflow-hidden transition-all hover:border-gold/60 hover:bg-secondary block"
+    >
+      <div className="relative aspect-[16/10] bg-muted">
+        <Image
+          src={deal.image || "/product-bundle.png"}
+          alt={deal.title}
+          fill
+          sizes="(max-width: 768px) 100vw, 33vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
+        />
       </div>
-      <ul className="space-y-1.5 mb-5">
-        {deal.items.map(item => (
-          <li key={item.name} className="flex items-center gap-2 text-sm font-light text-muted-foreground">
-            <span className="size-1.5 rounded-full bg-gold shrink-0" /> {item.name}
-          </li>
-        ))}
-      </ul>
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="text-xs font-light line-through text-muted-foreground">
-            ₦{deal.originalPrice.toLocaleString()}
-          </p>
-          <p className="font-serif text-xl font-medium text-foreground">₦{deal.salePrice.toLocaleString()}</p>
-        </div>
-        <button
-          type="button"
-          onClick={handleAdd}
-          className={cn(
-            "flex items-center gap-1.5 px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.12em] transition-all",
-            added ? "bg-gold text-gold-foreground" : "bg-foreground text-background hover:bg-gold hover:text-gold-foreground",
+      <div className="p-6">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <p className="text-[10px] font-light uppercase tracking-[0.18em] text-gold">{deal.brand}</p>
+            <h3 className="mt-1 font-serif text-xl font-medium">{deal.title}</h3>
+          </div>
+          {deal.badge && (
+            <span className="border border-gold/40 bg-lavender px-2 py-0.5 text-[11px] font-medium text-gold shrink-0">
+              {deal.badge}
+            </span>
           )}
-        >
-          <ShoppingBag className="size-3" />
-          {added ? "Added!" : "Add Bundle"}
-        </button>
+        </div>
+        <ul className="space-y-1.5 mb-5">
+          {deal.items.map(item => (
+            <li key={`${item.productId}-${item.name}`} className="flex items-center gap-2 text-sm font-light text-muted-foreground">
+              <span className="size-1.5 rounded-full bg-gold shrink-0" /> {item.name}
+            </li>
+          ))}
+        </ul>
+        <div className="flex items-end justify-between">
+          <div>
+            {deal.originalPrice > sale && (
+              <p className="text-xs font-light line-through text-muted-foreground">
+                ₦{deal.originalPrice.toLocaleString()}
+              </p>
+            )}
+            <p className="font-serif text-xl font-medium text-foreground">₦{sale.toLocaleString()}</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleAdd}
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.12em] transition-all",
+              added ? "bg-gold text-gold-foreground" : "bg-foreground text-background hover:bg-gold hover:text-gold-foreground",
+            )}
+          >
+            <ShoppingBag className="size-3" />
+            {added ? "Added!" : "Add Bundle"}
+          </button>
+        </div>
       </div>
-    </div>
+    </Link>
   )
 }
 
 export default function HomePage() {
-  const [newArrivals, setNewArrivals] = useState<Product[]>([])
-  const [comboDeals, setComboDeals] = useState<Deal[]>([])
+  const [bestsellers, setBestsellers] = useState<Product[]>([])
+  const [featuredNew, setFeaturedNew] = useState<Product[]>([])
+  const [saleProducts, setSaleProducts] = useState<Product[]>([])
+  const [saleDeals, setSaleDeals] = useState<Deal[]>([])
   const [recentArticles, setRecentArticles] = useState<Journal[]>([])
+  const [brands, setBrands] = useState<Brand[]>([])
 
   useEffect(() => {
     void Promise.all([
-      getFeaturedProducts(4),
+      getProductsByTag("Bestseller", 4),
+      getProductsByTag("New", 4),
+      getDiscountedProducts({ limit: 4 }),
       getActiveDeals(),
       getPublishedJournals(),
-    ]).then(([products, deals, journals]) => {
-      setNewArrivals(products)
-      setComboDeals(deals.slice(0, 3))
+      getActiveBrands(),
+    ]).then(([best, featured, discounted, deals, journals, activeBrands]) => {
+      setBestsellers(best)
+      setFeaturedNew(featured)
+      setSaleProducts(discounted)
+      setSaleDeals(deals.slice(0, 3))
       setRecentArticles(journals.slice(0, 3))
+      setBrands(activeBrands)
     })
   }, [])
 
@@ -318,6 +350,32 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── Best Sellers ── */}
+      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+        <div className="mb-8 flex items-end justify-between">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Customer favourites</p>
+            <h2 className="mt-1.5 font-serif text-3xl font-medium">Best Sellers</h2>
+          </div>
+          <Link href="/shop" className="hidden items-center gap-1.5 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground hover:text-gold transition-colors sm:flex">
+            View All <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-4">
+          {bestsellers.map((p, i) => (
+            <ProductCard key={p.id} product={p} index={i} />
+          ))}
+        </div>
+        {bestsellers.length === 0 && (
+          <p className="text-center text-sm font-light text-muted-foreground">Bestsellers are on the way.</p>
+        )}
+        <div className="mt-8 text-center sm:hidden">
+          <Link href="/shop" className="inline-flex items-center gap-2 border border-border px-8 py-3 text-xs font-medium uppercase tracking-[0.15em] hover:border-foreground transition-colors">
+            View All Products <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+      </section>
+
       {/* ── Shop by Concern ── */}
       <section className="bg-secondary py-16">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
@@ -341,7 +399,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── New Arrivals ── */}
+      {/* ── Featured / New ── */}
       <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
         <div className="mb-8 flex items-end justify-between">
           <div>
@@ -353,92 +411,17 @@ export default function HomePage() {
           </Link>
         </div>
         <div className="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-4">
-          {newArrivals.map((p, i) => (
+          {featuredNew.map((p, i) => (
             <ProductCard key={p.id} product={p} index={i} />
           ))}
         </div>
+        {featuredNew.length === 0 && (
+          <p className="text-center text-sm font-light text-muted-foreground">New products are on the way.</p>
+        )}
         <div className="mt-8 text-center sm:hidden">
           <Link href="/shop" className="inline-flex items-center gap-2 border border-border px-8 py-3 text-xs font-medium uppercase tracking-[0.15em] hover:border-foreground transition-colors">
             View All Products <ArrowRight className="size-3.5" />
           </Link>
-        </div>
-      </section>
-
-      {/* ── Brands We Stock ── */}
-      <section className="border-y border-border bg-background py-14">
-        <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          <p className="mb-8 text-center text-[11px] font-medium uppercase tracking-[0.3em] text-muted-foreground">
-            Trusted brands in stock
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            {BRANDS.map(brand => (
-              <Link
-                key={brand.id}
-                href={`/brands#${brand.id}`}
-                className="group flex items-center justify-center border border-border px-5 py-3 transition-all hover:border-gold/60 hover:bg-secondary min-w-[120px]"
-              >
-                <span className="text-sm font-medium text-foreground/60 group-hover:text-foreground transition-colors">
-                  {brand.name}
-                </span>
-              </Link>
-            ))}
-          </div>
-          <div className="mt-8 text-center">
-            <Link href="/brands" className="text-xs font-medium uppercase tracking-[0.15em] text-gold hover:underline underline-offset-2">
-              View all brands →
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Combo Deals ── */}
-      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
-        <div className="mb-8 flex items-end justify-between">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Save more</p>
-            <h2 className="mt-1.5 font-serif text-3xl font-medium">Combo Deals & Kits</h2>
-            <p className="mt-1 text-sm font-light text-muted-foreground">Curated bundles at discounted prices.</p>
-          </div>
-          <Link href="/deals" className="hidden items-center gap-1.5 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground hover:text-gold transition-colors sm:flex">
-            All Deals <ArrowRight className="size-3.5" />
-          </Link>
-        </div>
-        <div className="grid gap-5 md:grid-cols-3">
-          {comboDeals.map(deal => (
-            <HomeDealCard key={deal.id} deal={deal} />
-          ))}
-        </div>
-        {comboDeals.length === 0 && (
-          <p className="mt-4 text-center text-sm font-light text-muted-foreground">
-            New bundles are on the way —{" "}
-            <Link href="/deals" className="text-gold hover:underline">browse deals</Link>.
-          </p>
-        )}
-      </section>
-
-      {/* ── Loyalty CTA ── */}
-      <section className="bg-foreground py-16">
-        <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          <div className="flex flex-col items-center gap-6 text-center md:flex-row md:text-left md:justify-between">
-            <div>
-              <div className="flex items-center gap-2 justify-center md:justify-start mb-2">
-                <Sparkles className="size-4 text-gold" />
-                <span className="text-xs font-medium uppercase tracking-[0.2em] text-gold">Rewards Programme</span>
-              </div>
-              <h2 className="font-serif text-3xl font-medium text-background">Earn points with every purchase</h2>
-              <p className="mt-2 text-sm font-light text-background/60 max-w-md">
-                Join HAYDA Rewards and earn 1 point for every ₦100 spent. Redeem points for discounts, free products, and exclusive member perks.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row shrink-0">
-              <Link href="/register" className="flex items-center gap-2 bg-gold px-8 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-gold-foreground transition-all hover:bg-gold/90">
-                Join Free <ArrowRight className="size-3.5" />
-              </Link>
-              <Link href="/login" className="flex items-center gap-2 border border-background/30 px-8 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-background transition-all hover:border-background/60">
-                Sign In
-              </Link>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -481,6 +464,109 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
+      {/* ── On Sale (discounted products + deals) ── */}
+      {(saleProducts.length > 0 || saleDeals.length > 0) && (
+        <section className="bg-secondary py-16">
+          <div className="mx-auto max-w-7xl px-5 lg:px-8">
+            <div className="mb-8 flex items-end justify-between">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Limited time</p>
+                <h2 className="mt-1.5 font-serif text-3xl font-medium">On Sale</h2>
+                <p className="mt-1 text-sm font-light text-muted-foreground">
+                  Discounted favourites and curated combo deals.
+                </p>
+              </div>
+              <div className="hidden items-center gap-4 sm:flex">
+                <Link href="/offers" className="items-center gap-1.5 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground hover:text-gold transition-colors flex">
+                  Offers <ArrowRight className="size-3.5" />
+                </Link>
+                <Link href="/deals" className="items-center gap-1.5 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground hover:text-gold transition-colors flex">
+                  Deals <ArrowRight className="size-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            {saleProducts.length > 0 && (
+              <div className="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-4">
+                {saleProducts.map((p, i) => (
+                  <ProductCard key={p.id} product={p} index={i} />
+                ))}
+              </div>
+            )}
+
+            {saleDeals.length > 0 && (
+              <div className={cn("grid gap-5 md:grid-cols-3", saleProducts.length > 0 && "mt-10")}>
+                {saleDeals.map(deal => (
+                  <HomeDealCard key={deal.id} deal={deal} />
+                ))}
+              </div>
+            )}
+
+            <div className="mt-8 flex justify-center gap-3 sm:hidden">
+              <Link href="/offers" className="inline-flex items-center gap-2 border border-border bg-background px-6 py-3 text-xs font-medium uppercase tracking-[0.15em] hover:border-foreground transition-colors">
+                Offers <ArrowRight className="size-3.5" />
+              </Link>
+              <Link href="/deals" className="inline-flex items-center gap-2 border border-border bg-background px-6 py-3 text-xs font-medium uppercase tracking-[0.15em] hover:border-foreground transition-colors">
+                Deals <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Brands We Stock ── */}
+      <section className="border-y border-border bg-background py-14">
+        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+          <p className="mb-8 text-center text-[11px] font-medium uppercase tracking-[0.3em] text-muted-foreground">
+            Trusted brands in stock
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            {brands.map(brand => (
+              <Link
+                key={brand.id}
+                href={`/shop?brand=${encodeURIComponent(brand.name)}`}
+                className="group flex items-center justify-center border border-border px-5 py-3 transition-all hover:border-gold/60 hover:bg-secondary min-w-[120px]"
+              >
+                <span className="text-sm font-medium text-foreground/60 group-hover:text-foreground transition-colors">
+                  {brand.name}
+                </span>
+              </Link>
+            ))}
+          </div>
+          <div className="mt-8 text-center">
+            <Link href="/brands" className="text-xs font-medium uppercase tracking-[0.15em] text-gold hover:underline underline-offset-2">
+              View all brands →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Loyalty CTA ── */}
+      <section className="bg-foreground py-16">
+        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+          <div className="flex flex-col items-center gap-6 text-center md:flex-row md:text-left md:justify-between">
+            <div>
+              <div className="flex items-center gap-2 justify-center md:justify-start mb-2">
+                <Sparkles className="size-4 text-gold" />
+                <span className="text-xs font-medium uppercase tracking-[0.2em] text-gold">Rewards Programme</span>
+              </div>
+              <h2 className="font-serif text-3xl font-medium text-background">Earn points with every purchase</h2>
+              <p className="mt-2 text-sm font-light text-background/60 max-w-md">
+                Join HAYDA Rewards and earn 1 point for every ₦100 spent. Redeem points for discounts, free products, and exclusive member perks.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row shrink-0">
+              <Link href="/register" className="flex items-center gap-2 bg-gold px-8 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-gold-foreground transition-all hover:bg-gold/90">
+                Join Free <ArrowRight className="size-3.5" />
+              </Link>
+              <Link href="/login" className="flex items-center gap-2 border border-background/30 px-8 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-background transition-all hover:border-background/60">
+                Sign In
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
     </>
   )
 }

@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/client"
 import type { Product } from "@/lib/products"
 import { rowToProduct } from "@/lib/supabase/products"
+import { bareDealId, dealAsProduct, isDealCartId } from "@/lib/deals"
+import { getDealById } from "@/lib/supabase/deals"
 
 export async function fetchWishlistProducts(): Promise<Product[]> {
   const supabase = createClient()
@@ -20,9 +22,18 @@ export async function fetchWishlistProducts(): Promise<Product[]> {
     return []
   }
 
-  return (rows ?? [])
-    .map((r: { products?: unknown }) => (r.products ? rowToProduct(r.products as never) : null))
-    .filter(Boolean) as Product[]
+  const out: Product[] = []
+  for (const r of rows ?? []) {
+    const id = String((r as { product_id?: string }).product_id ?? "")
+    if (isDealCartId(id)) {
+      const deal = await getDealById(bareDealId(id))
+      if (deal && deal.status === "active") out.push(dealAsProduct(deal))
+      continue
+    }
+    const productRow = (r as { products?: unknown }).products
+    if (productRow) out.push(rowToProduct(productRow as never))
+  }
+  return out
 }
 
 export async function addToWishlist(productId: string): Promise<string | null> {

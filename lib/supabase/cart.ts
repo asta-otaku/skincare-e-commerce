@@ -10,6 +10,11 @@ type CartSnapshot = {
   tagline: string
   description: string
   price: number
+  listPrice?: number
+  skuPrice?: number
+  discountPct?: number
+  moq?: number
+  priceTiers?: Product["priceTiers"]
   image: string
   images?: string[]
   category: string
@@ -32,6 +37,11 @@ function toSnapshot(product: Product): CartSnapshot {
     tagline: product.tagline,
     description: product.description,
     price: product.price,
+    listPrice: product.listPrice ?? product.price,
+    skuPrice: product.skuPrice ?? product.listPrice ?? product.price,
+    discountPct: product.discountPct,
+    moq: product.moq,
+    priceTiers: product.priceTiers,
     image: product.image,
     images: product.images,
     category: product.category,

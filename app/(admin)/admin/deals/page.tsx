@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { Plus, Search, Edit2, Trash2, Tag, ToggleLeft, ToggleRight, RefreshCw } from "lucide-react"
 import { type Deal } from "@/lib/deals"
@@ -133,8 +134,14 @@ export default function AdminDealsPage() {
                   {/* Deal info */}
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex size-10 shrink-0 items-center justify-center border border-gold/30 bg-lavender">
-                        <Tag className="size-4 text-gold/70" />
+                      <div className="relative size-12 shrink-0 overflow-hidden border border-border bg-muted">
+                        {deal.image && deal.image !== "/product-bundle.png" ? (
+                          <Image src={deal.image} alt="" fill className="object-cover" sizes="48px" />
+                        ) : (
+                          <div className="flex size-full items-center justify-center border-gold/30 bg-lavender">
+                            <Tag className="size-4 text-gold/70" />
+                          </div>
+                        )}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -145,8 +152,10 @@ export default function AdminDealsPage() {
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 text-xs font-light text-muted-foreground">{deal.brand} · {deal.badge}</p>
-                        <p className="mt-0.5 text-[10px] font-light text-gold">{deal.concern}</p>
+                        <p className="mt-1 text-xs font-light text-muted-foreground">{deal.brand} · {deal.badge || (deal.discountPct ? `Save ${deal.discountPct}%` : "")}</p>
+                        <p className="mt-0.5 text-[10px] font-light text-gold">
+                          {(deal.concerns?.length ? deal.concerns : deal.concern ? [deal.concern] : []).join(" · ")}
+                        </p>
                       </div>
                     </div>
                   </td>
@@ -155,8 +164,8 @@ export default function AdminDealsPage() {
                   <td className="hidden px-5 py-4 md:table-cell">
                     <div className="space-y-0.5">
                       {deal.items.map(item => (
-                        <p key={item.name} className="text-xs font-light text-muted-foreground">
-                          · {item.name} ({item.size})
+                        <p key={`${item.productId}-${item.variantLabel ?? item.size}-${item.name}`} className="text-xs font-light text-muted-foreground">
+                          · {item.name}{item.size ? ` (${item.size})` : ""}
                         </p>
                       ))}
                     </div>
@@ -229,8 +238,14 @@ export default function AdminDealsPage() {
             {filtered.map(deal => (
               <div key={deal.id} className="p-4 space-y-3">
                 <div className="flex items-start gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center border border-gold/30 bg-lavender">
-                    <Tag className="size-4 text-gold/70" />
+                  <div className="relative size-12 shrink-0 overflow-hidden border border-border bg-muted">
+                    {deal.image && deal.image !== "/product-bundle.png" ? (
+                      <Image src={deal.image} alt="" fill className="object-cover" sizes="48px" />
+                    ) : (
+                      <div className="flex size-full items-center justify-center bg-lavender">
+                        <Tag className="size-4 text-gold/70" />
+                      </div>
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">

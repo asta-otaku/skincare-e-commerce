@@ -1,12 +1,49 @@
+/**
+ * Quantity promotion band.
+ * `value` = absolute ₦ off product base (tier_discount), NOT a unit price and NOT %.
+ */
+export type PriceTier = {
+  /** Minimum quantity to unlock this tier discount */
+  qty: number
+  /** Absolute ₦ subtracted from base before SKU delta is applied */
+  value: number
+}
+
+export type PriceBand = {
+  minQty: number
+  maxQty: number | null
+  tierDiscount: number
+  unitPrice: number
+  label: string
+}
+
 export type Product = {
   id: string
   name: string
   brand: string
   tagline: string
   description: string
+  /** Product base / list price (before general % and volume tier). */
   price: number
-  /** Percentage off list price (0–100). */
+  /**
+   * General product discount % off list/SKU price.
+   * Applied on listing cards AND on PDP / cart / checkout, before volume tier ₦ off.
+   */
   discountPct?: number
+  /**
+   * Cart line: product base price preserved while `price` may hold the charged unit.
+   */
+  listPrice?: number
+  /**
+   * Cart line: absolute selected SKU/variant list price (before %).
+   * unit = discounted(sku) − tier_discount
+   *      = discounted(base) − tier_discount + (discounted(sku) − discounted(base))
+   */
+  skuPrice?: number
+  /** Minimum order quantity (default 1). */
+  moq?: number
+  /** Optional quantity promotions: absolute ₦ off after general % is applied. */
+  priceTiers?: PriceTier[]
   /** Primary image — always present */
   image: string
   /** Additional gallery images; falls back to [image] if empty */
@@ -20,6 +57,7 @@ export type Product = {
   rating: number
   reviewCount: number
   size?: string
+  /** Absolute SKU prices (not deltas). Delta is derived vs product.price. */
   variants?: { label: string; price: number }[]
 }
 
@@ -279,7 +317,7 @@ export function formatPrice(price: number) {
   return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(price)
 }
 
-/** Clamp discount and return sale price from list price. */
+/** Apply general discount % to a list amount. */
 export function getEffectivePrice(product: Pick<Product, "price" | "discountPct">): number {
   const pct = Math.min(100, Math.max(0, Number(product.discountPct) || 0))
   if (pct <= 0) return product.price
@@ -288,6 +326,179 @@ export function getEffectivePrice(product: Pick<Product, "price" | "discountPct"
 
 export function hasDiscount(product: Pick<Product, "discountPct">): boolean {
   return (Number(product.discountPct) || 0) > 0
+}
+
+export function getProductMoq(product: Pick<Product, "moq">): number {
+  const n = Math.floor(Number(product.moq) || 1)
+  return n >= 1 ? n : 1
+}
+
+type RawTier = { qty?: number; value?: number; price?: number }
+
+/**
+ * Normalize tiers. `value` = ₦ off base.
+ * Legacy rows stored unit `price` — convert with basePrice when provided:
+ * value = max(0, basePrice − price).
+ */
+export function normalizePriceTiers(
+  tiers?: RawTier[] | null,
+  basePrice?: number,
+): PriceTier[] {
+  if (!Array.isArray(tiers)) return []
+  const base = basePrice != null ? Math.round(Number(basePrice) || 0) : null
+  return tiers
+    .map((t) => {
+      const qty = Math.floor(Number(t.qty) || 0)
+      let value = NaN
+      if (t.value != null && Number.isFinite(Number(t.value))) {
+        value = Math.round(Number(t.value))
+      } else if (base != null && t.price != null && Number.isFinite(Number(t.price))) {
+        // Legacy: price was charged unit → infer absolute off base
+        value = Math.max(0, base - Math.round(Number(t.price)))
+      }
+      return { qty, value }
+    })
+    .filter(t => t.qty >= 2 && t.value > 0)
+    .sort((a, b) => a.qty - b.qty)
+}
+
+/** Absolute ₦ tier discount for a quantity (0 if none). */
+export function getTierDiscount(
+  tiers: RawTier[] | null | undefined,
+  quantity: number,
+  basePrice?: number,
+): number {
+  const qty = Math.max(1, Math.floor(Number(quantity) || 1))
+  let matched = 0
+  for (const tier of normalizePriceTiers(tiers, basePrice)) {
+    if (qty >= tier.qty) matched = tier.value
+  }
+  return matched
+}
+
+/**
+ * Transactional unit price (PDP / cart / checkout):
+ *   1) Apply general discount % to base and SKU list prices
+ *   2) unit = discounted_base − tier_discount + sku_delta
+ *      where sku_delta = discounted_sku − discounted_base
+ *   Equivalent: unit = max(0, discounted_sku − tier_discount)
+ */
+export function calculateUnitPrice(opts: {
+  basePrice: number
+  quantity: number
+  priceTiers?: RawTier[] | null
+  /** Absolute selected SKU/variant list price; defaults to base */
+  skuPrice?: number
+  /** General product discount % (stacks with volume tier) */
+  discountPct?: number
+}): number {
+  const base = Math.round(Number(opts.basePrice) || 0)
+  const sku = Math.round(Number(opts.skuPrice ?? base) || 0)
+  const pct = opts.discountPct
+  const discountedBase = getEffectivePrice({ price: base, discountPct: pct })
+  const discountedSku = getEffectivePrice({ price: sku, discountPct: pct })
+  const tierDiscount = getTierDiscount(opts.priceTiers, opts.quantity, base)
+  const skuDelta = discountedSku - discountedBase
+  return Math.max(0, discountedBase - tierDiscount + skuDelta)
+}
+
+/** Line total = unit × quantity */
+export function calculateTotalPrice(opts: {
+  basePrice: number
+  quantity: number
+  priceTiers?: RawTier[] | null
+  skuPrice?: number
+  discountPct?: number
+}): number {
+  const qty = Math.max(1, Math.floor(Number(opts.quantity) || 1))
+  return calculateUnitPrice({ ...opts, quantity: qty }) * qty
+}
+
+/**
+ * Cart helper — listPrice = base, skuPrice = absolute SKU list, then % + tier.
+ */
+export function getUnitPriceForQuantity(
+  product: Pick<Product, "price" | "listPrice" | "skuPrice" | "priceTiers" | "discountPct">,
+  quantity: number,
+): number {
+  const base = Number(product.listPrice ?? product.price) || 0
+  const sku = Number(product.skuPrice ?? base) || 0
+  return calculateUnitPrice({
+    basePrice: base,
+    skuPrice: sku,
+    quantity,
+    priceTiers: product.priceTiers,
+    discountPct: product.discountPct,
+  })
+}
+
+/** Price bands for PriceRange UI (includes synthetic MOQ…firstTier−1 after general %). */
+export function buildPriceBands(opts: {
+  moq?: number
+  basePrice: number
+  skuPrice?: number
+  discountPct?: number
+  priceTiers?: RawTier[] | null
+}): PriceBand[] {
+  const moq = getProductMoq({ moq: opts.moq })
+  const base = Math.round(Number(opts.basePrice) || 0)
+  const sku = Math.round(Number(opts.skuPrice ?? base) || 0)
+  const pct = opts.discountPct
+  const tiers = normalizePriceTiers(opts.priceTiers, base)
+
+  if (!tiers.length) {
+    return [{
+      minQty: moq,
+      maxQty: null,
+      tierDiscount: 0,
+      unitPrice: calculateUnitPrice({
+        basePrice: base, skuPrice: sku, quantity: moq, discountPct: pct,
+      }),
+      label: `${moq}+ units`,
+    }]
+  }
+
+  const bands: PriceBand[] = []
+  const firstMin = tiers[0].qty
+
+  if (moq < firstMin) {
+    bands.push({
+      minQty: moq,
+      maxQty: firstMin - 1,
+      tierDiscount: 0,
+      unitPrice: calculateUnitPrice({
+        basePrice: base, skuPrice: sku, quantity: moq, discountPct: pct,
+      }),
+      label: moq === firstMin - 1 ? `${moq} units` : `${moq} – ${firstMin - 1} units`,
+    })
+  }
+
+  for (let i = 0; i < tiers.length; i++) {
+    const t = tiers[i]
+    const next = tiers[i + 1]
+    const minQty = Math.max(t.qty, moq)
+    const maxQty = next ? next.qty - 1 : null
+    if (maxQty != null && minQty > maxQty) continue
+    bands.push({
+      minQty,
+      maxQty,
+      tierDiscount: t.value,
+      unitPrice: calculateUnitPrice({
+        basePrice: base,
+        skuPrice: sku,
+        quantity: minQty,
+        priceTiers: tiers,
+        discountPct: pct,
+      }),
+      label:
+        maxQty == null
+          ? `${minQty}+ units`
+          : minQty === maxQty
+            ? `${minQty} units`
+            : `${minQty} – ${maxQty} units`,
+    })
+  }
+  return bands
 }
 
 /** Matches storefront navbar category links (shop?category=…). */

@@ -5,34 +5,95 @@
 import { createClient, createAdminBrowserClient } from "@/lib/supabase/client"
 import type { Deal, DealItem } from "@/lib/deals"
 import { deals as mockDeals } from "@/lib/deals"
+import { getEffectivePrice } from "@/lib/products"
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapItems(raw: unknown): DealItem[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((i: Record<string, unknown>) => ({
+    productId: String(i.productId ?? i.product_id ?? ""),
+    variantLabel: (i.variantLabel ?? i.variant_label ?? null) as string | null,
+    name: String(i.name ?? ""),
+    size: String(i.size ?? i.variantLabel ?? i.variant_label ?? ""),
+    price: Number(i.price ?? 0),
+  }))
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function rowToDeal(row: any): Deal {
-  let items: DealItem[] = []
-  if (Array.isArray(row.items)) {
-    items = row.items.map((i: DealItem & { productId?: string; qty?: number }) => ({
-      name: i.name ?? "",
-      size: i.size ?? "",
-      price: Number(i.price ?? 0),
-    }))
+  const items = mapItems(row.items)
+  const originalPrice = Number(row.original_price ?? 0) || items.reduce((s, i) => s + i.price, 0)
+  const discountPct = Math.min(100, Math.max(0, Number(row.discount_pct ?? 0)))
+  let salePrice = Number(row.price ?? 0)
+  if (discountPct > 0) {
+    salePrice = getEffectivePrice({ price: originalPrice, discountPct })
+  } else if (!salePrice) {
+    salePrice = originalPrice
   }
+
+  const concerns: string[] = Array.isArray(row.concerns)
+    ? row.concerns.filter(Boolean)
+    : typeof row.description === "string" && row.description.includes("·")
+      ? row.description.split(/\s*·\s*/).filter(Boolean)
+      : []
+
+  // Prefer real description; if legacy row stored concerns in description, leave empty
+  const legacyConcernsInDescription =
+    typeof row.description === "string" &&
+    row.description.includes("·") &&
+    (!Array.isArray(row.concerns) || row.concerns.length === 0)
+  const description = legacyConcernsInDescription ? "" : (row.description ?? "")
+
+  const brandIds: string[] = Array.isArray(row.brand_ids) ? row.brand_ids.filter(Boolean) : []
+  const brand = String(row.brand_name || "").trim()
+    || (brandIds.length ? brandIds.join(", ") : "")
+
+  const badge =
+    row.tag ||
+    (discountPct > 0 ? `Save ${discountPct}%` : "") ||
+    (originalPrice > salePrice && originalPrice > 0
+      ? `Save ${Math.round((1 - salePrice / originalPrice) * 100)}%`
+      : "")
 
   return {
     id: String(row.id),
     title: row.title,
-    subtitle: row.tagline ?? row.subtitle ?? "",
-    brand: row.brand_name ?? row.brand ?? "",
-    badge: row.tag ?? row.badge ?? "",
-    concern: row.description ?? row.concern ?? "",
-    originalPrice: Number(row.original_price ?? 0),
-    salePrice: Number(row.price ?? 0),
+    subtitle: row.tagline ?? "",
+    description,
+    image: row.image_url || "/product-bundle.png",
+    brand,
+    brandIds,
+    badge,
+    concerns,
+    concern: concerns.join(" · "),
+    originalPrice,
+    discountPct,
+    salePrice,
     items,
     highlight: Boolean(row.highlight),
     status: row.is_active ? "active" : "draft",
+    rating: Number(row.rating ?? 0),
+    reviewCount: Number(row.review_count ?? 0),
     createdAt: row.created_at
       ? String(row.created_at).slice(0, 10)
       : new Date().toISOString().slice(0, 10),
   }
+}
+
+export type SaveDealInput = {
+  id?: string
+  title: string
+  subtitle: string
+  description: string
+  image: string
+  brand: string
+  brandIds: string[]
+  badge?: string
+  concerns: string[]
+  items: DealItem[]
+  discountPct: number
+  highlight?: boolean
+  status: "active" | "draft" | "archived"
 }
 
 export async function getAllDeals(): Promise<Deal[]> {
@@ -69,8 +130,6 @@ export async function getActiveDeals(): Promise<Deal[]> {
 }
 
 export async function getDealById(id: string): Promise<Deal | null> {
-  // Prefer admin jar so draft deals load in the admin editor; public RLS still
-  // allows active deals when no admin session is present.
   const supabase = createAdminBrowserClient() ?? createClient()
   if (!supabase) return mockDeals.find(d => d.id === id) ?? null
 
@@ -84,16 +143,30 @@ export async function getDealById(id: string): Promise<Deal | null> {
     console.error("[deals] getDealById:", error.message, "id=", id)
     return null
   }
-  if (!data) {
-    console.warn("[deals] getDealById: no row for id=", id)
-    return null
-  }
+  if (!data) return null
   return rowToDeal(data)
+}
+
+/** Active deal ids for static generation. */
+export async function getDealIds(): Promise<string[]> {
+  const supabase = createClient()
+  if (!supabase) return mockDeals.filter(d => d.status === "active").map(d => d.id)
+
+  const { data, error } = await supabase
+    .from("deals")
+    .select("id")
+    .eq("is_active", true)
+
+  if (error) {
+    console.error("[deals] getDealIds:", error.message)
+    return []
+  }
+  return (data ?? []).map(r => String(r.id))
 }
 
 /** Upsert a deal. Returns the saved id. */
 export async function saveDeal(
-  values: Omit<Deal, "createdAt">,
+  values: SaveDealInput,
   existingId?: string,
 ): Promise<string> {
   const supabase = createAdminBrowserClient()
@@ -107,14 +180,25 @@ export async function saveDeal(
     values.id ??
     values.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
 
+  const originalPrice = values.items.reduce((s, i) => s + Number(i.price || 0), 0)
+  const discountPct = Math.min(100, Math.max(0, Number(values.discountPct) || 0))
+  const salePrice = getEffectivePrice({ price: originalPrice, discountPct })
+  const badge =
+    values.badge?.trim() ||
+    (discountPct > 0 ? `Save ${discountPct}%` : "")
+
   const row = {
     title: values.title,
     tagline: values.subtitle,
+    description: values.description || null,
+    image_url: values.image || null,
     brand_name: values.brand,
-    tag: values.badge || null,
-    description: values.concern || null,
-    price: values.salePrice,
-    original_price: values.originalPrice,
+    brand_ids: values.brandIds,
+    tag: badge || null,
+    concerns: values.concerns,
+    price: salePrice,
+    original_price: originalPrice,
+    discount_pct: discountPct,
     items: values.items,
     is_active: values.status === "active",
     highlight: values.highlight ?? false,

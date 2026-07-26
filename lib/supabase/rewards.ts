@@ -16,6 +16,13 @@ export type RewardsSummary = {
   nextTierAt: number
 }
 
+export type PendingRewardPromo = {
+  code: string
+  discountNgn: number
+  rewardId: string
+  label: string
+}
+
 const TIERS = [
   { label: "Bronze", min: 0 },
   { label: "Silver", min: 500 },
@@ -81,6 +88,51 @@ export async function getRewardsSummary(): Promise<RewardsSummary | null> {
   }))
 
   return { balance, history, ...tierFor(balance) }
+}
+
+/**
+ * Most recent unused reward promo for the signed-in user
+ * (created via redeem on Rewards page or checkout).
+ */
+export async function getPendingRewardPromo(): Promise<PendingRewardPromo | null> {
+  const supabase = createClient()
+  if (!supabase) return null
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data, error } = await supabase
+    .from("reward_redemptions")
+    .select("promo_code, reward_id, points_spent")
+    .eq("user_id", user.id)
+    .order("redeemed_at", { ascending: false })
+
+  if (error) {
+    console.error("[rewards] pending:", error.message)
+    return null
+  }
+
+  for (const row of data ?? []) {
+    if (!row.promo_code) continue
+    const { data: promo } = await supabase
+      .from("promo_codes")
+      .select("code, discount_ngn, max_uses, used_count, is_active")
+      .eq("code", row.promo_code)
+      .maybeSingle()
+
+    if (!promo || !promo.is_active) continue
+    if (promo.max_uses != null && promo.used_count >= promo.max_uses) continue
+
+    const catalog = REWARD_CATALOG.find(r => r.id === row.reward_id)
+    return {
+      code: promo.code,
+      discountNgn: Number(promo.discount_ngn) || catalog?.discountNgn || 0,
+      rewardId: row.reward_id,
+      label: catalog?.label ?? `₦${Number(promo.discount_ngn || 0).toLocaleString()} rewards credit`,
+    }
+  }
+
+  return null
 }
 
 export async function redeemReward(rewardId: string): Promise<{

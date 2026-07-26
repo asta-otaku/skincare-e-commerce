@@ -9,7 +9,18 @@ import {
 } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
 import { useFavorites } from "@/components/favorites-provider"
-import { formatPrice, getEffectivePrice, hasDiscount, type Product } from "@/lib/products"
+import {
+  buildPriceBands,
+  calculateTotalPrice,
+  calculateUnitPrice,
+  formatPrice,
+  getEffectivePrice,
+  getProductMoq,
+  getTierDiscount,
+  hasDiscount,
+  type Product,
+} from "@/lib/products"
+import { isDealCartId } from "@/lib/deals"
 import { cn } from "@/lib/utils"
 
 type Tab = "description" | "how-to-use" | "ingredients" | "reviews"
@@ -34,8 +45,10 @@ export function ProductDetail({ product }: { product: Product }) {
   const { isFavorited, toggleFavorite } = useFavorites()
 
   const gallery = product.images && product.images.length > 0 ? product.images : [product.image]
+  const moq = isDealCartId(product.id) ? 1 : getProductMoq(product)
+  const basePrice = product.price
   const [activeImg, setActiveImg] = useState(0)
-  const [qty, setQty] = useState(1)
+  const [qty, setQty] = useState(moq)
   const [added, setAdded] = useState(false)
   const [tab, setTab] = useState<Tab>("description")
   const [selectedVariant, setSelectedVariant] = useState(
@@ -43,21 +56,49 @@ export function ProductDetail({ product }: { product: Product }) {
   )
   const favorited = isFavorited(product.id)
 
-  const listPrice = selectedVariant !== null && product.variants
-    ? product.variants[selectedVariant].price
-    : product.price
-  const activePrice = getEffectivePrice({ price: listPrice, discountPct: product.discountPct })
+  // Absolute SKU price; delta vs base is applied inside calculateUnitPrice
+  const skuPrice =
+    selectedVariant !== null && product.variants
+      ? product.variants[selectedVariant].price
+      : basePrice
+
+  const tierDiscount = getTierDiscount(product.priceTiers, qty, basePrice)
+  const discountedSku = getEffectivePrice({ price: skuPrice, discountPct: product.discountPct })
+  const unitPrice = calculateUnitPrice({
+    basePrice,
+    skuPrice,
+    quantity: qty,
+    priceTiers: product.priceTiers,
+    discountPct: product.discountPct,
+  })
+  const totalPrice = calculateTotalPrice({
+    basePrice,
+    skuPrice,
+    quantity: qty,
+    priceTiers: product.priceTiers,
+    discountPct: product.discountPct,
+  })
+  const priceBands = buildPriceBands({
+    moq,
+    basePrice,
+    skuPrice,
+    discountPct: product.discountPct,
+    priceTiers: product.priceTiers,
+  })
 
   function handleAdd() {
-    const item =
+    const variant =
       selectedVariant !== null && product.variants
-        ? {
-            ...product,
-            price: product.variants[selectedVariant].price,
-            name: `${product.name} — ${product.variants[selectedVariant].label}`,
-          }
-        : product
-    for (let i = 0; i < qty; i++) addItem(item)
+        ? product.variants[selectedVariant]
+        : null
+    const item = {
+      ...product,
+      listPrice: basePrice,
+      skuPrice,
+      price: basePrice,
+      name: variant ? `${product.name} — ${variant.label}` : product.name,
+    }
+    addItem(item, qty)
     setAdded(true)
     window.setTimeout(() => setAdded(false), 1800)
   }
@@ -71,13 +112,23 @@ export function ProductDetail({ product }: { product: Product }) {
       <nav className="mb-8 flex items-center gap-2 text-[11px] font-light uppercase tracking-[0.18em] text-muted-foreground">
         <Link href="/" className="transition-colors hover:text-gold">Home</Link>
         <ChevronRight className="size-3" />
-        <Link href="/shop" className="transition-colors hover:text-gold">Shop</Link>
-        <ChevronRight className="size-3" />
-        <Link href={`/shop?category=${product.category.toLowerCase()}`} className="transition-colors hover:text-gold">
-          {product.category}
-        </Link>
-        <ChevronRight className="size-3" />
-        <span className="text-foreground">{product.name}</span>
+        {isDealCartId(product.id) || product.category === "bundle" ? (
+          <>
+            <Link href="/deals" className="transition-colors hover:text-gold">Combo Deals</Link>
+            <ChevronRight className="size-3" />
+            <span className="text-foreground">{product.name}</span>
+          </>
+        ) : (
+          <>
+            <Link href="/shop" className="transition-colors hover:text-gold">Shop</Link>
+            <ChevronRight className="size-3" />
+            <Link href={`/shop?category=${product.category.toLowerCase()}`} className="transition-colors hover:text-gold">
+              {product.category}
+            </Link>
+            <ChevronRight className="size-3" />
+            <span className="text-foreground">{product.name}</span>
+          </>
+        )}
       </nav>
 
       {/* Main grid */}
@@ -166,22 +217,78 @@ export function ProductDetail({ product }: { product: Product }) {
             </span>
           </div>
 
-          {/* Price */}
+          {/* Price — discounted SKU − volume tier ₦ (general % + tier stack) */}
           <div className="mt-5 flex flex-wrap items-baseline gap-3">
-            {hasDiscount(product) && (
+            {unitPrice < skuPrice && (
               <p className="font-serif text-xl font-light text-muted-foreground line-through">
-                {formatPrice(listPrice)}
+                {formatPrice(skuPrice)}
               </p>
             )}
             <p className="font-serif text-3xl font-medium text-foreground">
-              {formatPrice(activePrice)}
+              {formatPrice(unitPrice)}
             </p>
+            <span className="text-sm font-light text-muted-foreground">/ unit</span>
             {hasDiscount(product) && (
               <span className="border border-gold/40 bg-gold/10 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-gold">
-                {product.discountPct}% off
+                −{product.discountPct}%
+              </span>
+            )}
+            {tierDiscount > 0 && (
+              <span className="border border-border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                −{formatPrice(tierDiscount)} vol.
               </span>
             )}
           </div>
+          {hasDiscount(product) && tierDiscount > 0 && (
+            <p className="mt-1 text-xs font-light text-muted-foreground">
+              After {product.discountPct}% → {formatPrice(discountedSku)}, then −{formatPrice(tierDiscount)} volume
+            </p>
+          )}
+          <p className="mt-1 text-sm font-light text-muted-foreground">
+            Line total{" "}
+            <span className="font-medium text-foreground">{formatPrice(totalPrice)}</span>
+            {" "}· qty {qty}
+          </p>
+
+          {moq > 1 && (
+            <p className="mt-2 text-sm font-light text-muted-foreground">
+              Minimum order quantity: <span className="font-medium text-foreground">{moq}</span>
+            </p>
+          )}
+
+          {priceBands.length > 0 && (product.priceTiers?.length || moq > 1) && (
+            <div className="mt-4 border border-border">
+              <p className="border-b border-border px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Price range
+              </p>
+              <ul className="divide-y divide-border">
+                {priceBands.map((band) => {
+                  const active =
+                    qty >= band.minQty &&
+                    (band.maxQty == null || qty <= band.maxQty)
+                  return (
+                    <li
+                      key={`${band.minQty}-${band.maxQty ?? "open"}`}
+                      className={cn(
+                        "flex items-center justify-between px-3 py-2 text-xs font-light",
+                        active && "bg-lavender/60",
+                      )}
+                    >
+                      <span>
+                        {band.label}
+                        {band.tierDiscount > 0 && (
+                          <span className="ml-2 text-muted-foreground">
+                            (−{formatPrice(band.tierDiscount)})
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-medium">{formatPrice(band.unitPrice)} each</span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
 
           {/* Stock status */}
           <p className={cn(
@@ -239,7 +346,15 @@ export function ProductDetail({ product }: { product: Product }) {
                   >
                     <span className="font-medium">{v.label}</span>
                     <span className={cn("text-[11px] mt-0.5", selectedVariant === idx ? "text-background/70" : "text-muted-foreground")}>
-                      {formatPrice(v.price)}
+                      {formatPrice(
+                        calculateUnitPrice({
+                          basePrice,
+                          skuPrice: v.price,
+                          quantity: qty,
+                          priceTiers: product.priceTiers,
+                          discountPct: product.discountPct,
+                        }),
+                      )}
                     </span>
                   </button>
                 ))}
@@ -276,8 +391,9 @@ export function ProductDetail({ product }: { product: Product }) {
               <button
                 type="button"
                 aria-label="Decrease quantity"
-                onClick={() => setQty(q => Math.max(1, q - 1))}
-                className="flex size-12 items-center justify-center text-foreground transition-colors hover:text-gold"
+                onClick={() => setQty(q => Math.max(moq, q - 1))}
+                disabled={qty <= moq}
+                className="flex size-12 items-center justify-center text-foreground transition-colors hover:text-gold disabled:opacity-30"
               >
                 <Minus className="size-4" />
               </button>
@@ -285,7 +401,7 @@ export function ProductDetail({ product }: { product: Product }) {
               <button
                 type="button"
                 aria-label="Increase quantity"
-                onClick={() => setQty(q => q + 1)}
+                onClick={() => setQty(q => Math.min(product.stock > 0 ? product.stock : q + 1, q + 1))}
                 className="flex size-12 items-center justify-center text-foreground transition-colors hover:text-gold"
               >
                 <Plus className="size-4" />

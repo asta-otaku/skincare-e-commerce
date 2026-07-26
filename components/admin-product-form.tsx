@@ -11,6 +11,7 @@ import { getActiveBrands, type Brand } from "@/lib/supabase/brands"
 
 /* ─── Form types ─────────────────────────────────────────────── */
 type VariantRow = { label: string; price: string }
+type TierRow = { qty: string; value: string }
 
 /**
  * An image entry in the form.
@@ -25,6 +26,9 @@ type FormState = {
   tagline: string
   price: string
   discountPct: string
+  moq: string
+  hasTiers: boolean
+  tiers: TierRow[]
   category: string
   tag: Product["tag"] | ""
   size: string
@@ -47,26 +51,32 @@ const inputClass =
 /* ─── Helpers ────────────────────────────────────────────────── */
 function toFormState(product?: Product): FormState {
   const hasVariants = !!(product?.variants && product.variants.length > 0)
+  const hasTiers = !!(product?.priceTiers && product.priceTiers.length > 0)
   const rawImages = product?.images ?? (product?.image ? [product.image] : [])
   return {
-    name:        product?.name        ?? "",
-    brand:       product?.brand       ?? "",
-    tagline:     product?.tagline     ?? "",
-    price:       product              ? String(product.price) : "",
+    name: product?.name ?? "",
+    brand: product?.brand ?? "",
+    tagline: product?.tagline ?? "",
+    price: product ? String(product.price) : "",
     discountPct: product?.discountPct ? String(product.discountPct) : "",
-    category:    product?.category    ?? ALL_CATEGORIES[0],
-    tag:         product?.tag         ?? "",
-    size:        product?.size        ?? "",
-    stock:       product              ? String(product.stock) : "",
+    moq: product?.moq && product.moq > 1 ? String(product.moq) : "1",
+    hasTiers,
+    tiers: hasTiers
+      ? product!.priceTiers!.map(t => ({ qty: String(t.qty), value: String(t.value) }))
+      : [{ qty: "3", value: "" }, { qty: "6", value: "" }],
+    category: product?.category ?? ALL_CATEGORIES[0],
+    tag: product?.tag ?? "",
+    size: product?.size ?? "",
+    stock: product ? String(product.stock) : "",
     description: product?.description ?? "",
-    howToUse:    (product as (Product & { howToUse?: string }) | undefined)?.howToUse ?? "",
-    benefits:    product?.benefits?.length    ? product.benefits    : [""],
+    howToUse: (product as (Product & { howToUse?: string }) | undefined)?.howToUse ?? "",
+    benefits: product?.benefits?.length ? product.benefits : [""],
     ingredients: product?.ingredients?.length ? product.ingredients : [""],
-    concerns:    product?.concerns    ?? [],
+    concerns: product?.concerns ?? [],
     // Existing images become entries without a file (they're already uploaded)
-    images:      rawImages.map(url => ({ preview: url })),
+    images: rawImages.map(url => ({ preview: url })),
     hasVariants,
-    variants:    hasVariants
+    variants: hasVariants
       ? product!.variants!.map(v => ({ label: v.label, price: String(v.price) }))
       : [{ label: "", price: "" }],
   }
@@ -196,6 +206,26 @@ export function AdminProductForm({ product }: { product?: Product }) {
     })
   }
 
+  /* ── Tier helpers ── */
+  function addTier() {
+    setForm(f => ({ ...f, tiers: [...f.tiers, { qty: "", value: "" }] }))
+  }
+
+  function removeTier(i: number) {
+    setForm(f => ({
+      ...f,
+      tiers: f.tiers.length <= 1 ? f.tiers : f.tiers.filter((_, idx) => idx !== i),
+    }))
+  }
+
+  function setTierField(i: number, key: keyof TierRow, val: string) {
+    setForm(f => {
+      const rows = [...f.tiers]
+      rows[i] = { ...rows[i], [key]: val }
+      return { ...f, tiers: rows }
+    })
+  }
+
   /* ── Submit ── */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -224,6 +254,17 @@ export function AdminProductForm({ product }: { product?: Product }) {
       // ── Step 2: Save product row with resolved URLs ────────────────
       const { saveProduct } = await import("@/lib/supabase/products")
 
+      const priceTiers =
+        form.hasTiers
+          ? form.tiers
+            .map(t => ({
+              qty: parseInt(t.qty, 10) || 0,
+              value: parseFloat(t.value) || 0,
+            }))
+            .filter(t => t.qty >= 2 && t.value > 0)
+            .sort((a, b) => a.qty - b.qty)
+          : []
+
       const payload = {
         id: productSlug,
         name: form.name,
@@ -232,6 +273,8 @@ export function AdminProductForm({ product }: { product?: Product }) {
         description: form.description,
         price: parseFloat(form.price) || 0,
         discountPct: Math.min(100, Math.max(0, parseInt(form.discountPct, 10) || 0)),
+        moq: Math.max(1, parseInt(form.moq, 10) || 1),
+        priceTiers: priceTiers.length ? priceTiers : undefined,
         image: resolvedImages[0] ?? "/product-cleanser.png",
         images: resolvedImages.length > 0 ? resolvedImages : undefined,
         category: form.category,
@@ -245,8 +288,8 @@ export function AdminProductForm({ product }: { product?: Product }) {
         variants:
           form.hasVariants && form.variants.some(v => v.label && v.price)
             ? form.variants
-                .filter(v => v.label && v.price)
-                .map(v => ({ label: v.label, price: parseFloat(v.price) }))
+              .filter(v => v.label && v.price)
+              .map(v => ({ label: v.label, price: parseFloat(v.price) }))
             : undefined,
       } as Parameters<typeof saveProduct>[0]
 
@@ -303,8 +346,8 @@ export function AdminProductForm({ product }: { product?: Product }) {
               saved
                 ? "bg-gold text-gold-foreground"
                 : saving
-                ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : "bg-foreground text-background hover:bg-gold hover:text-gold-foreground",
+                  ? "bg-muted text-muted-foreground cursor-not-allowed"
+                  : "bg-foreground text-background hover:bg-gold hover:text-gold-foreground",
             )}
           >
             {saved ? (
@@ -613,7 +656,11 @@ export function AdminProductForm({ product }: { product?: Product }) {
               <section className="border border-border p-6">
                 <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.18em]">Pricing & Details</h2>
                 <div className="space-y-4">
-                  <Field label="List price (₦)" required>
+                  <Field
+                    label="Base price (₦)"
+                    required
+                    hint="List price. Charged unit = (SKU after general %) − volume ₦ off"
+                  >
                     <div className="relative">
                       {!form.price && (
                         <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -635,7 +682,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
 
                   <Field
                     label="Discount (%)"
-                    hint="0–100. Storefront shows list price struck through and the discounted price."
+                    hint="General % off list/SKU price on shop, product page, cart, and checkout. Volume tiers apply after this."
                   >
                     <input
                       type="number"
@@ -668,16 +715,120 @@ export function AdminProductForm({ product }: { product?: Product }) {
                         className="input-field"
                       />
                     </Field>
-                    <Field label="Size / Volume" hint="Used when there are no variants">
+                    <Field
+                      label="MOQ"
+                      hint="Minimum order quantity in cart (default 1)"
+                      required
+                    >
                       <input
-                        type="text"
-                        value={form.size}
-                        onChange={e => setField("size", e.target.value)}
-                        placeholder="e.g. 30ml"
-                        disabled={form.hasVariants}
-                        className={cn("input-field", form.hasVariants && "opacity-40 cursor-not-allowed")}
+                        type="number"
+                        value={form.moq}
+                        onChange={e => {
+                          const n = e.target.value
+                          if (n === "") {
+                            setField("moq", "")
+                            return
+                          }
+                          setField("moq", String(Math.max(1, parseInt(n, 10) || 1)))
+                        }}
+                        placeholder="1"
+                        min="1"
+                        required
+                        className="input-field"
                       />
                     </Field>
+                  </div>
+
+                  <Field label="Size / Volume" hint="Used when there are no variants">
+                    <input
+                      type="text"
+                      value={form.size}
+                      onChange={e => setField("size", e.target.value)}
+                      placeholder="e.g. 30ml"
+                      disabled={form.hasVariants}
+                      className={cn("input-field", form.hasVariants && "opacity-40 cursor-not-allowed")}
+                    />
+                  </Field>
+
+                  {/* Tiered pricing (optional) */}
+                  <div className="border border-border p-4 space-y-4">
+                    <label className="flex items-center gap-3 cursor-pointer select-none">
+                      <div
+                        role="checkbox"
+                        aria-checked={form.hasTiers}
+                        tabIndex={0}
+                        onClick={() => setField("hasTiers", !form.hasTiers)}
+                        onKeyDown={e => e.key === " " && setField("hasTiers", !form.hasTiers)}
+                        className={cn(
+                          "relative h-5 w-9 rounded-full transition-colors shrink-0",
+                          form.hasTiers ? "bg-foreground" : "bg-muted-foreground/30",
+                        )}
+                      >
+                        <span className={cn(
+                          "absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform",
+                          form.hasTiers ? "translate-x-4" : "translate-x-0.5",
+                        )} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Quantity promotions (volume discount)</p>
+                        <p className="text-[11px] font-light text-muted-foreground">
+                          Optional absolute ₦ off base — e.g. buy 10+ save ₦500/unit, 50+ save ₦900/unit
+                        </p>
+                      </div>
+                    </label>
+
+                    {form.hasTiers && (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-1 gap-2 mb-1 sm:grid-cols-[1fr_1fr_auto]">
+                          <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
+                            Min qty
+                          </p>
+                          <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
+                            Discount off base (₦)
+                          </p>
+                          <span />
+                        </div>
+                        {form.tiers.map((t, i) => (
+                          <div key={i} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                            <input
+                              type="number"
+                              value={t.qty}
+                              onChange={e => setTierField(i, "qty", e.target.value)}
+                              placeholder="e.g. 10"
+                              min="2"
+                              className="input-field"
+                            />
+                            <input
+                              type="number"
+                              value={t.value}
+                              onChange={e => setTierField(i, "value", e.target.value)}
+                              placeholder="e.g. 500"
+                              min="0"
+                              step="100"
+                              className="input-field"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeTier(i)}
+                              disabled={form.tiers.length === 1}
+                              className="flex size-8 items-center justify-center border border-border text-muted-foreground transition-colors hover:border-destructive hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={addTier}
+                          className="mt-1 flex items-center gap-1.5 text-xs font-light text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          <Plus className="size-3.5" /> Add tier
+                        </button>
+                        <p className="text-[10px] font-light text-muted-foreground/60">
+                          Applied after general %. Unit = (SKU after %) − this ₦ off. Below the first tier (from MOQ), only general % applies.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Variants toggle + builder */}
@@ -711,7 +862,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
                       <div className="space-y-2">
                         <div className="grid grid-cols-1 gap-2 mb-1 sm:grid-cols-[1fr_1fr_auto]">
                           <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Label</p>
-                          <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Price (₦)</p>
+                          <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">SKU price (₦)</p>
                           <span />
                         </div>
                         {form.variants.map((v, i) => (
@@ -749,7 +900,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
                           <Plus className="size-3.5" /> Add variant
                         </button>
                         <p className="text-[10px] font-light text-muted-foreground/60">
-                          The base price above will be used as fallback if no variant is selected.
+                          Absolute SKU price. Charged unit = SKU − volume discount (delta vs base is applied automatically).
                         </p>
                       </div>
                     )}

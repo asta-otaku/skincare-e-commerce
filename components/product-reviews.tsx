@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Star, ThumbsUp, User, ChevronDown, Check } from "lucide-react"
+import { Star, ThumbsUp, User, ChevronDown, Check, Pencil, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUserAuth } from "@/components/user-auth-provider"
 import {
+  deleteMyReview,
   getReviewsForProduct,
   markReviewHelpful,
   submitReview,
@@ -53,13 +54,15 @@ export function ProductReviews({ productId }: { productId: string }) {
   const [loading, setLoading] = useState(true)
   const [helpfulClicked, setHelpfulClicked] = useState<Set<string>>(new Set())
   const [showForm, setShowForm] = useState(false)
+  const [editing, setEditing] = useState(false)
   const [sortBy, setSortBy] = useState<"recent" | "helpful" | "rating_high" | "rating_low">("recent")
   const [formRating, setFormRating] = useState(0)
   const [formTitle, setFormTitle] = useState("")
   const [formBody, setFormBody] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [formError, setFormError] = useState("")
-  const [submitted, setSubmitted] = useState(false)
+  const [formMsg, setFormMsg] = useState("")
 
   async function load() {
     setLoading(true)
@@ -72,6 +75,28 @@ export function ProductReviews({ productId }: { productId: string }) {
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId])
+
+  const [myUserId, setMyUserId] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (!session) {
+        setMyUserId(null)
+        return
+      }
+      const { createClient } = await import("@/lib/supabase/client")
+      const supabase = createClient()
+      if (!supabase) return
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!cancelled) setMyUserId(user?.id ?? null)
+    })()
+    return () => { cancelled = true }
+  }, [session])
+
+  const ownReview = useMemo(
+    () => (myUserId ? reviews.find(r => r.userId === myUserId) ?? null : null),
+    [reviews, myUserId],
+  )
 
   const avgRating = reviews.length
     ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
@@ -91,6 +116,33 @@ export function ProductReviews({ productId }: { productId: string }) {
     })
   }, [reviews, sortBy])
 
+  function openCreateForm() {
+    setEditing(false)
+    setFormRating(0)
+    setFormTitle("")
+    setFormBody("")
+    setFormError("")
+    setFormMsg("")
+    setShowForm(true)
+  }
+
+  function openEditForm() {
+    if (!ownReview) return
+    setEditing(true)
+    setFormRating(ownReview.rating)
+    setFormTitle(ownReview.title)
+    setFormBody(ownReview.body)
+    setFormError("")
+    setFormMsg("")
+    setShowForm(true)
+  }
+
+  function closeForm() {
+    setShowForm(false)
+    setEditing(false)
+    setFormError("")
+  }
+
   async function markHelpful(id: string) {
     if (helpfulClicked.has(id)) return
     if (!session) return
@@ -108,6 +160,8 @@ export function ProductReviews({ productId }: { productId: string }) {
     if (!formRating || !session) return
     setSubmitting(true)
     setFormError("")
+    setFormMsg("")
+    // submit_review upserts when a review already exists for this user+product
     const res = await submitReview({
       productId,
       rating: formRating,
@@ -116,14 +170,28 @@ export function ProductReviews({ productId }: { productId: string }) {
     })
     setSubmitting(false)
     if (!res.ok) {
-      setFormError(res.message ?? "Could not submit review.")
+      setFormError(res.message ?? "Could not save review.")
       return
     }
-    setSubmitted(true)
+    setFormMsg(editing ? "Your review has been updated." : "Your review has been submitted.")
     setShowForm(false)
-    setFormRating(0)
-    setFormTitle("")
-    setFormBody("")
+    setEditing(false)
+    await load()
+  }
+
+  async function handleDelete() {
+    if (!ownReview) return
+    if (!window.confirm("Delete your review for this product?")) return
+    setDeleting(true)
+    const err = await deleteMyReview(ownReview.id)
+    setDeleting(false)
+    if (err) {
+      setFormError(err)
+      return
+    }
+    setFormMsg("Your review was deleted.")
+    setShowForm(false)
+    setEditing(false)
     await load()
   }
 
@@ -156,32 +224,56 @@ export function ProductReviews({ productId }: { productId: string }) {
           ))}
         </div>
 
-        <div className="shrink-0">
-          {submitted && (
-            <div className="mb-3 flex items-center gap-2 text-sm font-light text-green-700">
-              <Check className="size-4" /> Your review has been submitted.
+        <div className="shrink-0 space-y-2">
+          {formMsg && (
+            <div className="mb-1 flex items-center gap-2 text-sm font-light text-green-700">
+              <Check className="size-4" /> {formMsg}
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => setShowForm((v) => !v)}
-            className="border border-foreground px-6 py-3 text-xs font-medium uppercase tracking-[0.18em] transition-colors hover:bg-foreground hover:text-background"
-          >
-            {showForm ? "Cancel" : "Write a Review"}
-          </button>
+          {ownReview ? (
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => (showForm && editing ? closeForm() : openEditForm())}
+                className="flex items-center justify-center gap-2 border border-foreground px-6 py-3 text-xs font-medium uppercase tracking-[0.18em] transition-colors hover:bg-foreground hover:text-background"
+              >
+                <Pencil className="size-3.5" />
+                {showForm && editing ? "Cancel" : "Edit Your Review"}
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex items-center justify-center gap-2 border border-border px-6 py-2.5 text-xs font-light uppercase tracking-[0.15em] text-muted-foreground transition-colors hover:border-destructive hover:text-destructive disabled:opacity-50"
+              >
+                <Trash2 className="size-3.5" />
+                {deleting ? "Deleting…" : "Delete Review"}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => (showForm ? closeForm() : openCreateForm())}
+              className="border border-foreground px-6 py-3 text-xs font-medium uppercase tracking-[0.18em] transition-colors hover:bg-foreground hover:text-background"
+            >
+              {showForm ? "Cancel" : "Write a Review"}
+            </button>
+          )}
         </div>
       </div>
 
       {showForm && (
         <div className="mb-10 border border-border p-6 animate-fade-up">
-          <h3 className="font-serif text-xl font-medium mb-5">Share your experience</h3>
+          <h3 className="font-serif text-xl font-medium mb-5">
+            {editing ? "Update your review" : "Share your experience"}
+          </h3>
 
           {!session ? (
             <div className="flex flex-col items-start gap-4 rounded-sm border border-border/60 bg-secondary p-5">
               <div>
                 <p className="text-sm font-medium mb-1">Sign in to leave a review</p>
                 <p className="text-xs font-light text-muted-foreground leading-relaxed">
-                  Signed-in reviews can earn rewards points and may be marked as{" "}
+                  You can write one review per product. Signed-in reviews can earn rewards points and may be marked as{" "}
                   <span className="font-medium text-foreground">Verified Purchase</span> if you bought this product.
                 </p>
               </div>
@@ -205,6 +297,7 @@ export function ProductReviews({ productId }: { productId: string }) {
               <div className="flex items-center gap-2 text-xs font-light text-muted-foreground">
                 <User className="size-3.5" />
                 Reviewing as {session.email}
+                {editing && <span className="text-gold">· Editing your existing review</span>}
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -246,7 +339,7 @@ export function ProductReviews({ productId }: { productId: string }) {
                 <p className="text-xs font-light text-destructive">{formError}</p>
               )}
 
-              <div className="flex items-center justify-end pt-1">
+              <div className="flex items-center justify-end gap-2 pt-1">
                 <button
                   type="submit"
                   disabled={!formRating || !formBody || submitting}
@@ -257,7 +350,7 @@ export function ProductReviews({ productId }: { productId: string }) {
                       : "bg-foreground text-background hover:bg-gold hover:text-gold-foreground",
                   )}
                 >
-                  {submitting ? "Submitting…" : "Submit Review"}
+                  {submitting ? "Saving…" : editing ? "Update Review" : "Submit Review"}
                 </button>
               </div>
             </form>
@@ -287,7 +380,9 @@ export function ProductReviews({ productId }: { productId: string }) {
           </div>
 
           <div className="divide-y divide-border">
-            {sorted.map((review) => (
+            {sorted.map((review) => {
+              const isMine = Boolean(myUserId && review.userId === myUserId)
+              return (
               <div key={review.id} className="py-7">
                 <div className="flex items-start gap-3">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
@@ -296,6 +391,11 @@ export function ProductReviews({ productId }: { productId: string }) {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium">{review.author}</p>
+                      {isMine && (
+                        <span className="border border-gold/40 bg-lavender px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-widest text-gold">
+                          Your review
+                        </span>
+                      )}
                       {review.verified && (
                         <span className="flex items-center gap-1 text-[10px] font-light text-green-700">
                           <Check className="size-2.5" /> Verified Purchase
@@ -312,25 +412,46 @@ export function ProductReviews({ productId }: { productId: string }) {
                     <StarRating rating={review.rating} size="sm" />
                     <p className="text-sm font-medium mt-3 mb-1.5">{review.title}</p>
                     <p className="text-sm font-light text-muted-foreground leading-relaxed">{review.body}</p>
-                    <button
-                      type="button"
-                      onClick={() => markHelpful(review.id)}
-                      className={cn(
-                        "mt-4 flex items-center gap-1.5 text-[11px] font-light transition-colors",
-                        helpfulClicked.has(review.id)
-                          ? "text-gold cursor-default"
-                          : "text-muted-foreground hover:text-foreground",
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => markHelpful(review.id)}
+                        className={cn(
+                          "flex items-center gap-1.5 text-[11px] font-light transition-colors",
+                          helpfulClicked.has(review.id)
+                            ? "text-gold cursor-default"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                        disabled={helpfulClicked.has(review.id) || !session || isMine}
+                        title={!session ? "Sign in to mark helpful" : isMine ? "You can’t mark your own review" : undefined}
+                      >
+                        <ThumbsUp className="size-3.5" />
+                        Helpful ({review.helpful})
+                      </button>
+                      {isMine && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={openEditForm}
+                            className="flex items-center gap-1 text-[11px] font-light text-muted-foreground hover:text-foreground"
+                          >
+                            <Pencil className="size-3" /> Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleDelete}
+                            className="flex items-center gap-1 text-[11px] font-light text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="size-3" /> Delete
+                          </button>
+                        </>
                       )}
-                      disabled={helpfulClicked.has(review.id) || !session}
-                      title={!session ? "Sign in to mark helpful" : undefined}
-                    >
-                      <ThumbsUp className="size-3.5" />
-                      Helpful ({review.helpful})
-                    </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         </>
       )}

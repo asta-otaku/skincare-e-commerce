@@ -19,11 +19,11 @@ const SORT_OPTIONS = [
 
 export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
   const searchParams = useSearchParams()
-  const initCategory = searchParams?.get("category") ?? "All"
-  const initBrand    = searchParams?.get("brand") ?? "All"
+  const urlCategory = searchParams.get("category") ?? "All"
+  const urlBrand = searchParams.get("brand") ?? "All"
 
-  const [category, setCategory]   = useState(initCategory === "All" ? "All" : initCategory)
-  const [brand, setBrand]         = useState(initBrand === "All" ? "All" : initBrand)
+  const [category, setCategory]   = useState(urlCategory)
+  const [brand, setBrand]         = useState(urlBrand)
   const [concern, setConcern]     = useState("All")
   const [ingredient, setIngredient] = useState("All")
   const [sort, setSort]           = useState("featured")
@@ -34,6 +34,12 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
   const [filtered, setFiltered] = useState<Product[]>(initialProducts ?? [])
   const [loading, setLoading] = useState(false)
   const [brandNames, setBrandNames] = useState<string[]>([])
+
+  // Keep filters in sync when navigating via navbar (/shop?category=… / ?brand=…)
+  useEffect(() => {
+    setCategory(urlCategory)
+    setBrand(urlBrand)
+  }, [urlCategory, urlBrand])
 
   useEffect(() => {
     getActiveBrands().then(list => setBrandNames(list.map(b => b.name)))

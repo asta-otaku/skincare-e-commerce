@@ -40,14 +40,16 @@ export function OrderItemThumb({
 }) {
   const box = SIZE_CLASS[size]
   const icon = ICON_CLASS[size]
-  const showIcon = isDealLineItem(productId) || !image
+  const showIcon = !image || image === "/product-bundle.png"
 
   return (
     <div
       className={cn(
         "relative shrink-0 overflow-hidden border border-border",
         box,
-        showIcon ? "flex items-center justify-center border-gold/30 bg-lavender" : "bg-muted",
+        showIcon
+          ? "flex items-center justify-center border-gold/30 bg-lavender"
+          : "bg-muted",
         className,
       )}
     >

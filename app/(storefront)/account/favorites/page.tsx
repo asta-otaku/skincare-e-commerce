@@ -7,6 +7,7 @@ import { useState } from "react"
 import { useFavorites } from "@/components/favorites-provider"
 import { useCart } from "@/components/cart-provider"
 import { formatPrice } from "@/lib/products"
+import { bareDealId, isDealCartId } from "@/lib/deals"
 import { cn } from "@/lib/utils"
 
 export default function AccountFavoritesPage() {
@@ -48,10 +49,13 @@ export default function AccountFavoritesPage() {
           <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3">
             {favorites.map(product => {
               const added = addedIds.has(product.id)
+              const href = isDealCartId(product.id)
+                ? `/deal/${bareDealId(product.id)}`
+                : `/product/${product.id}`
               return (
                 <article key={product.id} className="group flex flex-col">
                   <div className="relative aspect-4/5 overflow-hidden border border-border bg-muted transition-colors group-hover:border-gold/60">
-                    <Link href={`/product/${product.id}`} aria-label={`View ${product.name}`}>
+                    <Link href={href} aria-label={`View ${product.name}`}>
                       <Image
                         src={product.image || "/placeholder.svg"}
                         alt={product.name}
@@ -93,9 +97,11 @@ export default function AccountFavoritesPage() {
                   </div>
 
                   <div className="flex flex-1 flex-col items-center px-1 pt-4 text-center">
-                    <p className="text-[10px] font-light uppercase tracking-[0.22em] text-gold">{product.category}</p>
+                    <p className="text-[10px] font-light uppercase tracking-[0.22em] text-gold">
+                      {isDealCartId(product.id) ? "Bundle Deal" : product.category}
+                    </p>
                     <h3 className="mt-1.5 font-serif text-lg font-medium leading-snug">
-                      <Link href={`/product/${product.id}`} className="transition-colors hover:text-gold">
+                      <Link href={href} className="transition-colors hover:text-gold">
                         {product.name}
                       </Link>
                     </h3>
