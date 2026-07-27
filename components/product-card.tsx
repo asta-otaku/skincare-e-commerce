@@ -32,7 +32,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
       <Link
         href={`/product/${product.id}`}
         aria-label={`View ${product.name}`}
-        className="relative aspect-4/5 overflow-hidden border border-border bg-muted transition-colors duration-500 group-hover:border-gold/60"
+        className="relative aspect-4/5 overflow-hidden border border-border transition-colors duration-500 group-hover:border-gold/60"
       >
         {product.tag && (
           <span
