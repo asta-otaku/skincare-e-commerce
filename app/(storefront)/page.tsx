@@ -22,8 +22,8 @@ const HERO_SLIDES = [
     title: "Niacinamide\n& Beyond",
     subtitle: "Discover targeted serums and treatments from The Ordinary, COSRX & Paula's Choice.",
     cta: "Shop Serums",
-    href: "/shop?category=serums",
-    gradient: "from-[#C026D3] via-[#E879F9] to-[#FAE8FF]",
+    href: "/shop?category=serums-treatment",
+    gradient: "from-[#293049] via-[#5C6B86] to-[#FACBD3]",
     image: "/product-serum.png",
     productName: "Niacinamide 10% + Zinc",
     productBrand: "The Ordinary",
@@ -35,8 +35,8 @@ const HERO_SLIDES = [
     title: "Skin Barrier\nEssentials",
     subtitle: "CeraVe and La Roche-Posay formulas trusted by dermatologists worldwide.",
     cta: "Shop Moisturisers",
-    href: "/shop?category=moisturisers",
-    gradient: "from-[#7C3AED] via-[#A78BFA] to-[#EDE9FE]",
+    href: "/shop?category=face-moisturizers",
+    gradient: "from-[#293049] via-[#FACBD3] to-[#FDF0F3]",
     image: "/product-cream.png",
     productName: "Moisturising Cream",
     productBrand: "CeraVe",
@@ -48,8 +48,8 @@ const HERO_SLIDES = [
     title: "SPF Every\nSingle Day",
     subtitle: "Premium sunscreens for Lagos weather — lightweight, no white cast, daily protection.",
     cta: "Shop Sunscreen",
-    href: "/shop?category=sunscreen",
-    gradient: "from-[#9333EA] via-[#D946EF] to-[#FDF4FF]",
+    href: "/shop?category=sunscreens",
+    gradient: "from-[#E8919E] via-[#FACBD3] to-[#FDF0F3]",
     image: "/product-cleanser.png",
     productName: "Anthelios UVMune SPF 50+",
     productBrand: "La Roche-Posay",
@@ -59,18 +59,18 @@ const HERO_SLIDES = [
 ]
 
 const CATEGORIES = [
-  { label: "Face", href: "/shop?category=face", emoji: "✨", desc: "Cleanse · Treat · Protect" },
-  { label: "Bath & Body", href: "/shop?category=bath-body", emoji: "🛁", desc: "Lotions · Oils · Scrubs" },
-  { label: "Fragrance", href: "/shop?category=fragrance", emoji: "🌸", desc: "Perfumes · Mists · Roll-ons" },
-  { label: "Makeup", href: "/shop?category=makeup", emoji: "💄", desc: "Lips · Eyes · Face" },
-  { label: "Sunscreen", href: "/shop?category=sunscreen", emoji: "☀️", desc: "SPF 30 · SPF 50+ · Tinted" },
+  { label: "Face", href: "/shop?category=face-cleansers-wash", emoji: "✨", desc: "Cleanse · Treat · Protect" },
+  { label: "Bath & Body", href: "/shop?category=body-wash", emoji: "🛁", desc: "Lotions · Oils · Scrubs" },
+  { label: "Perfume", href: "/shop?category=body-mist-and-spray", emoji: "🌸", desc: "Mists · Sprays · Roll-ons" },
+  { label: "Serums", href: "/shop?category=serums-treatment", emoji: "💧", desc: "Treatments · Actives" },
+  { label: "Sunscreen", href: "/shop?category=sunscreens", emoji: "☀️", desc: "SPF 30 · SPF 50+ · Tinted" },
   { label: "Combo Deals", href: "/deals", emoji: "🎁", desc: "Save up to 20%" },
 ]
 
 const CONCERNS = [
   { label: "Acne", href: "/concern/acne", color: "bg-red-50 border-red-100 hover:border-red-300" },
   { label: "Hyperpigmentation", href: "/concern/hyperpigmentation", color: "bg-amber-50 border-amber-100 hover:border-amber-300" },
-  { label: "Anti-Ageing", href: "/concern/anti-ageing", color: "bg-purple-50 border-purple-100 hover:border-purple-300" },
+  { label: "Anti-Ageing", href: "/concern/anti-ageing", color: "bg-secondary border-border hover:border-gold/40" },
   { label: "Dry Skin", href: "/concern/dry-skin", color: "bg-blue-50 border-blue-100 hover:border-blue-300" },
   { label: "Oily Skin", href: "/concern/oily-skin", color: "bg-green-50 border-green-100 hover:border-green-300" },
   { label: "Sensitive Skin", href: "/concern/sensitive-skin", color: "bg-pink-50 border-pink-100 hover:border-pink-300" },
@@ -112,11 +112,11 @@ function HeroSlider() {
             <div className="mx-auto grid min-h-[82vh] max-w-7xl grid-cols-1 items-center px-5 lg:grid-cols-2 lg:px-8">
 
               {/* ── Left: Text ── */}
-              <div className="flex flex-col justify-center py-16 lg:py-0">
+              <div className="flex flex-col justify-center py-8 md:py-16 lg:py-0">
                 <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-white">
                   {slide.eyebrow}
                 </p>
-                <h1 className="mt-4 min-h-[2.2em] font-serif text-5xl font-medium leading-[1.1] text-white md:text-6xl lg:min-h-[calc(2*1.1*4.5rem)] lg:text-[4.5rem] whitespace-pre-line">
+                <h1 className="mt-4 min-h-[2.2em] font-serif text-3xl font-medium leading-[1.1] text-white md:text-6xl lg:min-h-[calc(2*1.1*4.5rem)] lg:text-[4.5rem] whitespace-pre-line">
                   {slide.title}
                 </h1>
                 <p className="mt-5 min-h-[4.5rem] max-w-sm text-base font-light leading-relaxed text-white">
@@ -259,13 +259,6 @@ function HomeDealCard({ deal }: { deal: Deal }) {
             </span>
           )}
         </div>
-        <ul className="space-y-1.5 mb-5">
-          {deal.items.map(item => (
-            <li key={`${item.productId}-${item.name}`} className="flex items-center gap-2 text-sm font-light text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-gold shrink-0" /> {item.name}
-            </li>
-          ))}
-        </ul>
         <div className="flex items-end justify-between">
           <div>
             {deal.originalPrice > sale && (
@@ -323,27 +316,27 @@ export default function HomePage() {
       <HeroSlider />
 
       {/* ── Shop by Category ── */}
-      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+      <section className="mx-auto max-w-7xl px-5 py-8 md:py-16 lg:px-8">
         <div className="mb-8 flex items-end justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Explore</p>
-            <h2 className="mt-1.5 font-serif text-3xl font-medium">Shop by Category</h2>
+            <h2 className="mt-1.5 font-serif text-xl md:text-3xl font-medium">Shop by Category</h2>
           </div>
           <Link href="/shop" className="hidden items-center gap-1.5 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground hover:text-gold transition-colors sm:flex">
             All Products <ArrowRight className="size-3.5" />
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-3 md:grid-cols-6">
           {CATEGORIES.map(cat => (
             <Link
               key={cat.label}
               href={cat.href}
-              className="group flex flex-col items-center gap-3 border border-border p-5 text-center transition-all hover:border-gold/60 hover:bg-secondary"
+              className="group flex flex-col items-center gap-3 border border-border p-3 md:p-5 text-center transition-all hover:border-gold/60 hover:bg-secondary"
             >
-              <span className="text-3xl">{cat.emoji}</span>
+              <span className="text-xl md:text-3xl">{cat.emoji}</span>
               <div>
-                <p className="text-sm font-medium group-hover:text-gold transition-colors">{cat.label}</p>
-                <p className="mt-0.5 text-[10px] font-light text-muted-foreground">{cat.desc}</p>
+                <p className="text-xs md:text-sm font-medium group-hover:text-gold transition-colors">{cat.label}</p>
+                <p className="mt-0.5 text-[8px] md:text-[10px] font-light text-muted-foreground">{cat.desc}</p>
               </div>
             </Link>
           ))}
@@ -351,11 +344,11 @@ export default function HomePage() {
       </section>
 
       {/* ── Best Sellers ── */}
-      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+      <section className="mx-auto max-w-7xl px-5 py-8 md:py-16 lg:px-8">
         <div className="mb-8 flex items-end justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Customer favourites</p>
-            <h2 className="mt-1.5 font-serif text-3xl font-medium">Best Sellers</h2>
+            <h2 className="mt-1.5 font-serif text-xl md:text-3xl font-medium">Best Sellers</h2>
           </div>
           <Link href="/shop" className="hidden items-center gap-1.5 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground hover:text-gold transition-colors sm:flex">
             View All <ArrowRight className="size-3.5" />
@@ -377,22 +370,22 @@ export default function HomePage() {
       </section>
 
       {/* ── Shop by Concern ── */}
-      <section className="bg-secondary py-16">
+      <section className="bg-secondary py-8 md:py-16">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <div className="mb-8 text-center">
             <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Personalised for you</p>
-            <h2 className="mt-1.5 font-serif text-3xl font-medium">What&rsquo;s your skin concern?</h2>
+            <h2 className="mt-1.5 font-serif text-xl md:text-3xl font-medium">What&rsquo;s your skin concern?</h2>
             <p className="mt-2 text-sm font-light text-muted-foreground">We&rsquo;ll guide you to the right products.</p>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-3 gap-2 md:gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {CONCERNS.map(c => (
               <Link
                 key={c.label}
                 href={c.href}
-                className={cn("group flex flex-col items-center gap-2 border p-5 text-center transition-all", c.color)}
+                className={cn("group flex flex-col items-center gap-2 border p-3 md:p-5 text-center transition-all", c.color)}
               >
-                <p className="text-sm font-medium group-hover:underline underline-offset-2">{c.label}</p>
-                <ArrowRight className="size-3 text-muted-foreground group-hover:text-foreground transition-colors" />
+                <p className="text-[10px] md:text-sm font-medium group-hover:underline underline-offset-2">{c.label}</p>
+                <ArrowRight className="size-2.5 md:size-3 text-muted-foreground group-hover:text-foreground transition-colors" />
               </Link>
             ))}
           </div>
@@ -400,17 +393,17 @@ export default function HomePage() {
       </section>
 
       {/* ── Featured / New ── */}
-      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+      <section className="mx-auto max-w-7xl px-5 py-8 md:py-16 lg:px-8">
         <div className="mb-8 flex items-end justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Just dropped</p>
-            <h2 className="mt-1.5 font-serif text-3xl font-medium">Featured Products</h2>
+            <h2 className="mt-1.5 font-serif text-xl md:text-3xl font-medium">Featured Products</h2>
           </div>
           <Link href="/shop" className="hidden items-center gap-1.5 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground hover:text-gold transition-colors sm:flex">
             View All <ArrowRight className="size-3.5" />
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-3 md:gap-x-5 gap-y-6 md:gap-y-10 md:grid-cols-4">
           {featuredNew.map((p, i) => (
             <ProductCard key={p.id} product={p} index={i} />
           ))}
@@ -419,7 +412,7 @@ export default function HomePage() {
           <p className="text-center text-sm font-light text-muted-foreground">New products are on the way.</p>
         )}
         <div className="mt-8 text-center sm:hidden">
-          <Link href="/shop" className="inline-flex items-center gap-2 border border-border px-8 py-3 text-xs font-medium uppercase tracking-[0.15em] hover:border-foreground transition-colors">
+          <Link href="/shop" className="inline-flex items-center gap-2 border border-border px-6 md:px-8 py-3 text-xs font-medium uppercase tracking-[0.15em] hover:border-foreground transition-colors">
             View All Products <ArrowRight className="size-3.5" />
           </Link>
         </div>
@@ -427,11 +420,11 @@ export default function HomePage() {
 
       {/* ── Skin Blog ── */}
       {recentArticles.length > 0 && (
-        <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
+        <section className="mx-auto max-w-7xl px-5 py-8 md:py-16 lg:px-8">
           <div className="mb-8 flex items-end justify-between">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Knowledge & Rituals</p>
-              <h2 className="mt-1.5 font-serif text-3xl font-medium">From the Skin Blog</h2>
+              <h2 className="mt-1.5 font-serif text-xl md:text-3xl font-medium">From the Skin Blog</h2>
             </div>
             <Link href="/journal" className="hidden items-center gap-1.5 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground hover:text-gold transition-colors sm:flex">
               All Articles <ArrowRight className="size-3.5" />
@@ -467,12 +460,12 @@ export default function HomePage() {
 
       {/* ── On Sale (discounted products + deals) ── */}
       {(saleProducts.length > 0 || saleDeals.length > 0) && (
-        <section className="bg-secondary py-16">
+        <section className="bg-secondary py-8 md:py-16">
           <div className="mx-auto max-w-7xl px-5 lg:px-8">
             <div className="mb-8 flex items-end justify-between">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Limited time</p>
-                <h2 className="mt-1.5 font-serif text-3xl font-medium">On Sale</h2>
+                <h2 className="mt-1.5 font-serif text-xl md:text-3xl font-medium">On Sale</h2>
                 <p className="mt-1 text-sm font-light text-muted-foreground">
                   Discounted favourites and curated combo deals.
                 </p>
@@ -504,11 +497,11 @@ export default function HomePage() {
             )}
 
             <div className="mt-8 flex justify-center gap-3 sm:hidden">
-              <Link href="/offers" className="inline-flex items-center gap-2 border border-border bg-background px-6 py-3 text-xs font-medium uppercase tracking-[0.15em] hover:border-foreground transition-colors">
-                Offers <ArrowRight className="size-3.5" />
+              <Link href="/offers" className="inline-flex items-center gap-2 border border-border bg-background px-6 md:px-8 py-3 text-xs font-medium uppercase tracking-[0.15em] hover:border-foreground transition-colors">
+                Offers <ArrowRight className="size-2.5 md:size-3.5" />
               </Link>
-              <Link href="/deals" className="inline-flex items-center gap-2 border border-border bg-background px-6 py-3 text-xs font-medium uppercase tracking-[0.15em] hover:border-foreground transition-colors">
-                Deals <ArrowRight className="size-3.5" />
+              <Link href="/deals" className="inline-flex items-center gap-2 border border-border bg-background px-6 md:px-8 py-3 text-xs font-medium uppercase tracking-[0.15em] hover:border-foreground transition-colors">
+                Deals <ArrowRight className="size-2.5 md:size-3.5" />
               </Link>
             </div>
           </div>
@@ -522,13 +515,13 @@ export default function HomePage() {
             Trusted brands in stock
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            {brands.map(brand => (
+            {brands.slice(0, 6).map((brand: Brand) => (
               <Link
                 key={brand.id}
                 href={`/shop?brand=${encodeURIComponent(brand.name)}`}
-                className="group flex items-center justify-center border border-border px-5 py-3 transition-all hover:border-gold/60 hover:bg-secondary min-w-[120px]"
+                className="group flex items-center justify-center border border-border px-4 md:px-5 py-3 transition-all hover:border-gold/60 hover:bg-secondary min-w-[120px]"
               >
-                <span className="text-sm font-medium text-foreground/60 group-hover:text-foreground transition-colors">
+                <span className="text-[10px] md:text-sm font-medium text-foreground/60 group-hover:text-foreground transition-colors">
                   {brand.name}
                 </span>
               </Link>
@@ -543,7 +536,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Loyalty CTA ── */}
-      <section className="bg-foreground py-16">
+      <section className="bg-foreground py-8 md:py-16">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <div className="flex flex-col items-center gap-6 text-center md:flex-row md:text-left md:justify-between">
             <div>
@@ -551,7 +544,7 @@ export default function HomePage() {
                 <Sparkles className="size-4 text-gold" />
                 <span className="text-xs font-medium uppercase tracking-[0.2em] text-gold">Rewards Programme</span>
               </div>
-              <h2 className="font-serif text-3xl font-medium text-background">Earn points with every purchase</h2>
+              <h2 className="font-serif text-xl md:text-3xl font-medium text-background">Earn points with every purchase</h2>
               <p className="mt-2 text-sm font-light text-background/60 max-w-md">
                 Join HAYDA Rewards and earn 1 point for every ₦100 spent. Redeem points for discounts, free products, and exclusive member perks.
               </p>

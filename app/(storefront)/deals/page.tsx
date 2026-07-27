@@ -41,17 +41,17 @@ export default function DealsPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {loading
           ? [...Array(3)].map((_, i) => (
-              <div key={i} className="border border-border overflow-hidden">
-                <div className="aspect-[4/3] bg-muted/50 animate-pulse" />
-                <div className="p-6 space-y-3">
-                  <div className="h-4 w-24 bg-muted/50 animate-pulse" />
-                  <div className="h-6 w-full bg-muted/50 animate-pulse" />
-                </div>
+            <div key={i} className="border border-border overflow-hidden">
+              <div className="aspect-[4/3] bg-muted/50 animate-pulse" />
+              <div className="p-6 space-y-3">
+                <div className="h-4 w-24 bg-muted/50 animate-pulse" />
+                <div className="h-6 w-full bg-muted/50 animate-pulse" />
               </div>
-            ))
+            </div>
+          ))
           : activeDeals.map(deal => (
-              <DealCard key={deal.id} deal={deal} />
-            ))
+            <DealCard key={deal.id} deal={deal} />
+          ))
         }
       </div>
 
@@ -121,19 +121,7 @@ function DealCard({ deal }: { deal: Deal }) {
           </p>
         )}
 
-        <div className="mt-4 flex-1 space-y-2 border-t border-border pt-4">
-          {deal.items.map(item => (
-            <div key={`${item.productId}-${item.variantLabel ?? item.size}-${item.name}`} className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="size-1.5 shrink-0 rounded-full bg-gold" />
-                <span className="text-xs font-light text-foreground/80 truncate">{item.name}</span>
-              </div>
-              <span className="text-[11px] font-light text-muted-foreground shrink-0">
-                {item.size ? `${item.size} · ` : ""}₦{item.price.toLocaleString()}
-              </span>
-            </div>
-          ))}
-        </div>
+
 
         <div className="mt-5 flex items-end justify-between border-t border-border pt-4">
           <div>

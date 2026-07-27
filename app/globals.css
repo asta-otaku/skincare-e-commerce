@@ -59,7 +59,7 @@
 
 :root {
   color-scheme: light;
-  /* HAYDA SKINCo. palette */
+  /* HAYDA SKINCo. palette — light crimson + dark grey-blue */
   --background: oklch(1 0 0);                    /* #FFFFFF */
   --foreground: oklch(0.15 0 0);                 /* #1A1A1A near-black */
   --card: oklch(1 0 0);
@@ -68,39 +68,39 @@
   --popover-foreground: oklch(0.15 0 0);
   --primary: oklch(0.15 0 0);
   --primary-foreground: oklch(1 0 0);
-  --secondary: #F3E8FF;                          /* vivid violet wash */
+  --secondary: #FDF0F3;                          /* soft crimson wash */
   --secondary-foreground: oklch(0.15 0 0);
-  --muted: #EDE9FE;                              /* saturated lavender tint */
+  --muted: #F8DCE2;                              /* light crimson tint */
   --muted-foreground: oklch(0.66 0 0);           /* #A8A8A8 silver-grey */
-  --accent: #EDE9FE;
-  --accent-foreground: #6D28D9;
+  --accent: #FACBD3;
+  --accent-foreground: #293049;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: #DDD6FE;                             /* bold violet border */
-  --input: #DDD6FE;
-  --ring: #9333EA;
-  /* Primary accent: max-saturation electric violet / amethyst */
-  --gold: #9333EA;                               /* electric amethyst */
+  --border: #F0B8C3;                             /* crimson border */
+  --input: #F0B8C3;
+  --ring: #293049;
+  /* Brand accents */
+  --gold: #293049;                               /* dark grey-blue */
   --gold-foreground: #FFFFFF;
-  --lavender: #E9D5FF;                           /* bright violet surface */
-  --lavender-foreground: #6D28D9;                /* deep amethyst text */
-  /* Complements — mustard & tangerine make lavender jump */
+  --lavender: #FACBD3;                           /* light crimson surface */
+  --lavender-foreground: #293049;                /* dark grey-blue text */
+  /* Complements */
   --mustard: #EAB308;
   --mustard-foreground: #422006;
   --tangerine: #F97316;
   --tangerine-foreground: #FFFFFF;
-  --chart-1: #9333EA;
+  --chart-1: #293049;
   --chart-2: #F97316;
   --chart-3: #EAB308;
-  --chart-4: #7C3AED;
+  --chart-4: #FACBD3;
   --admin-mobile-nav-height: 3.5rem;
   --sidebar: oklch(0.99 0 0);
   --sidebar-foreground: oklch(0.15 0 0);
   --sidebar-primary: oklch(0.15 0 0);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: #EDE9FE;
-  --sidebar-accent-foreground: #6D28D9;
-  --sidebar-border: #DDD6FE;
-  --sidebar-ring: #9333EA;
+  --sidebar-accent: #FACBD3;
+  --sidebar-accent-foreground: #293049;
+  --sidebar-border: #F0B8C3;
+  --sidebar-ring: #293049;
 }
 
 .dark {
@@ -235,7 +235,7 @@
   .input-field {
     @apply w-full border border-border bg-background px-4 py-3 text-sm font-light outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground/40;
   }
-  /* Rich purple surfaces — use instead of bg-gold/10 or bg-muted/30 */
+  /* Soft crimson surfaces — use instead of bg-gold/10 or bg-muted/30 */
   .surface-muted {
     @apply bg-secondary;
   }

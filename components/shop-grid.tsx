@@ -3,9 +3,15 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { SlidersHorizontal, X, ChevronDown } from "lucide-react"
-import { ALL_CONCERNS, ALL_INGREDIENTS, ALL_CATEGORIES, type Product } from "@/lib/products"
+import { ALL_CONCERNS, ALL_INGREDIENTS, type Product } from "@/lib/products"
 import { queryProducts } from "@/lib/supabase/products"
 import { getActiveBrands } from "@/lib/supabase/brands"
+import {
+  getCategoryTree,
+  resolveCategoryName,
+  type CategorySection,
+} from "@/lib/supabase/categories"
+import { CategorySelect } from "@/components/category-select"
 import { ProductCard } from "@/components/product-card"
 import { cn } from "@/lib/utils"
 
@@ -22,7 +28,8 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
   const urlCategory = searchParams.get("category") ?? "All"
   const urlBrand = searchParams.get("brand") ?? "All"
 
-  const [category, setCategory]   = useState(urlCategory)
+  const [categoryTree, setCategoryTree] = useState<CategorySection[]>([])
+  const [category, setCategory]   = useState("All")
   const [brand, setBrand]         = useState(urlBrand)
   const [concern, setConcern]     = useState("All")
   const [ingredient, setIngredient] = useState("All")
@@ -35,22 +42,35 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
   const [loading, setLoading] = useState(false)
   const [brandNames, setBrandNames] = useState<string[]>([])
 
-  // Keep filters in sync when navigating via navbar (/shop?category=… / ?brand=…)
   useEffect(() => {
-    setCategory(urlCategory)
-    setBrand(urlBrand)
-  }, [urlCategory, urlBrand])
-
-  useEffect(() => {
+    getCategoryTree().then(setCategoryTree)
     getActiveBrands().then(list => setBrandNames(list.map(b => b.name)))
   }, [])
+
+  // Keep filters in sync when navigating via navbar (/shop?category=… / ?brand=…)
+  useEffect(() => {
+    setBrand(urlBrand)
+    if (urlCategory === "All" || !urlCategory) {
+      setCategory("All")
+      return
+    }
+    if (categoryTree.length) {
+      setCategory(resolveCategoryName(categoryTree, urlCategory) ?? urlCategory)
+    } else {
+      setCategory(urlCategory)
+    }
+  }, [urlCategory, urlBrand, categoryTree])
 
   // Query Supabase with filters (DB-level), not client-side array filtering
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    const categoryName =
+      category === "All"
+        ? "All"
+        : (resolveCategoryName(categoryTree, category) ?? category)
     queryProducts({
-      category,
+      category: categoryName,
       brand,
       concern,
       ingredient,
@@ -64,7 +84,7 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
       if (!cancelled) setLoading(false)
     })
     return () => { cancelled = true }
-  }, [category, brand, concern, ingredient, sort, priceMax, inStockOnly, minRating])
+  }, [category, brand, concern, ingredient, sort, priceMax, inStockOnly, minRating, categoryTree])
 
   const activeCount = [
     category !== "All", brand !== "All", concern !== "All",
@@ -121,7 +141,19 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
       {/* Filter panel */}
       {filtersOpen && (
         <div className="mb-8 grid gap-6 border border-border bg-secondary p-4 sm:p-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <FilterSelect label="Category"   value={category}   onChange={setCategory}   options={["All", ...ALL_CATEGORIES]} />
+          <div>
+            <p className="mb-2 text-[11px] font-light uppercase tracking-[0.15em] text-muted-foreground">Category</p>
+            <div className="relative">
+              <CategorySelect
+                value={category}
+                onChange={setCategory}
+                tree={categoryTree}
+                includeAll
+                className="w-full appearance-none border border-border bg-background px-3 py-2.5 pr-8 text-xs font-light outline-none focus:border-foreground transition-colors cursor-pointer"
+              />
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+            </div>
+          </div>
           <FilterSelect label="Brand"      value={brand}      onChange={setBrand}      options={["All", ...brandNames]} />
           <FilterSelect label="Concern"    value={concern}    onChange={setConcern}    options={["All", ...ALL_CONCERNS]} />
           <FilterSelect label="Ingredient" value={ingredient} onChange={setIngredient} options={["All", ...ALL_INGREDIENTS]} />

@@ -14,10 +14,13 @@ export async function revalidateJournal(slug?: string) {
   if (slug) revalidatePath(`/journal/${slug}`)
 }
 
-export async function revalidateProducts() {
+export async function revalidateProducts(productId?: string) {
   revalidatePath("/shop")
   revalidatePath("/offers")
   revalidatePath("/brands")
+  revalidatePath("/")
+  if (productId) revalidatePath(`/product/${productId}`)
+  else revalidatePath("/product", "layout")
 }
 
 export async function revalidateDeals(dealId?: string) {

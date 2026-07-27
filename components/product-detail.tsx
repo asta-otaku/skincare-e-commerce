@@ -21,6 +21,7 @@ import {
   type Product,
 } from "@/lib/products"
 import { isDealCartId } from "@/lib/deals"
+import { slugifyCategory } from "@/lib/supabase/categories"
 import { cn } from "@/lib/utils"
 
 type Tab = "description" | "how-to-use" | "ingredients" | "reviews"
@@ -40,7 +41,7 @@ function StarRow({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }
   )
 }
 
-export function ProductDetail({ product }: { product: Product }) {
+export function ProductDetail({ product, hideBenefits = false }: { product: Product, hideBenefits?: boolean }) {
   const { addItem } = useCart()
   const { isFavorited, toggleFavorite } = useFavorites()
 
@@ -107,32 +108,35 @@ export function ProductDetail({ product }: { product: Product }) {
   const lowStock = product.stock > 0 && product.stock <= 10
 
   return (
-    <section className="mx-auto max-w-7xl px-5 py-10 md:py-16 lg:px-8">
+    <section className="mx-auto max-w-7xl px-5 py-8 md:py-16 lg:px-8">
       {/* Breadcrumb */}
-      <nav className="mb-8 flex items-center gap-2 text-[11px] font-light uppercase tracking-[0.18em] text-muted-foreground">
+      <nav className="mb-8 flex items-center gap-2 text-[8px] md:text-[11px] font-light uppercase tracking-[0.18em] text-muted-foreground">
         <Link href="/" className="transition-colors hover:text-gold">Home</Link>
-        <ChevronRight className="size-3" />
+        <ChevronRight className="size-2.5 md:size-3" />
         {isDealCartId(product.id) || product.category === "bundle" ? (
           <>
             <Link href="/deals" className="transition-colors hover:text-gold">Combo Deals</Link>
-            <ChevronRight className="size-3" />
+            <ChevronRight className="size-2.5 md:size-3" />
             <span className="text-foreground">{product.name}</span>
           </>
         ) : (
           <>
             <Link href="/shop" className="transition-colors hover:text-gold">Shop</Link>
-            <ChevronRight className="size-3" />
-            <Link href={`/shop?category=${product.category.toLowerCase()}`} className="transition-colors hover:text-gold">
+            <ChevronRight className="size-2.5 md:size-3" />
+            <Link
+              href={`/shop?category=${encodeURIComponent(slugifyCategory(product.category))}`}
+              className="transition-colors hover:text-gold"
+            >
               {product.category}
             </Link>
-            <ChevronRight className="size-3" />
+            <ChevronRight className="size-2.5 md:size-3" />
             <span className="text-foreground">{product.name}</span>
           </>
         )}
       </nav>
 
       {/* Main grid */}
-      <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
+      <div className="grid gap-8 md:gap-10 lg:grid-cols-2 lg:gap-16">
 
         {/* ── Left: Image gallery ── */}
         <div className="flex gap-4">
@@ -204,15 +208,15 @@ export function ProductDetail({ product }: { product: Product }) {
 
         {/* ── Right: Product info ── */}
         <div className="flex flex-col">
-          <p className="text-[11px] font-light uppercase tracking-[0.24em] text-gold">{product.brand}</p>
-          <h1 className="mt-2 text-balance font-serif text-4xl font-medium leading-tight text-foreground md:text-5xl">
+          <p className="text-[8px] md:text-[11px] font-light uppercase tracking-[0.24em] text-gold">{product.brand}</p>
+          <h1 className="mt-2 text-balance font-serif text-2xl md:text-4xl font-medium leading-tight text-foreground md:text-5xl">
             {product.name}
           </h1>
 
           {/* Stars + review count */}
           <div className="mt-3 flex items-center gap-2">
             <StarRow rating={Math.round(product.rating)} size="md" />
-            <span className="text-sm font-light text-muted-foreground">
+            <span className="text-[10px] md:text-sm font-light text-muted-foreground">
               {product.rating.toFixed(1)} · {product.reviewCount} reviews
             </span>
           </div>
@@ -220,14 +224,14 @@ export function ProductDetail({ product }: { product: Product }) {
           {/* Price — discounted SKU − volume tier ₦ (general % + tier stack) */}
           <div className="mt-5 flex flex-wrap items-baseline gap-3">
             {unitPrice < skuPrice && (
-              <p className="font-serif text-xl font-light text-muted-foreground line-through">
+              <p className="font-serif text-lg md:text-xl font-light text-muted-foreground line-through">
                 {formatPrice(skuPrice)}
               </p>
             )}
-            <p className="font-serif text-3xl font-medium text-foreground">
+            <p className="font-serif text-2xl md:text-3xl font-medium text-foreground">
               {formatPrice(unitPrice)}
             </p>
-            <span className="text-sm font-light text-muted-foreground">/ unit</span>
+            <span className="text-[10px] md:text-sm font-light text-muted-foreground">/ unit</span>
             {hasDiscount(product) && (
               <span className="border border-gold/40 bg-gold/10 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-gold">
                 −{product.discountPct}%
@@ -276,11 +280,7 @@ export function ProductDetail({ product }: { product: Product }) {
                     >
                       <span>
                         {band.label}
-                        {band.tierDiscount > 0 && (
-                          <span className="ml-2 text-muted-foreground">
-                            (−{formatPrice(band.tierDiscount)})
-                          </span>
-                        )}
+
                       </span>
                       <span className="font-medium">{formatPrice(band.unitPrice)} each</span>
                     </li>
@@ -296,7 +296,7 @@ export function ProductDetail({ product }: { product: Product }) {
             inStock ? (lowStock ? "text-amber-600" : "text-emerald-700") : "text-destructive",
           )}>
             {inStock
-              ? (lowStock ? `● Only ${product.stock} left in stock` : "● In stock — ships within 24 hours")
+              ? (lowStock ? `● Only ${product.stock} left in stock` : "● In stock")
               : "● Currently out of stock"}
           </p>
 
@@ -418,8 +418,8 @@ export function ProductDetail({ product }: { product: Product }) {
                 !inStock
                   ? "cursor-not-allowed border-border bg-muted text-muted-foreground"
                   : added
-                  ? "border-gold bg-gold text-gold-foreground"
-                  : "border-foreground bg-foreground text-background hover:border-gold hover:bg-gold hover:text-gold-foreground",
+                    ? "border-gold bg-gold text-gold-foreground"
+                    : "border-foreground bg-foreground text-background hover:border-gold hover:bg-gold hover:text-gold-foreground",
               )}
             >
               {added ? <><Check className="size-4" /> Added to Cart</> : "Add to Cart"}
@@ -445,7 +445,7 @@ export function ProductDetail({ product }: { product: Product }) {
       </div>
 
       {/* ── Tabs: Description / How to Use / Ingredients ── */}
-      <div className="mt-16">
+      <div className="mt-8 md:mt-16">
         <div className="flex border-b border-border gap-0">
           {(["description", "how-to-use", "ingredients"] as Tab[]).map(t => (
             <button
@@ -453,7 +453,7 @@ export function ProductDetail({ product }: { product: Product }) {
               type="button"
               onClick={() => setTab(t)}
               className={cn(
-                "pb-4 pr-8 text-sm capitalize transition-colors",
+                "pb-4 pr-8 text-[10px] md:text-sm capitalize transition-colors",
                 tab === t
                   ? "border-b-2 border-foreground text-foreground font-medium -mb-px"
                   : "text-muted-foreground hover:text-foreground font-light",
@@ -464,17 +464,17 @@ export function ProductDetail({ product }: { product: Product }) {
           ))}
         </div>
 
-        <div className="py-8 max-w-3xl text-[15px] text-muted-foreground leading-relaxed">
+        <div className="py-8 max-w-3xl text-[13px] md:text-[15px] text-muted-foreground leading-relaxed">
           {tab === "description" && (
             <>
               <p>{product.description}</p>
-              {product.benefits.length > 0 && (
+              {!hideBenefits && product.benefits.length > 0 && (
                 <>
                   <h4 className="mt-7 mb-3 text-sm font-medium uppercase tracking-[0.15em] text-foreground">Benefits</h4>
                   <ul className="space-y-2">
                     {product.benefits.map(b => (
-                      <li key={b} className="flex items-center gap-3 text-sm">
-                        <Check className="size-4 text-gold shrink-0" /> {b}
+                      <li key={b} className="flex items-center gap-3 text-[10px] md:text-sm">
+                        <Check className="size-2.5 md:size-4 text-gold shrink-0" /> {b}
                       </li>
                     ))}
                   </ul>
@@ -507,16 +507,16 @@ export function ProductDetail({ product }: { product: Product }) {
                 {product.category === "Serums" || product.category === "Treatments"
                   ? " Use 3–4 drops and gently press into the skin. Allow to absorb fully before applying moisturiser and SPF in the AM."
                   : product.category === "Cleansers"
-                  ? " Massage gently over face and neck for 30 seconds. Rinse thoroughly with lukewarm water. Pat dry."
-                  : " Massage gently using upward circular motions until fully absorbed. Follow with SPF in the AM."}
+                    ? " Massage gently over face and neck for 30 seconds. Rinse thoroughly with lukewarm water. Pat dry."
+                    : " Massage gently using upward circular motions until fully absorbed. Follow with SPF in the AM."}
               </p>
               <h4 className="mt-7 mb-3 text-sm font-medium uppercase tracking-[0.15em] text-foreground">When to use</h4>
               <p>
                 {product.category === "Sunscreen"
                   ? "Apply as the last step in your morning routine, 15 minutes before sun exposure. Reapply every 2 hours outdoors."
                   : product.category === "Treatments"
-                  ? "Evening use recommended. Start 2–3 times per week and increase frequency as tolerated. Always follow with SPF the next morning."
-                  : "Use morning and/or evening as part of your regular skincare routine."}
+                    ? "Evening use recommended. Start 2–3 times per week and increase frequency as tolerated. Always follow with SPF the next morning."
+                    : "Use morning and/or evening as part of your regular skincare routine."}
               </p>
               <h4 className="mt-7 mb-3 text-sm font-medium uppercase tracking-[0.15em] text-foreground">Tips</h4>
               <ul className="list-disc pl-5 space-y-2 text-sm">

@@ -5,6 +5,9 @@ import { ProductDetail } from "@/components/product-detail"
 import { ProductReviews } from "@/components/product-reviews"
 import { RelatedProducts } from "@/components/related-products"
 
+/** Keep PDP in sync with admin edits (size, stock, price, etc.). */
+export const revalidate = 60
+
 export async function generateStaticParams() {
   const ids = await getProductIds()
   return ids.map((id) => ({ id }))

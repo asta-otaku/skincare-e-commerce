@@ -7,54 +7,33 @@ import { Search, ShoppingBag, User, Menu, X, ChevronDown, ChevronRight, Tag, Log
 import { useCart } from "@/components/cart-provider"
 import { useSearch } from "@/components/search-modal"
 import { useUserAuth } from "@/components/user-auth-provider"
+import { getCategoryTree, DEFAULT_CATEGORY_TREE, type CategorySection } from "@/lib/supabase/categories"
 import { cn } from "@/lib/utils"
 import { whatsAppHref } from "@/lib/whatsapp"
 
-/* ─── Navigation data ───────────────────────────────────────── */
-const NAV = [
-  {
-    label: "Face",
-    items: [
-      { label: "Cleansers", href: "/shop?category=cleansers" },
-      { label: "Toners", href: "/shop?category=toners" },
-      { label: "Serums", href: "/shop?category=serums" },
-      { label: "Moisturisers", href: "/shop?category=moisturisers" },
-      { label: "Sunscreen", href: "/shop?category=sunscreen" },
-      { label: "Eye Care", href: "/shop?category=eye-care" },
-      { label: "Treatments", href: "/shop?category=treatments" },
-    ],
-  },
-  {
-    label: "Bath & Body",
-    items: [
-      { label: "Body Lotions", href: "/shop?category=body-lotions" },
-      { label: "Scrubs", href: "/shop?category=scrubs" },
-      { label: "Shower Gels", href: "/shop?category=shower-gels" },
-      { label: "Body Oils", href: "/shop?category=body-oils" },
-    ],
-  },
-  {
-    label: "Fragrance",
-    items: [
-      { label: "Perfumes", href: "/shop?category=perfumes" },
-      { label: "Body Mists", href: "/shop?category=body-mists" },
-      { label: "Roll-ons", href: "/shop?category=roll-ons" },
-    ],
-  },
-  {
-    label: "Makeup",
-    items: [
-      { label: "Lip", href: "/shop?category=lip" },
-      { label: "Face", href: "/shop?category=Makeup%20Face" },
-      { label: "Eyes", href: "/shop?category=eyes" },
-    ],
-  },
-  { label: "Brands", href: "/brands" },
-  { label: "Combo Deals", href: "/deals", highlight: true },
-  { label: "Offers", href: "/offers", sale: true },
-  { label: "Wholesale", href: "/wholesale" },
-  { label: "Skin Blog", href: "/journal" },
-]
+type NavItem =
+  | { label: string; href: string; highlight?: boolean; sale?: boolean; items?: undefined }
+  | { label: string; items: { label: string; href: string }[]; href?: undefined; highlight?: boolean; sale?: boolean }
+
+function treeToNav(tree: CategorySection[]): NavItem[] {
+  const sections: NavItem[] = tree.map(s => ({
+    label: s.name,
+    items: s.categories.map(c => ({
+      label: c.name,
+      href: `/shop?category=${encodeURIComponent(c.slug)}`,
+    })),
+  }))
+  return [
+    ...sections,
+    { label: "Brands", href: "/brands" },
+    { label: "Combo Deals", href: "/deals", highlight: true },
+    { label: "Offers", href: "/offers", sale: true },
+    { label: "Wholesale", href: "/wholesale" },
+    { label: "Skin Blog", href: "/journal" },
+  ]
+}
+
+const FALLBACK_NAV = treeToNav(DEFAULT_CATEGORY_TREE)
 
 const CONCERNS = ["Acne", "Hyperpigmentation", "Anti-Ageing", "Dry Skin", "Oily Skin", "Sensitive Skin"]
 const INGREDIENTS = ["Vitamin C", "Retinol", "Niacinamide", "AHA/BHA", "Hyaluronic Acid", "SPF"]
@@ -69,7 +48,14 @@ export function SiteNavbar() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null)
   const [megaOpen, setMegaOpen] = useState(false)
+  const [nav, setNav] = useState<NavItem[]>(FALLBACK_NAV)
   const navRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    getCategoryTree().then(tree => {
+      if (tree.length) setNav(treeToNav(tree))
+    })
+  }, [])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12)
@@ -95,6 +81,8 @@ export function SiteNavbar() {
     document.body.style.overflow = mobileOpen ? "hidden" : ""
     return () => { document.body.style.overflow = "" }
   }, [mobileOpen])
+
+  const categoryNav = nav.filter(item => item.items && item.items.length > 0)
 
   return (
     <>
@@ -133,8 +121,8 @@ export function SiteNavbar() {
 
           {/* Desktop nav — primary shopping categories only */}
           <nav className="hidden flex-1 items-center justify-center gap-0.5 lg:flex">
-            {/* Category dropdowns: Face, Bath & Body, Fragrance, Makeup */}
-            {NAV.filter(item => item.items).map(item => (
+            {/* Category dropdowns from admin category tree */}
+            {categoryNav.map(item => (
               <div
                 key={item.label}
                 onMouseEnter={() => setActiveDropdown(item.label)}
@@ -152,7 +140,7 @@ export function SiteNavbar() {
                   <ChevronDown className={cn("size-3 transition-transform", activeDropdown === item.label && "rotate-180")} />
                 </button>
                 {activeDropdown === item.label && (
-                  <div className="absolute left-0 top-full z-50 min-w-[160px] border border-border bg-background shadow-xl">
+                  <div className="absolute left-0 top-full z-50 min-w-[200px] max-h-[70vh] overflow-y-auto border border-border bg-background shadow-xl">
                     {item.items!.map(sub => (
                       <Link
                         key={sub.label}
@@ -328,7 +316,7 @@ export function SiteNavbar() {
 
             {/* Nav items */}
             <nav className="divide-y divide-border/50">
-              {NAV.map(item => {
+              {nav.map(item => {
                 if (!item.items) {
                   return (
                     <Link

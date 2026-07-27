@@ -37,7 +37,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
         {product.tag && (
           <span
             className={cn(
-              "absolute left-4 top-4 z-10 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em]",
+              "absolute left-4 top-4 z-10 px-3 py-1 text-[8px] md:text-[10px] font-medium uppercase tracking-[0.18em]",
               product.tag === "Bestseller"
                 ? "bg-gold text-gold-foreground"
                 : "bg-accent text-accent-foreground",
@@ -47,7 +47,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           </span>
         )}
         {hasDiscount(product) && (
-          <span className="absolute left-4 z-10 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] bg-foreground text-background"
+          <span className="absolute left-4 z-10 px-3 py-1 text-[8px] md:text-[10px] font-medium uppercase tracking-[0.18em] bg-foreground text-background"
             style={{ top: product.tag ? "2.75rem" : "1rem" }}
           >
             -{product.discountPct}%
@@ -60,13 +60,13 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           onClick={handleFavorite}
           aria-label={favorited ? `Remove ${product.name} from favorites` : `Add ${product.name} to favorites`}
           className={cn(
-            "absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-full border backdrop-blur-sm transition-all duration-300",
+            "absolute right-3 top-3 z-10 flex size-6 md:size-8 items-center justify-center rounded-full border backdrop-blur-sm transition-all duration-300",
             favorited
               ? "border-gold/40 bg-lavender text-gold opacity-100"
               : "border-background/30 bg-background/60 text-foreground/60 opacity-0 group-hover:opacity-100 hover:border-gold/40 hover:text-gold",
           )}
         >
-          <Heart className={cn("size-3.5 transition-all", favorited && "fill-gold")} />
+          <Heart className={cn("size-2.5 md:size-3.5 transition-all", favorited && "fill-gold")} />
         </button>
 
         <Image
@@ -91,28 +91,28 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
             )}
           >
             {added ? (
-              <><Check className="size-3.5" /> Added</>
+              <><Check className="size-2.5 md:size-3.5" /> Added</>
             ) : (
-              <><Plus className="size-3.5" /> Add to Cart</>
+              <><Plus className="size-2.5 md:size-3.5" /> Add to Cart</>
             )}
           </button>
         </div>
       </Link>
 
       <div className="flex flex-1 flex-col items-center px-1 pt-5 text-center">
-        <p className="text-[10px] font-light uppercase tracking-[0.22em] text-gold">{product.brand}</p>
-        <h3 className="mt-2 font-serif text-xl font-medium leading-snug text-foreground">
-          <Link href={`/product/${product.id}`} className="transition-colors hover:text-gold">
+        <p className="text-[8px] md:text-[10px] font-light uppercase tracking-[0.22em] text-gold">{product.brand}</p>
+        <h3 className="mt-2 font-serif text-lg md:text-xl font-medium leading-snug text-foreground">
+          <Link href={`/product/${product.id}`} className="transition-colors hover:text-gold line-clamp-2">
             {product.name}
           </Link>
         </h3>
-        <p className="mt-1 text-xs font-light text-muted-foreground">{product.tagline}</p>
+        <p className="mt-1 text-[10px] md:text-xs font-light text-muted-foreground line-clamp-2">{product.tagline}</p>
 
         {/* Stars + review count */}
         {product.reviewCount > 0 && (
           <div className="mt-2 flex items-center gap-1.5">
             <div className="flex items-center gap-0.5">
-              {[1,2,3,4,5].map(i => (
+              {[1, 2, 3, 4, 5].map(i => (
                 <Star key={i} className={cn(
                   "size-3",
                   product.rating >= i ? "fill-gold text-gold" : "fill-muted text-border",

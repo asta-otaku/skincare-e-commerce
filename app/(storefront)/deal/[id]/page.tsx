@@ -6,6 +6,8 @@ import { ProductDetail } from "@/components/product-detail"
 import { ProductReviews } from "@/components/product-reviews"
 import { RelatedDeals } from "@/components/related-deals"
 
+export const revalidate = 60
+
 export async function generateStaticParams() {
   const ids = await getDealIds()
   return ids.map((id) => ({ id }))
@@ -49,9 +51,9 @@ export default async function DealPage({
 
   return (
     <>
-      <ProductDetail product={product} />
-      <section className="mx-auto max-w-7xl px-5 lg:px-8 -mt-8 mb-4">
-        <div className="border border-border p-5">
+      <ProductDetail product={product} hideBenefits />
+      <section className="mx-auto max-w-7xl px-5 lg:px-8 -mt-16 mb-4">
+        <div>
           <h2 className="text-xs font-medium uppercase tracking-[0.18em] mb-3">What&apos;s included</h2>
           <ul className="space-y-2">
             {deal.items.map((item) => (
@@ -67,9 +69,6 @@ export default async function DealPage({
                       ({item.variantLabel || item.size})
                     </span>
                   )}
-                </span>
-                <span className="text-muted-foreground shrink-0">
-                  ₦{item.price.toLocaleString()}
                 </span>
               </li>
             ))}

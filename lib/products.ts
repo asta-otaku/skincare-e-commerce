@@ -501,25 +501,29 @@ export function buildPriceBands(opts: {
   return bands
 }
 
-/** Matches storefront navbar category links (shop?category=…). */
+/** Matches storefront navbar concern / ingredient links. */
 export const ALL_CONCERNS = ["Acne", "Hyperpigmentation", "Anti-Ageing", "Dry Skin", "Oily Skin", "Sensitive Skin"]
 export const ALL_INGREDIENTS = ["Vitamin C", "Retinol", "Niacinamide", "AHA/BHA", "Hyaluronic Acid", "SPF", "Ceramides"]
+
+/** @deprecated Prefer getCategoryTree() — kept as fallback flat list. */
 export const ALL_CATEGORIES = [
-  "Cleansers",
-  "Toners",
-  "Serums",
-  "Moisturisers",
-  "Sunscreen",
-  "Eye Care",
-  "Treatments",
-  "Body Lotions",
-  "Scrubs",
-  "Shower Gels",
-  "Body Oils",
-  "Perfumes",
-  "Body Mists",
-  "Roll-ons",
-  "Lip",
-  "Makeup Face",
-  "Eyes",
+  "Cleansing Oils & Balms",
+  "Eye Creams & Treatments",
+  "Exfoliators, Peels & Scrubs",
+  "Face Cleansers & Wash",
+  "Face Mask",
+  "Face Moisturizers",
+  "Face Toners & Mists",
+  "Lipbalm & Lip Oils",
+  "Micellar Water",
+  "Serums & Treatment",
+  "Sunscreens",
+  "Body Moisturizers & Oils",
+  "Body Scrubs",
+  "Body Wash",
+  "Cleansing Bar",
+  "Hand Cream",
+  "Personal Care",
+  "Body mist and spray",
+  "Roll on",
 ]

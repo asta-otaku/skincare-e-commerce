@@ -94,8 +94,8 @@ export function rowToProduct(row: any): Product {
     stock: row.stock ?? 0,
     rating: row.rating ?? 0,
     reviewCount: row.review_count ?? 0,
-    size: row.size ?? undefined,
-    variants: row.variants ?? undefined,
+    size: row.size || undefined,
+    variants: Array.isArray(row.variants) && row.variants.length > 0 ? row.variants : undefined,
     howToUse: row.how_to_use ?? undefined,
   } as Product
 }
@@ -146,8 +146,8 @@ function filterMock(q: ProductQuery): Product[] {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function applyProductFilters(query: any, q: ProductQuery) {
   if (q.category && q.category !== "All") {
-    const slug = q.category.replace(/-/g, " ")
-    query = query.ilike("category", `%${slug}%`)
+    // Exact name match (products.category stores subcategory display name)
+    query = query.ilike("category", q.category.trim())
   }
   if (q.brand && q.brand !== "All") {
     query = query.eq("brand_name", q.brand)

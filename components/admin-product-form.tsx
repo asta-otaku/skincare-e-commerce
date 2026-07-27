@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation"
 import { Upload, X, Plus, ArrowLeft, Save, Trash2, GripVertical, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Product } from "@/lib/products"
-import { ALL_CATEGORIES, ALL_CONCERNS, ALL_INGREDIENTS } from "@/lib/products"
+import { ALL_CONCERNS, ALL_INGREDIENTS } from "@/lib/products"
 import { getActiveBrands, type Brand } from "@/lib/supabase/brands"
+import { getCategoryTree, type CategorySection } from "@/lib/supabase/categories"
+import { CategorySelect } from "@/components/category-select"
 
 /* ─── Form types ─────────────────────────────────────────────── */
 type VariantRow = { label: string; price: string }
@@ -64,7 +66,7 @@ function toFormState(product?: Product): FormState {
     tiers: hasTiers
       ? product!.priceTiers!.map(t => ({ qty: String(t.qty), value: String(t.value) }))
       : [{ qty: "3", value: "" }, { qty: "6", value: "" }],
-    category: product?.category ?? ALL_CATEGORIES[0],
+    category: product?.category ?? "",
     tag: product?.tag ?? "",
     size: product?.size ?? "",
     stock: product ? String(product.stock) : "",
@@ -103,6 +105,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
   const router = useRouter()
   const [form, setForm] = useState<FormState>(toFormState(product))
   const [brands, setBrands] = useState<Brand[]>([])
+  const [categoryTree, setCategoryTree] = useState<CategorySection[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploadError, setUploadError] = useState("")
@@ -115,6 +118,13 @@ export function AdminProductForm({ product }: { product?: Product }) {
       setBrands(list)
       if (!product?.brand && list[0] && !form.brand) {
         setForm(f => ({ ...f, brand: list[0].name }))
+      }
+    })
+    getCategoryTree().then(tree => {
+      setCategoryTree(tree)
+      if (!product?.category) {
+        const first = tree[0]?.categories[0]?.name
+        if (first) setForm(f => (f.category ? f : { ...f, category: first }))
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -295,7 +305,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
 
       await saveProduct(payload, product?.id)
       const { revalidateProducts } = await import("@/app/actions/revalidate")
-      await revalidateProducts()
+      await revalidateProducts(payload.id || product?.id)
     } catch (err) {
       console.error("Failed to save product:", err)
       setUploadError(err instanceof Error ? err.message : "Something went wrong. Please try again.")
@@ -907,9 +917,18 @@ export function AdminProductForm({ product }: { product?: Product }) {
                   </div>
 
                   <Field label="Category" required>
-                    <select value={form.category} onChange={e => setField("category", e.target.value)} className="input-field">
-                      {ALL_CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                    </select>
+                    <CategorySelect
+                      value={form.category}
+                      onChange={v => setField("category", v)}
+                      tree={categoryTree}
+                      required
+                      className="input-field"
+                    />
+                    {categoryTree.length === 0 && (
+                      <p className="text-[10px] font-light text-muted-foreground">
+                        No categories yet — add some under Admin → Categories.
+                      </p>
+                    )}
                   </Field>
 
                   <Field label="Tag (optional)">

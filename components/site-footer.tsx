@@ -11,10 +11,9 @@ const COLUMNS = [
     title: "Shop",
     links: [
       { label: "All Products", href: "/shop" },
-      { label: "Face", href: "/shop?category=face" },
-      { label: "Bath & Body", href: "/shop?category=bath-body" },
-      { label: "Fragrance", href: "/shop?category=fragrance" },
-      { label: "Makeup", href: "/shop?category=makeup" },
+      { label: "Face", href: "/shop?category=face-cleansers-wash" },
+      { label: "Bath & Body", href: "/shop?category=body-wash" },
+      { label: "Perfume", href: "/shop?category=body-mist-and-spray" },
       { label: "Combo Deals", href: "/deals" },
       { label: "Wholesale", href: "/wholesale" },
     ],

@@ -18,6 +18,7 @@ import {
   Bell,
   Inbox,
   Store,
+  FolderTree,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -36,6 +37,11 @@ const NAV = [
     label: "Products",
     href: "/admin/products",
     icon: Package,
+  },
+  {
+    label: "Categories",
+    href: "/admin/categories",
+    icon: FolderTree,
   },
   {
     label: "Brands",
