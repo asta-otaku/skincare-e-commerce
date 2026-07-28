@@ -57,13 +57,31 @@ const HERO_SLIDES = [
   },
 ]
 
-const CATEGORIES = [
-  { label: "Face", href: "/shop?category=face-cleansers-wash", emoji: "✨", desc: "Cleanse · Treat · Protect" },
-  { label: "Bath & Body", href: "/shop?category=body-wash", emoji: "🛁", desc: "Lotions · Oils · Scrubs" },
-  { label: "Perfume", href: "/shop?category=body-mist-and-spray", emoji: "🌸", desc: "Mists · Sprays · Roll-ons" },
-  { label: "Serums", href: "/shop?category=serums-treatment", emoji: "💧", desc: "Treatments · Actives" },
-  { label: "Sunscreen", href: "/shop?category=sunscreens", emoji: "☀️", desc: "SPF 30 · SPF 50+ · Tinted" },
-  { label: "Combo Deals", href: "/deals", emoji: "🎁", desc: "Save up to 20%" },
+const COLLECTIONS = [
+  {
+    label: "Sunscreen",
+    href: "/shop?category=sunscreens",
+    image: "/sunscreen.jpeg",
+    tone: "bg-[#293049]",
+  },
+  {
+    label: "Face Toners",
+    href: "/shop?category=face-toners-mists",
+    image: "/toner.jpeg",
+    tone: "bg-[#FACBD3]",
+  },
+  {
+    label: "Body Moisturizer",
+    href: "/shop?category=body-moisturizers-oils",
+    image: "/moisturizer.jpeg",
+    tone: "bg-[#F5E6A8]",
+  },
+  {
+    label: "Serum",
+    href: "/shop?category=serums-treatment",
+    image: "/serum.jpeg",
+    tone: "bg-[#E8EEF4]",
+  },
 ]
 
 const CONCERNS = [
@@ -247,30 +265,52 @@ export default function HomePage() {
       <HeroSlider />
 
       {/* ── Shop by Category ── */}
-      <section className="mx-auto max-w-7xl px-5 py-8 md:py-16 lg:px-8">
-        <div className="mb-8 flex items-end justify-between">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Explore</p>
-            <h2 className="mt-1.5 font-serif text-xl md:text-3xl font-medium">Shop by Category</h2>
-          </div>
-          <Link href="/shop" className="hidden items-center gap-1.5 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground hover:text-gold transition-colors sm:flex">
+      <section className="mx-auto max-w-7xl px-5 py-12 md:py-20 lg:px-8">
+        <div className="mb-10 flex items-center gap-6 md:mb-14">
+          <h2 className="shrink-0 font-serif text-3xl font-medium tracking-tight md:text-4xl">
+            Shop by Category
+          </h2>
+          <span className="hidden h-px flex-1 bg-border sm:block" aria-hidden />
+          <Link
+            href="/shop"
+            className="hidden shrink-0 items-center gap-1.5 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground transition-colors hover:text-gold sm:flex"
+          >
             All Products <ArrowRight className="size-3.5" />
           </Link>
         </div>
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-3 md:grid-cols-6">
-          {CATEGORIES.map(cat => (
-            <Link
-              key={cat.label}
-              href={cat.href}
-              className="group flex flex-col items-center gap-3 border border-border p-3 md:p-5 text-center transition-all hover:border-gold/60 hover:bg-secondary"
-            >
-              <span className="text-xl md:text-3xl">{cat.emoji}</span>
-              <div>
-                <p className="text-xs md:text-sm font-medium group-hover:text-gold transition-colors">{cat.label}</p>
-                <p className="mt-0.5 text-[8px] md:text-[10px] font-light text-muted-foreground">{cat.desc}</p>
+
+        <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4 md:gap-6">
+          {COLLECTIONS.map(cat => (
+            <Link key={cat.label} href={cat.href} className="group flex flex-col items-center gap-4">
+              <div
+                className={cn(
+                  "relative aspect-3/4 w-full overflow-hidden rounded-2xl",
+                  cat.tone,
+                )}
+              >
+                <Image
+                  src={cat.image}
+                  alt={cat.label}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-foreground/10 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
               </div>
+              <span className="inline-flex min-w-[70%] items-center justify-center border border-foreground px-3 py-2 md:px-4 md:py-2.5 text-center text-[8px] font-medium uppercase tracking-[0.2em] text-foreground transition-colors group-hover:border-gold group-hover:bg-gold group-hover:text-gold-foreground md:text-[11px]">
+                {cat.label}
+              </span>
             </Link>
           ))}
+        </div>
+
+        <div className="mt-8 text-center sm:hidden">
+          <Link
+            href="/shop"
+            className="inline-flex items-center gap-2 border border-border px-8 py-3 text-xs font-medium uppercase tracking-[0.15em] transition-colors hover:border-foreground"
+          >
+            All Products <ArrowRight className="size-3.5" />
+          </Link>
         </div>
       </section>
 
