@@ -167,7 +167,7 @@ export function ProductDetail({ product, hideBenefits = false }: { product: Prod
           )}
 
           {/* Main image */}
-          <div className="relative flex-1 overflow-hidden border border-border bg-secondary">
+          <div className="relative flex-1 overflow-hidden border border-border">
             {product.tag && (
               <span className={cn(
                 "absolute left-4 top-4 z-10 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em]",

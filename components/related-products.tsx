@@ -32,7 +32,7 @@ export function RelatedProducts({ currentId }: { currentId: string }) {
               <div key={i} className="aspect-[3/4] animate-pulse bg-muted/40" />
             ))
             : related.map((product, index) => (
-              <ProductCard key={product.id} product={product} index={index} />
+              <ProductCard key={product.id} product={product} index={index} isWhiteBackground={true} />
             ))}
         </div>
       </div>

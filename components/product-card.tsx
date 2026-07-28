@@ -9,11 +9,23 @@ import { useFavorites } from "@/components/favorites-provider"
 import { formatPrice, getEffectivePrice, hasDiscount, type Product } from "@/lib/products"
 import { cn } from "@/lib/utils"
 
-export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
+export function ProductCard({
+  product,
+  index = 0,
+  isWhiteBackground = false,
+  href,
+}: {
+  product: Product
+  index?: number
+  isWhiteBackground?: boolean
+  /** Override product detail link (e.g. `/deal/[id]` for bundles). */
+  href?: string
+}) {
   const { addItem } = useCart()
   const { isFavorited, toggleFavorite } = useFavorites()
   const [added, setAdded] = useState(false)
   const favorited = isFavorited(product.id)
+  const detailHref = href ?? `/product/${product.id}`
 
   function handleAdd(e: React.MouseEvent) {
     e.preventDefault()
@@ -30,9 +42,12 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
   return (
     <article className="group flex flex-col" style={{ animationDelay: `${index * 90}ms` }}>
       <Link
-        href={`/product/${product.id}`}
+        href={detailHref}
         aria-label={`View ${product.name}`}
-        className="relative aspect-4/5 overflow-hidden border border-border transition-colors duration-500 group-hover:border-gold/60"
+        className={cn(
+          "relative aspect-4/5 overflow-hidden border border-border transition-colors duration-500 group-hover:border-gold/60",
+          isWhiteBackground && "bg-white",
+        )}
       >
         {product.tag && (
           <span
@@ -47,14 +62,14 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           </span>
         )}
         {hasDiscount(product) && (
-          <span className="absolute left-4 z-10 px-3 py-1 text-[8px] md:text-[10px] font-medium uppercase tracking-[0.18em] bg-foreground text-background"
+          <span
+            className="absolute left-4 z-10 px-3 py-1 text-[8px] md:text-[10px] font-medium uppercase tracking-[0.18em] bg-foreground text-background"
             style={{ top: product.tag ? "2.75rem" : "1rem" }}
           >
             -{product.discountPct}%
           </span>
         )}
 
-        {/* Favorite button */}
         <button
           type="button"
           onClick={handleFavorite}
@@ -77,7 +92,6 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           className="object-contain mix-blend-multiply transition-transform duration-700 ease-out group-hover:scale-105"
         />
 
-        {/* Quick add to cart */}
         <div className="absolute inset-x-3 bottom-3 translate-y-3 opacity-0 transition-all duration-400 ease-out group-hover:translate-y-0 group-hover:opacity-100">
           <button
             type="button"
@@ -102,28 +116,30 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
       <div className="flex flex-1 flex-col items-center px-1 pt-5 text-center">
         <p className="text-[8px] md:text-[10px] font-light uppercase tracking-[0.22em] text-gold">{product.brand}</p>
         <h3 className="mt-2 font-serif text-lg md:text-xl font-medium leading-snug text-foreground">
-          <Link href={`/product/${product.id}`} className="transition-colors hover:text-gold line-clamp-2">
+          <Link href={detailHref} className="transition-colors hover:text-gold line-clamp-2">
             {product.name}
           </Link>
         </h3>
         <p className="mt-1 text-[10px] md:text-xs font-light text-muted-foreground line-clamp-2">{product.tagline}</p>
 
-        {/* Stars + review count */}
         {product.reviewCount > 0 && (
           <div className="mt-2 flex items-center gap-1.5">
             <div className="flex items-center gap-0.5">
               {[1, 2, 3, 4, 5].map(i => (
-                <Star key={i} className={cn(
-                  "size-3",
-                  product.rating >= i ? "fill-gold text-gold" : "fill-muted text-border",
-                )} />
+                <Star
+                  key={i}
+                  className={cn(
+                    "size-3",
+                    product.rating >= i ? "fill-gold text-gold" : "fill-muted text-border",
+                  )}
+                />
               ))}
             </div>
             <span className="text-[10px] font-light text-muted-foreground">({product.reviewCount})</span>
           </div>
         )}
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
           {hasDiscount(product) ? (
             <>
               <p className="text-sm font-light tracking-wide text-muted-foreground line-through">

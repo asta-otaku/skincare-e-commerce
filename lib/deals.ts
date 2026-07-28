@@ -81,7 +81,7 @@ export function dealAsProduct(deal: Deal): Product {
     image: deal.image || "/product-bundle.png",
     images: deal.image ? [deal.image] : ["/product-bundle.png"],
     category: "bundle",
-    tag: "Sale",
+    tag: deal.badge?.trim() || "Sale",
     benefits: deal.items.map(i =>
       i.variantLabel || i.size ? `${i.name} (${i.variantLabel || i.size})` : i.name,
     ),
