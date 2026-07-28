@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import {
-  Search, SlidersHorizontal, TrendingUp, ShoppingBag,
+  Search, TrendingUp, ShoppingBag,
   Clock, CheckCircle2, XCircle, ArrowUpRight, ArrowUpDown,
   ChevronDown, Download, RefreshCw,
 } from "lucide-react"
@@ -14,8 +14,14 @@ import {
   type Order,
   type OrderStatus,
 } from "@/lib/orders"
-import { getAllOrders } from "@/lib/supabase/orders"
+import { getAdminOrdersPage } from "@/lib/supabase/orders"
 import { OrderItemThumb } from "@/components/order-item-thumb"
+import {
+  AdminPagination,
+  ADMIN_PAGE_SIZE,
+  MONTH_RANGE_OPTIONS,
+  type MonthRange,
+} from "@/components/admin-pagination"
 import { cn } from "@/lib/utils"
 
 const STATUSES: { value: "all" | OrderStatus; label: string }[] = [
@@ -30,6 +36,13 @@ const STATUSES: { value: "all" | OrderStatus; label: string }[] = [
 
 type SortKey = "date_desc" | "date_asc" | "total_desc" | "total_asc"
 
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "date_desc", label: "Newest first" },
+  { value: "date_asc", label: "Oldest first" },
+  { value: "total_desc", label: "Highest value" },
+  { value: "total_asc", label: "Lowest value" },
+]
+
 function formatCurrency(n: number) {
   return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(n)
 }
@@ -43,47 +56,43 @@ function formatDate(iso: string, short = false) {
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
+  const [total, setTotal] = useState(0)
+  const [kpis, setKpis] = useState({ revenue: 0, pending: 0, shipped: 0, fulfilled: 0 })
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [searchDebounced, setSearchDebounced] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all")
   const [sortKey, setSortKey] = useState<SortKey>("date_desc")
+  const [months, setMonths] = useState<MonthRange>(1)
+  const [page, setPage] = useState(1)
   const [showSort, setShowSort] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchDebounced, statusFilter, sortKey, months])
 
   const load = useCallback(async () => {
     setLoading(true)
-    const data = await getAllOrders()
-    setOrders(data)
+    const data = await getAdminOrdersPage({
+      search: searchDebounced,
+      status: statusFilter,
+      sort: sortKey,
+      months,
+      page,
+      pageSize: ADMIN_PAGE_SIZE,
+    })
+    setOrders(data.orders)
+    setTotal(data.total)
+    setKpis(data.kpis)
     setLoading(false)
-  }, [])
+  }, [searchDebounced, statusFilter, sortKey, months, page])
 
-  useEffect(() => { load() }, [load])
-
-  const totalRevenue = orders.filter(o => o.paymentStatus === "paid").reduce((s, o) => s + o.total, 0)
-  const pending = orders.filter(o => o.status === "pending").length
-  const shipped = orders.filter(o => o.status === "shipped").length
-  const fulfilled = orders.filter(o => o.status === "fulfilled").length
-
-  const filtered = useMemo(() => {
-    let pool = orders.filter(o => {
-      const q = search.toLowerCase()
-      const matchSearch = !search ||
-        o.id.toLowerCase().includes(q) ||
-        o.customer.name.toLowerCase().includes(q) ||
-        o.customer.email.toLowerCase().includes(q) ||
-        o.reference.toLowerCase().includes(q)
-      const matchStatus = statusFilter === "all" || o.status === statusFilter
-      return matchSearch && matchStatus
-    })
-
-    return pool.sort((a, b) => {
-      switch (sortKey) {
-        case "date_asc": return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        case "total_desc": return b.total - a.total
-        case "total_asc": return a.total - b.total
-        default: return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      }
-    })
-  }, [orders, search, statusFilter, sortKey])
+  useEffect(() => { void load() }, [load])
 
   async function updateStatus(id: string, status: OrderStatus) {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status, updatedAt: new Date().toISOString() } : o))
@@ -97,6 +106,8 @@ export default function AdminOrdersPage() {
         const data = await res.json().catch(() => ({}))
         console.error("Status update failed:", data.error ?? res.statusText)
         await load()
+      } else {
+        await load()
       }
     } catch (err) {
       console.error("Status update failed:", err)
@@ -104,12 +115,7 @@ export default function AdminOrdersPage() {
     }
   }
 
-  const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-    { value: "date_desc", label: "Newest first" },
-    { value: "date_asc", label: "Oldest first" },
-    { value: "total_desc", label: "Highest value" },
-    { value: "total_asc", label: "Lowest value" },
-  ]
+  const monthsLabel = MONTH_RANGE_OPTIONS.find(o => o.value === months)?.label ?? "Last month"
 
   return (
     <div className="flex flex-1 flex-col gap-8 overflow-auto" onClick={() => setShowSort(false)}>
@@ -118,10 +124,29 @@ export default function AdminOrdersPage() {
         <div>
           <h1 className="font-serif text-2xl font-medium">Orders</h1>
           <p className="text-xs font-light text-muted-foreground mt-0.5">
-            {loading ? "Loading…" : `${orders.length} total orders · ${formatCurrency(totalRevenue)} revenue`}
+            {loading
+              ? "Loading…"
+              : `${total} order${total !== 1 ? "s" : ""} · ${formatCurrency(kpis.revenue)} revenue · ${monthsLabel.toLowerCase()}`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1.5">
+            {MONTH_RANGE_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setMonths(opt.value)}
+                className={cn(
+                  "border px-3 py-1.5 text-[11px] font-light uppercase tracking-[0.12em] transition-all",
+                  months === opt.value
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border text-muted-foreground hover:border-foreground hover:text-foreground",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             onClick={load}
@@ -140,15 +165,14 @@ export default function AdminOrdersPage() {
       <div className="admin-page-body space-y-6">
         {/* KPI cards */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <KpiCard label="Total Revenue" value={formatCurrency(totalRevenue)} sub={`${orders.length} orders`} icon={TrendingUp} highlight />
-          <KpiCard label="Pending" value={String(pending)} sub="Awaiting processing" icon={Clock} />
-          <KpiCard label="Shipped" value={String(shipped)} sub="En route to customer" icon={ShoppingBag} />
-          <KpiCard label="Fulfilled" value={String(fulfilled)} sub="Successfully delivered" icon={CheckCircle2} />
+          <KpiCard label="Total Revenue" value={formatCurrency(kpis.revenue)} sub={`${total} orders`} icon={TrendingUp} highlight />
+          <KpiCard label="Pending" value={String(kpis.pending)} sub="Awaiting processing" icon={Clock} />
+          <KpiCard label="Shipped" value={String(kpis.shipped)} sub="En route to customer" icon={ShoppingBag} />
+          <KpiCard label="Fulfilled" value={String(kpis.fulfilled)} sub="Successfully delivered" icon={CheckCircle2} />
         </div>
 
         {/* Filters row */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          {/* Search */}
           <div className="relative max-w-xs flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <input
@@ -160,7 +184,6 @@ export default function AdminOrdersPage() {
             />
           </div>
 
-          {/* Sort */}
           <div className="relative" onClick={e => e.stopPropagation()}>
             <button
               type="button"
@@ -206,17 +229,18 @@ export default function AdminOrdersPage() {
               )}
             >
               {s.label}
-              {s.value !== "all" && (
-                <span className="ml-1.5 opacity-60">
-                  {orders.filter(o => o.status === s.value).length}
-                </span>
-              )}
             </button>
           ))}
         </div>
 
         {/* Orders table */}
-        {filtered.length === 0 ? (
+        {loading && orders.length === 0 ? (
+          <div className="border border-border divide-y divide-border">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-16 animate-pulse bg-muted/20" />
+            ))}
+          </div>
+        ) : orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center border border-dashed border-border py-20 text-center">
             <XCircle className="size-10 text-muted-foreground mb-3" />
             <p className="font-serif text-lg font-medium">No orders found</p>
@@ -224,7 +248,6 @@ export default function AdminOrdersPage() {
           </div>
         ) : (
           <div className="border border-border">
-            {/* Desktop */}
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -237,25 +260,27 @@ export default function AdminOrdersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {filtered.map(order => (
+                  {orders.map(order => (
                     <OrderRow key={order.id} order={order} onStatusChange={updateStatus} />
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Mobile */}
             <div className="divide-y divide-border lg:hidden">
-              {filtered.map(order => (
+              {orders.map(order => (
                 <MobileOrderCard key={order.id} order={order} />
               ))}
             </div>
           </div>
         )}
 
-        <p className="text-center text-[11px] font-light text-muted-foreground">
-          Showing {filtered.length} of {orders.length} orders
-        </p>
+        <AdminPagination
+          page={page}
+          pageSize={ADMIN_PAGE_SIZE}
+          total={total}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   )

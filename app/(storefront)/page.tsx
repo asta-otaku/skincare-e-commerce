@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight, ChevronLeft, ChevronRight, Sparkles } from "lucide-react"
@@ -13,6 +13,7 @@ import { getActiveDeals } from "@/lib/supabase/deals"
 import { getPublishedJournals } from "@/lib/supabase/journals"
 import type { Journal } from "@/lib/journals"
 import { cn } from "@/lib/utils"
+import { ALL_SKIN_TYPES, slugifyCatalogLabel } from "@/lib/catalog"
 
 /* ─── Hero data ─────────────────────────────────────────────── */
 const HERO_SLIDES = [
@@ -84,30 +85,75 @@ const COLLECTIONS = [
   },
 ]
 
-const CONCERNS = [
-  { label: "Acne", href: "/concern/acne", color: "bg-red-50 border-red-100 hover:border-red-300" },
-  { label: "Hyperpigmentation", href: "/concern/hyperpigmentation", color: "bg-amber-50 border-amber-100 hover:border-amber-300" },
-  { label: "Anti-Ageing", href: "/concern/anti-ageing", color: "bg-secondary border-border hover:border-gold/40" },
-  { label: "Dry Skin", href: "/concern/dry-skin", color: "bg-blue-50 border-blue-100 hover:border-blue-300" },
-  { label: "Oily Skin", href: "/concern/oily-skin", color: "bg-green-50 border-green-100 hover:border-green-300" },
-  { label: "Sensitive Skin", href: "/concern/sensitive-skin", color: "bg-pink-50 border-pink-100 hover:border-pink-300" },
+const SKIN_TYPE_COLORS = [
+  "bg-red-50 border-red-100 hover:border-red-300",
+  "bg-amber-50 border-amber-100 hover:border-amber-300",
+  "bg-secondary border-border hover:border-gold/40",
+  "bg-blue-50 border-blue-100 hover:border-blue-300",
+  "bg-green-50 border-green-100 hover:border-green-300",
+  "bg-pink-50 border-pink-100 hover:border-pink-300",
+  "bg-violet-50 border-violet-100 hover:border-violet-300",
+  "bg-sky-50 border-sky-100 hover:border-sky-300",
+  "bg-orange-50 border-orange-100 hover:border-orange-300",
 ]
+
+const SKIN_TYPES = ALL_SKIN_TYPES.map((label, i) => ({
+  label,
+  href: `/shop?skinType=${slugifyCatalogLabel(label)}`,
+  color: SKIN_TYPE_COLORS[i % SKIN_TYPE_COLORS.length],
+}))
 
 /* ─── Hero slider ───────────────────────────────────────────── */
 function HeroSlider() {
-  const [current, setCurrent] = useState(0)
+  const n = HERO_SLIDES.length
+  // Track: [lastClone, ...slides, firstClone] — index 1..n are real slides
+  const track = [HERO_SLIDES[n - 1], ...HERO_SLIDES, HERO_SLIDES[0]]
+  const [index, setIndex] = useState(1)
+  const [animate, setAnimate] = useState(true)
+  const indexRef = useRef(index)
 
-  function goTo(next: number) {
-    setCurrent((next + HERO_SLIDES.length) % HERO_SLIDES.length)
+  useEffect(() => {
+    indexRef.current = index
+  }, [index])
+
+  const activeSlide = ((index - 1) % n + n) % n
+
+  function goToSlide(slideIdx: number) {
+    setAnimate(true)
+    setIndex(slideIdx + 1)
   }
 
   function next() {
-    setCurrent(prev => (prev + 1) % HERO_SLIDES.length)
+    setAnimate(true)
+    setIndex(i => i + 1)
   }
 
   function prev() {
-    setCurrent(prev => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)
+    setAnimate(true)
+    setIndex(i => i - 1)
   }
+
+  // After animating onto a clone, snap to the real slide with no transition
+  function handleTransitionEnd(e: React.TransitionEvent<HTMLDivElement>) {
+    if (e.target !== e.currentTarget) return
+    const i = indexRef.current
+    if (i === n + 1) {
+      setAnimate(false)
+      setIndex(1)
+    } else if (i === 0) {
+      setAnimate(false)
+      setIndex(n)
+    }
+  }
+
+  // Re-enable transitions after the instant snap
+  useEffect(() => {
+    if (animate) return
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setAnimate(true))
+    })
+    return () => cancelAnimationFrame(id)
+  }, [animate, index])
 
   useEffect(() => {
     const t = setInterval(next, 5500)
@@ -117,81 +163,88 @@ function HeroSlider() {
   return (
     <section className="relative overflow-hidden">
       <div
-        className="flex transition-transform duration-700 ease-in-out will-change-transform"
-        style={{ transform: `translateX(-${current * 100}%)` }}
+        className={cn(
+          "flex will-change-transform",
+          animate && "transition-transform duration-700 ease-in-out",
+        )}
+        style={{ transform: `translateX(-${index * 100}%)` }}
+        onTransitionEnd={handleTransitionEnd}
       >
-        {HERO_SLIDES.map((slide, index) => (
-          <div
-            key={slide.title}
-            className={cn("w-full shrink-0 bg-linear-to-br", slide.gradient)}
-            aria-hidden={index !== current}
-          >
-            <div className="mx-auto grid min-h-[82vh] max-w-7xl grid-cols-1 items-center px-5 lg:grid-cols-2 lg:px-8">
+        {track.map((slide, i) => {
+          const isActive = i === index
+          return (
+            <div
+              key={`${slide.title}-${i}`}
+              className={cn("w-full shrink-0 bg-linear-to-br", slide.gradient)}
+              aria-hidden={!isActive}
+            >
+              <div className="mx-auto grid min-h-[82vh] max-w-7xl grid-cols-1 items-center px-5 lg:grid-cols-2 lg:px-8">
 
-              {/* ── Left: Text ── */}
-              <div className="flex flex-col justify-center py-8 md:py-16 lg:py-0">
-                <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-white">
-                  {slide.eyebrow}
-                </p>
-                <h1 className="mt-4 min-h-[2.2em] font-serif text-3xl font-medium leading-[1.1] text-white md:text-6xl lg:min-h-[calc(2*1.1*4.5rem)] lg:text-[4.5rem] whitespace-pre-line">
-                  {slide.title}
-                </h1>
-                <p className="mt-5 min-h-[4.5rem] max-w-sm text-base font-light leading-relaxed text-white">
-                  {slide.subtitle}
-                </p>
-                <div className="mt-8 flex flex-wrap gap-3">
+                {/* ── Left: Text ── */}
+                <div className="flex flex-col justify-center py-8 md:py-16 lg:py-0">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-white">
+                    {slide.eyebrow}
+                  </p>
+                  <h1 className="mt-4 min-h-[2.2em] font-serif text-3xl font-medium leading-[1.1] text-white md:text-6xl lg:min-h-[calc(2*1.1*4.5rem)] lg:text-[4.5rem] whitespace-pre-line">
+                    {slide.title}
+                  </h1>
+                  <p className="mt-5 min-h-[4.5rem] max-w-sm text-base font-light leading-relaxed text-white">
+                    {slide.subtitle}
+                  </p>
+                  <div className="mt-8 flex flex-wrap gap-3">
+                    <Link
+                      href={slide.href}
+                      className="flex items-center gap-2 bg-gold px-7 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-gold-foreground transition-colors hover:bg-gold/90"
+                      tabIndex={isActive ? undefined : -1}
+                    >
+                      {slide.cta} <ArrowRight className="size-3.5" />
+                    </Link>
+                    <Link
+                      href="/shop"
+                      className="flex items-center gap-2 border border-white/30 px-7 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-white transition-colors hover:border-white"
+                      tabIndex={isActive ? undefined : -1}
+                    >
+                      View All
+                    </Link>
+                  </div>
+
+                  <div className="mt-10 h-1" aria-hidden />
+                </div>
+
+                {/* ── Right: Product image ── */}
+                <div className="relative hidden h-[82vh] items-center justify-center lg:flex">
+                  <div className="relative h-[82%] w-[80%]">
+                    <Image
+                      src={slide.image}
+                      alt={slide.productName}
+                      fill
+                      sizes="35vw"
+                      className="object-contain mix-blend-multiply"
+                      priority={i === 1}
+                    />
+                  </div>
+
                   <Link
-                    href={slide.href}
-                    className="flex items-center gap-2 bg-gold px-7 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-gold-foreground transition-colors hover:bg-gold/90"
-                    tabIndex={index === current ? undefined : -1}
+                    href={slide.productHref}
+                    className="absolute bottom-8 left-4 flex items-center gap-3 border border-border/60 bg-white/80 px-4 py-3 shadow-md backdrop-blur-sm transition-all hover:border-gold/50 hover:shadow-lg"
+                    tabIndex={isActive ? undefined : -1}
                   >
-                    {slide.cta} <ArrowRight className="size-3.5" />
-                  </Link>
-                  <Link
-                    href="/shop"
-                    className="flex items-center gap-2 border border-white/30 px-7 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-white transition-colors hover:border-white"
-                    tabIndex={index === current ? undefined : -1}
-                  >
-                    View All
+                    <div className="relative size-10 shrink-0 overflow-hidden border border-border bg-muted">
+                      <Image src={slide.image} alt={slide.productName} fill sizes="40px" className="object-cover" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-light uppercase tracking-[0.15em] text-gold">{slide.productBrand}</p>
+                      <p className="text-xs font-medium leading-snug">{slide.productName}</p>
+                      <p className="text-[11px] font-light text-muted-foreground">{slide.productPrice}</p>
+                    </div>
+                    <ArrowRight className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
                   </Link>
                 </div>
 
-                <div className="mt-10 h-1" aria-hidden />
               </div>
-
-              {/* ── Right: Product image ── */}
-              <div className="relative hidden h-[82vh] items-center justify-center lg:flex">
-                <div className="relative h-[82%] w-[80%]">
-                  <Image
-                    src={slide.image}
-                    alt={slide.productName}
-                    fill
-                    sizes="35vw"
-                    className="object-contain mix-blend-multiply"
-                    priority={index === 0}
-                  />
-                </div>
-
-                <Link
-                  href={slide.productHref}
-                  className="absolute bottom-8 left-4 flex items-center gap-3 border border-border/60 bg-white/80 px-4 py-3 shadow-md backdrop-blur-sm transition-all hover:border-gold/50 hover:shadow-lg"
-                  tabIndex={index === current ? undefined : -1}
-                >
-                  <div className="relative size-10 shrink-0 overflow-hidden border border-border bg-muted">
-                    <Image src={slide.image} alt={slide.productName} fill sizes="40px" className="object-cover" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-light uppercase tracking-[0.15em] text-gold">{slide.productBrand}</p>
-                    <p className="text-xs font-medium leading-snug">{slide.productName}</p>
-                    <p className="text-[11px] font-light text-muted-foreground">{slide.productPrice}</p>
-                  </div>
-                  <ArrowRight className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
-                </Link>
-              </div>
-
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Slide dots — fixed, outside sliding track */}
@@ -200,12 +253,12 @@ function HeroSlider() {
           <button
             key={i}
             type="button"
-            onClick={() => goTo(i)}
+            onClick={() => goToSlide(i)}
             aria-label={`Go to slide ${i + 1}`}
-            aria-current={i === current ? "true" : undefined}
+            aria-current={i === activeSlide ? "true" : undefined}
             className={cn(
               "pointer-events-auto h-1 rounded-full transition-all duration-300",
-              i === current ? "w-8 bg-gold" : "w-2 bg-white/40 hover:bg-white/70",
+              i === activeSlide ? "w-8 bg-gold" : "w-2 bg-white/40 hover:bg-white/70",
             )}
           />
         ))}
@@ -340,16 +393,16 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Shop by Concern ── */}
+      {/* ── Shop by Skin Type ── */}
       <section className="bg-secondary py-8 md:py-16">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <div className="mb-8 text-center">
             <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Personalised for you</p>
-            <h2 className="mt-1.5 font-serif text-xl md:text-3xl font-medium">What&rsquo;s your skin concern?</h2>
+            <h2 className="mt-1.5 font-serif text-xl md:text-3xl font-medium">What&rsquo;s your skin type?</h2>
             <p className="mt-2 text-sm font-light text-muted-foreground">We&rsquo;ll guide you to the right products.</p>
           </div>
-          <div className="grid grid-cols-3 gap-2 md:gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {CONCERNS.map(c => (
+          <div className="grid grid-cols-3 gap-2 md:gap-3">
+            {SKIN_TYPES.map(c => (
               <Link
                 key={c.label}
                 href={c.href}

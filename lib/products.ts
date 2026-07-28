@@ -49,10 +49,14 @@ export type Product = {
   /** Additional gallery images; falls back to [image] if empty */
   images?: string[]
   category: string
+  /** All assigned subcategory names (multi-category). `category` is the primary (first). */
+  categories?: string[]
   tag?: "Bestseller" | "New" | "Sale" | "Low Stock"
   benefits: string[]
   ingredients: string[]
   concerns: string[]
+  /** Suitable skin types from pinned catalog (+ custom). */
+  skinTypes?: string[]
   stock: number
   rating: number
   reviewCount: number
@@ -501,9 +505,12 @@ export function buildPriceBands(opts: {
   return bands
 }
 
-/** Matches storefront navbar concern / ingredient links. */
-export const ALL_CONCERNS = ["Acne", "Hyperpigmentation", "Anti-Ageing", "Dry Skin", "Oily Skin", "Sensitive Skin"]
-export const ALL_INGREDIENTS = ["Vitamin C", "Retinol", "Niacinamide", "AHA/BHA", "Hyaluronic Acid", "SPF", "Ceramides"]
+/** @deprecated Import from `@/lib/catalog` — re-exported for compatibility. */
+export {
+  ALL_CONCERNS,
+  ALL_INGREDIENTS,
+  ALL_SKIN_TYPES,
+} from "@/lib/catalog"
 
 /** @deprecated Prefer getCategoryTree() — kept as fallback flat list. */
 export const ALL_CATEGORIES = [

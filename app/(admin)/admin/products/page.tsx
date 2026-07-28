@@ -1,47 +1,60 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import { Plus, Search, Edit2, Trash2, Eye, Package, RefreshCw } from "lucide-react"
 import { formatPrice, type Product } from "@/lib/products"
-import { getAllProducts, deleteProduct } from "@/lib/supabase/products"
+import { getAdminProductsPage, deleteProduct } from "@/lib/supabase/products"
+import { getCategoryTree } from "@/lib/supabase/categories"
+import { AdminPagination, ADMIN_PAGE_SIZE } from "@/components/admin-pagination"
 import { cn } from "@/lib/utils"
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [searchDebounced, setSearchDebounced] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("All")
+  const [categoryOptions, setCategoryOptions] = useState<string[]>(["All"])
+  const [page, setPage] = useState(1)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    const data = await getAllProducts()
-    setProducts(data)
-    setLoading(false)
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
+
+  useEffect(() => { setPage(1) }, [searchDebounced, categoryFilter])
+
+  useEffect(() => {
+    getCategoryTree().then(tree => {
+      const names = tree.flatMap(s => s.categories.map(c => c.name))
+      setCategoryOptions(["All", ...names])
+    })
   }, [])
 
-  useEffect(() => { load() }, [load])
+  const load = useCallback(async () => {
+    setLoading(true)
+    const { products: rows, total: count } = await getAdminProductsPage({
+      search: searchDebounced,
+      category: categoryFilter,
+      page,
+      pageSize: ADMIN_PAGE_SIZE,
+    })
+    setProducts(rows)
+    setTotal(count)
+    setLoading(false)
+  }, [searchDebounced, categoryFilter, page])
 
-  const categories = ["All", ...Array.from(new Set(products.map(p => p.category)))]
-
-  const filtered = products.filter(p => {
-    const matchSearch =
-      !search ||
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.brand.toLowerCase().includes(search.toLowerCase()) ||
-      p.category.toLowerCase().includes(search.toLowerCase())
-    const matchCategory = categoryFilter === "All" || p.category === categoryFilter
-    return matchSearch && matchCategory
-  })
+  useEffect(() => { void load() }, [load])
 
   async function confirmDelete(id: string) {
     setDeleting(true)
     try {
       await deleteProduct(id)
-      setProducts(prev => prev.filter(p => p.id !== id))
+      await load()
     } catch (err) {
       console.error("Delete failed:", err)
     }
@@ -62,13 +75,13 @@ export default function AdminProductsPage() {
         <div>
           <h1 className="font-serif text-2xl font-medium">Products</h1>
           <p className="text-xs font-light text-muted-foreground mt-0.5">
-            {loading ? "Loading…" : `${products.length} product${products.length !== 1 ? "s" : ""} in catalogue`}
+            {loading ? "Loading…" : `${total} product${total !== 1 ? "s" : ""} in catalogue`}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={load}
+            onClick={() => void load()}
             disabled={loading}
             aria-label="Refresh"
             className="flex size-9 items-center justify-center border border-border text-muted-foreground transition-colors hover:border-foreground hover:text-foreground disabled:opacity-40"
@@ -97,23 +110,15 @@ export default function AdminProductsPage() {
               className="w-full border border-border bg-background py-2.5 pl-10 pr-4 text-sm font-light outline-none focus:border-foreground transition-colors"
             />
           </div>
-          <div className="flex gap-1.5 flex-wrap">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setCategoryFilter(cat)}
-                className={cn(
-                  "border px-3 py-1.5 text-[11px] font-light uppercase tracking-[0.12em] transition-all",
-                  categoryFilter === cat
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border text-muted-foreground hover:border-foreground hover:text-foreground",
-                )}
-              >
-                {cat}
-              </button>
+          <select
+            value={categoryFilter}
+            onChange={e => setCategoryFilter(e.target.value)}
+            className="border border-border bg-background px-3 py-2.5 text-xs font-light outline-none focus:border-foreground max-w-xs"
+          >
+            {categoryOptions.map(cat => (
+              <option key={cat} value={cat}>{cat === "All" ? "All categories" : cat}</option>
             ))}
-          </div>
+          </select>
         </div>
 
         {/* Loading skeleton */}
@@ -129,7 +134,7 @@ export default function AdminProductsPage() {
               </div>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : products.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-border">
             <Package className="size-10 text-muted-foreground mb-3" />
             <p className="font-serif text-lg font-medium">No products found</p>
@@ -153,7 +158,7 @@ export default function AdminProductsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {filtered.map(product => {
+                  {products.map(product => {
                     const stock = stockLabel(product.stock)
                     return (
                       <tr key={product.id} className="hover:bg-secondary transition-colors">
@@ -238,7 +243,7 @@ export default function AdminProductsPage() {
 
             {/* Mobile cards */}
             <div className="divide-y divide-border md:hidden">
-              {filtered.map(product => {
+              {products.map(product => {
                 const stock = stockLabel(product.stock)
                 return (
                   <div key={product.id} className="flex items-center gap-3 p-4">
@@ -272,6 +277,14 @@ export default function AdminProductsPage() {
             </div>
           </div>
         )}
+
+        <AdminPagination
+          page={page}
+          pageSize={ADMIN_PAGE_SIZE}
+          total={total}
+          onPageChange={setPage}
+          className="mt-6"
+        />
       </div>
 
       {/* Delete confirmation modal */}

@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { SlidersHorizontal, X, ChevronDown } from "lucide-react"
-import { ALL_CONCERNS, ALL_INGREDIENTS, type Product } from "@/lib/products"
+import { type Product } from "@/lib/products"
+import {
+  ALL_CONCERNS,
+  ALL_INGREDIENTS,
+  ALL_SKIN_TYPES,
+  resolveCatalogLabel,
+} from "@/lib/catalog"
 import { queryProducts } from "@/lib/supabase/products"
 import { getActiveBrands } from "@/lib/supabase/brands"
 import {
@@ -27,12 +33,14 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
   const searchParams = useSearchParams()
   const urlCategory = searchParams.get("category") ?? "All"
   const urlBrand = searchParams.get("brand") ?? "All"
+  const urlSkinType = searchParams.get("skinType") ?? "All"
 
   const [categoryTree, setCategoryTree] = useState<CategorySection[]>([])
   const [category, setCategory]   = useState("All")
   const [brand, setBrand]         = useState(urlBrand)
   const [concern, setConcern]     = useState("All")
   const [ingredient, setIngredient] = useState("All")
+  const [skinType, setSkinType]   = useState("All")
   const [sort, setSort]           = useState("featured")
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [priceMax, setPriceMax]   = useState(50000)
@@ -47,19 +55,23 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
     getActiveBrands().then(list => setBrandNames(list.map(b => b.name)))
   }, [])
 
-  // Keep filters in sync when navigating via navbar (/shop?category=… / ?brand=…)
+  // Keep filters in sync when navigating via navbar (/shop?category=… / ?brand=… / ?skinType=…)
   useEffect(() => {
     setBrand(urlBrand)
     if (urlCategory === "All" || !urlCategory) {
       setCategory("All")
-      return
-    }
-    if (categoryTree.length) {
+    } else if (categoryTree.length) {
       setCategory(resolveCategoryName(categoryTree, urlCategory) ?? urlCategory)
     } else {
       setCategory(urlCategory)
     }
-  }, [urlCategory, urlBrand, categoryTree])
+
+    if (urlSkinType === "All" || !urlSkinType) {
+      setSkinType("All")
+    } else {
+      setSkinType(resolveCatalogLabel(ALL_SKIN_TYPES, urlSkinType) ?? decodeURIComponent(urlSkinType))
+    }
+  }, [urlCategory, urlBrand, urlSkinType, categoryTree])
 
   // Query Supabase with filters (DB-level), not client-side array filtering
   useEffect(() => {
@@ -74,6 +86,7 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
       brand,
       concern,
       ingredient,
+      skinType,
       priceMax,
       inStockOnly,
       minRating,
@@ -84,16 +97,18 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
       if (!cancelled) setLoading(false)
     })
     return () => { cancelled = true }
-  }, [category, brand, concern, ingredient, sort, priceMax, inStockOnly, minRating, categoryTree])
+  }, [category, brand, concern, ingredient, skinType, sort, priceMax, inStockOnly, minRating, categoryTree])
 
   const activeCount = [
     category !== "All", brand !== "All", concern !== "All",
-    ingredient !== "All", priceMax < 50000, inStockOnly, minRating > 0,
+    ingredient !== "All", skinType !== "All",
+    priceMax < 50000, inStockOnly, minRating > 0,
   ].filter(Boolean).length
 
   function clearAll() {
     setCategory("All"); setBrand("All"); setConcern("All")
-    setIngredient("All"); setPriceMax(50000); setInStockOnly(false); setMinRating(0)
+    setIngredient("All"); setSkinType("All")
+    setPriceMax(50000); setInStockOnly(false); setMinRating(0)
   }
 
   return (
@@ -140,7 +155,7 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
 
       {/* Filter panel */}
       {filtersOpen && (
-        <div className="mb-8 grid gap-6 border border-border bg-secondary p-4 sm:p-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="mb-8 grid gap-6 border border-border bg-secondary p-4 sm:p-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <div>
             <p className="mb-2 text-[11px] font-light uppercase tracking-[0.15em] text-muted-foreground">Category</p>
             <div className="relative">
@@ -157,6 +172,7 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
           <FilterSelect label="Brand"      value={brand}      onChange={setBrand}      options={["All", ...brandNames]} />
           <FilterSelect label="Concern"    value={concern}    onChange={setConcern}    options={["All", ...ALL_CONCERNS]} />
           <FilterSelect label="Ingredient" value={ingredient} onChange={setIngredient} options={["All", ...ALL_INGREDIENTS]} />
+          <FilterSelect label="Skin Type"  value={skinType}   onChange={setSkinType}   options={["All", ...ALL_SKIN_TYPES]} />
           {/* Min Rating filter */}
           <div>
             <p className="mb-2 text-[11px] font-light uppercase tracking-[0.15em] text-muted-foreground">Min Rating</p>
@@ -207,6 +223,7 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
             brand !== "All"    && { label: brand,    clear: () => setBrand("All") },
             concern !== "All"  && { label: concern,  clear: () => setConcern("All") },
             ingredient !== "All" && { label: ingredient, clear: () => setIngredient("All") },
+            skinType !== "All" && { label: skinType, clear: () => setSkinType("All") },
             priceMax < 50000   && { label: `Max ₦${priceMax.toLocaleString()}`, clear: () => setPriceMax(50000) },
             inStockOnly        && { label: "In stock", clear: () => setInStockOnly(false) },
             minRating > 0      && { label: `${minRating}★+`, clear: () => setMinRating(0) },

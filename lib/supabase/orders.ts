@@ -109,6 +109,146 @@ export async function getAllOrders(): Promise<Order[]> {
   return (data ?? []).map(rowToOrder)
 }
 
+export type OrdersPageQuery = {
+  search?: string
+  status?: OrderStatus | "all"
+  sort?: "date_desc" | "date_asc" | "total_desc" | "total_asc"
+  /** Look back N months from now. */
+  months?: 1 | 2 | 3
+  page?: number
+  pageSize?: number
+}
+
+export async function getAdminOrdersPage(
+  q: OrdersPageQuery = {},
+): Promise<{ orders: Order[]; total: number; kpis: { revenue: number; pending: number; shipped: number; fulfilled: number } }> {
+  const page = Math.max(1, q.page ?? 1)
+  const pageSize = Math.max(1, q.pageSize ?? 20)
+  const months = q.months ?? 1
+  const fromIso = (() => {
+    const d = new Date()
+    d.setMonth(d.getMonth() - months)
+    return d.toISOString()
+  })()
+
+  const supabase = createAdminBrowserClient()
+  if (!supabase) {
+    let pool = mockOrders.filter(o => new Date(o.createdAt).getTime() >= new Date(fromIso).getTime())
+    if (q.status && q.status !== "all") pool = pool.filter(o => o.status === q.status)
+    if (q.search?.trim()) {
+      const s = q.search.trim().toLowerCase()
+      pool = pool.filter(
+        o =>
+          o.id.toLowerCase().includes(s) ||
+          o.customer.name.toLowerCase().includes(s) ||
+          o.customer.email.toLowerCase().includes(s) ||
+          o.reference.toLowerCase().includes(s),
+      )
+    }
+    pool = [...pool].sort((a, b) => {
+      switch (q.sort) {
+        case "date_asc": return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        case "total_desc": return b.total - a.total
+        case "total_asc": return a.total - b.total
+        default: return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      }
+    })
+    const offset = (page - 1) * pageSize
+    return {
+      orders: pool.slice(offset, offset + pageSize),
+      total: pool.length,
+      kpis: {
+        revenue: pool.filter(o => o.paymentStatus === "paid").reduce((s, o) => s + o.total, 0),
+        pending: pool.filter(o => o.status === "pending").length,
+        shipped: pool.filter(o => o.status === "shipped").length,
+        fulfilled: pool.filter(o => o.status === "fulfilled").length,
+      },
+    }
+  }
+
+  // KPI pool: all orders in date range (status filter still applied for consistency)
+  let kpiQ = supabase.from("orders").select("*").gte("created_at", fromIso)
+  if (q.status && q.status !== "all") kpiQ = kpiQ.eq("status", q.status)
+  const { data: kpiRows } = await kpiQ
+  const kpiOrders = (kpiRows ?? []).map(rowToOrder)
+  let kpiFiltered = kpiOrders
+  if (q.search?.trim()) {
+    const s = q.search.trim().toLowerCase()
+    kpiFiltered = kpiOrders.filter(
+      o =>
+        o.id.toLowerCase().includes(s) ||
+        o.customer.name.toLowerCase().includes(s) ||
+        o.customer.email.toLowerCase().includes(s) ||
+        o.reference.toLowerCase().includes(s),
+    )
+  }
+
+  // Paged query — search is applied client-side on the range window when present,
+  // otherwise use DB pagination for scale.
+  let listQ = supabase.from("orders").select("*", { count: "exact" }).gte("created_at", fromIso)
+  if (q.status && q.status !== "all") listQ = listQ.eq("status", q.status)
+
+  switch (q.sort) {
+    case "date_asc":
+      listQ = listQ.order("created_at", { ascending: true })
+      break
+    case "total_desc":
+      listQ = listQ.order("total", { ascending: false })
+      break
+    case "total_asc":
+      listQ = listQ.order("total", { ascending: true })
+      break
+    default:
+      listQ = listQ.order("created_at", { ascending: false })
+  }
+
+  if (q.search?.trim()) {
+    // Fetch range-window then filter/paginate in memory (search spans JSON fields)
+    const { data, error } = await listQ
+    if (error) {
+      console.error("[orders] getAdminOrdersPage:", error.message)
+      return { orders: [], total: 0, kpis: { revenue: 0, pending: 0, shipped: 0, fulfilled: 0 } }
+    }
+    const s = q.search.trim().toLowerCase()
+    const filtered = (data ?? []).map(rowToOrder).filter(
+      o =>
+        o.id.toLowerCase().includes(s) ||
+        o.customer.name.toLowerCase().includes(s) ||
+        o.customer.email.toLowerCase().includes(s) ||
+        o.reference.toLowerCase().includes(s),
+    )
+    const offset = (page - 1) * pageSize
+    return {
+      orders: filtered.slice(offset, offset + pageSize),
+      total: filtered.length,
+      kpis: {
+        revenue: kpiFiltered.filter(o => o.paymentStatus === "paid").reduce((sum, o) => sum + o.total, 0),
+        pending: kpiFiltered.filter(o => o.status === "pending").length,
+        shipped: kpiFiltered.filter(o => o.status === "shipped").length,
+        fulfilled: kpiFiltered.filter(o => o.status === "fulfilled").length,
+      },
+    }
+  }
+
+  const from = (page - 1) * pageSize
+  const { data, error, count } = await listQ.range(from, from + pageSize - 1)
+  if (error) {
+    console.error("[orders] getAdminOrdersPage:", error.message)
+    return { orders: [], total: 0, kpis: { revenue: 0, pending: 0, shipped: 0, fulfilled: 0 } }
+  }
+
+  return {
+    orders: (data ?? []).map(rowToOrder),
+    total: count ?? 0,
+    kpis: {
+      revenue: kpiFiltered.filter(o => o.paymentStatus === "paid").reduce((sum, o) => sum + o.total, 0),
+      pending: kpiFiltered.filter(o => o.status === "pending").length,
+      shipped: kpiFiltered.filter(o => o.status === "shipped").length,
+      fulfilled: kpiFiltered.filter(o => o.status === "fulfilled").length,
+    },
+  }
+}
+
 export async function getOrderByReference(reference: string): Promise<Order | null> {
   const adminClient = createAdminBrowserClient()
   const customerClient = createClient()

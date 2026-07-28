@@ -3,15 +3,15 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { ProductCard } from "@/components/product-card"
-import { ALL_INGREDIENTS } from "@/lib/products"
+import { ALL_INGREDIENTS, slugifyCatalogLabel, resolveCatalogLabel } from "@/lib/catalog"
 import { queryProducts } from "@/lib/supabase/products"
 
 function slugToLabel(slug: string) {
-  return ALL_INGREDIENTS.find(i => i.toLowerCase().replace(/\s+/g, "-").replace("/", "-") === slug) ?? null
+  return resolveCatalogLabel(ALL_INGREDIENTS, slug)
 }
 
 export function generateStaticParams() {
-  return ALL_INGREDIENTS.map(i => ({ ingredient: i.toLowerCase().replace(/\s+/g, "-").replace("/", "-") }))
+  return ALL_INGREDIENTS.map(i => ({ ingredient: slugifyCatalogLabel(i) }))
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ ingredient: string }> }): Promise<Metadata> {
@@ -40,7 +40,10 @@ export default async function IngredientPage({ params }: { params: Promise<{ ing
   if (!label) notFound()
 
   const filtered = await queryProducts({ ingredient: label })
-  const info = INGREDIENT_INFO[label]
+  const info = INGREDIENT_INFO[label] ?? {
+    desc: `Shop authenticated products featuring ${label}, curated for Nigerian skin.`,
+    best: "Browse the selection below or explore related actives.",
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
@@ -51,12 +54,8 @@ export default async function IngredientPage({ params }: { params: Promise<{ ing
       <div className="mb-10 border-b border-border pb-8">
         <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-gold mb-2">Shop by Ingredient</p>
         <h1 className="font-serif text-4xl font-medium">{label}</h1>
-        {info && (
-          <>
-            <p className="mt-3 text-base font-light text-muted-foreground max-w-xl">{info.desc}</p>
-            <p className="mt-2 text-sm font-light text-gold">{info.best}</p>
-          </>
-        )}
+        <p className="mt-3 text-base font-light text-muted-foreground max-w-xl">{info.desc}</p>
+        <p className="mt-2 text-sm font-light text-gold">{info.best}</p>
       </div>
 
       {filtered.length === 0 ? (
@@ -81,7 +80,7 @@ export default async function IngredientPage({ params }: { params: Promise<{ ing
           {ALL_INGREDIENTS.filter(i => i !== label).map(i => (
             <Link
               key={i}
-              href={`/ingredient/${i.toLowerCase().replace(/\s+/g, "-").replace("/", "-")}`}
+              href={`/ingredient/${slugifyCatalogLabel(i)}`}
               className="border border-border px-4 py-2 text-xs font-light hover:border-gold hover:text-gold transition-colors"
             >
               {i}

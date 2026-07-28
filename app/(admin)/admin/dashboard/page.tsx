@@ -10,6 +10,10 @@ import { TrendingUp, TrendingDown, ShoppingBag, DollarSign, Users, Package, Arro
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import {
+  MONTH_RANGE_OPTIONS,
+  type MonthRange,
+} from "@/components/admin-pagination"
+import {
   formatPrice,
   formatTrend,
   getDashboardStats,
@@ -26,7 +30,7 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 function StatCard({
-  label, value, subvalue, icon: Icon, trend, trendUp,
+  label, value, subvalue, icon: Icon, trend, trendUp, trendSuffix = "vs prior period",
 }: {
   label: string
   value: string
@@ -34,6 +38,7 @@ function StatCard({
   icon: React.ElementType
   trend: string
   trendUp: boolean
+  trendSuffix?: string
 }) {
   return (
     <div className="border border-border bg-card p-5">
@@ -56,7 +61,7 @@ function StatCard({
         <span className={cn("text-[11px] font-medium", trendUp ? "text-green-600" : "text-destructive")}>
           {trend}
         </span>
-        <span className="text-[11px] font-light text-muted-foreground">vs prior 30 days</span>
+        <span className="text-[11px] font-light text-muted-foreground">{trendSuffix}</span>
       </div>
     </div>
   )
@@ -82,17 +87,21 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [months, setMonths] = useState<MonthRange>(1)
 
   useEffect(() => {
-    getDashboardStats().then(data => {
+    setLoading(true)
+    getDashboardStats(months).then(data => {
       setStats(data)
       setLoading(false)
     })
-  }, [])
+  }, [months])
 
   const revenueTrend = formatTrend(stats?.revenue30d ?? 0, stats?.revenuePrev30d ?? 0)
   const aovTrend = formatTrend(stats?.avgOrderValue ?? 0, stats?.aovPrev ?? 0)
   const year = new Date().getFullYear()
+  const rangeShort = `${months} mo`
+  const customersSub = months === 1 ? "new this month" : `new in last ${months} months`
 
   return (
     <div className="flex flex-1 flex-col gap-8 overflow-auto">
@@ -103,14 +112,33 @@ export default function DashboardPage() {
             Live commerce metrics from Supabase. Traffic uses Vercel Analytics in production.
           </p>
         </div>
-        {stats && stats.pendingOrders > 0 && (
-          <Link
-            href="/admin/orders"
-            className="inline-flex w-full items-center justify-center border border-gold/40 bg-lavender px-4 py-2.5 text-xs font-medium text-gold hover:bg-secondary transition-colors sm:w-auto"
-          >
-            {stats.pendingOrders} pending order{stats.pendingOrders !== 1 ? "s" : ""}
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1.5">
+            {MONTH_RANGE_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setMonths(opt.value)}
+                className={cn(
+                  "border px-3 py-1.5 text-[11px] font-light uppercase tracking-[0.12em] transition-all",
+                  months === opt.value
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border text-muted-foreground hover:border-foreground hover:text-foreground",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {stats && stats.pendingOrders > 0 && (
+            <Link
+              href="/admin/orders"
+              className="inline-flex w-full items-center justify-center border border-gold/40 bg-lavender px-4 py-2.5 text-xs font-medium text-gold hover:bg-secondary transition-colors sm:w-auto"
+            >
+              {stats.pendingOrders} pending order{stats.pendingOrders !== 1 ? "s" : ""}
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="admin-page-body space-y-8">
@@ -124,20 +152,22 @@ export default function DashboardPage() {
           <>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
-                label="Revenue (30d)"
+                label={`Revenue (${rangeShort})`}
                 value={formatPrice(stats.revenue30d)}
                 subvalue={`${stats.paidOrders30d} paid order${stats.paidOrders30d !== 1 ? "s" : ""}`}
                 icon={DollarSign}
                 trend={revenueTrend.label}
                 trendUp={revenueTrend.up}
+                trendSuffix="vs prior period"
               />
               <StatCard
                 label="Customers"
                 value={stats.customerCount.toLocaleString()}
-                subvalue={`${stats.customersThisMonth} new this month`}
+                subvalue={`${stats.customersThisMonth} ${customersSub}`}
                 icon={Users}
                 trend={`${stats.customersThisMonth >= 0 ? "+" : ""}${stats.customersThisMonth}`}
                 trendUp
+                trendSuffix="vs prior period"
               />
               <StatCard
                 label="Products Listed"
@@ -146,14 +176,16 @@ export default function DashboardPage() {
                 icon={Package}
                 trend={`${stats.pendingOrders} pending orders`}
                 trendUp={stats.pendingOrders === 0}
+                trendSuffix="in range"
               />
               <StatCard
                 label="Avg. Order Value"
                 value={formatPrice(stats.avgOrderValue)}
-                subvalue="Paid orders · last 30 days"
+                subvalue={`Paid orders · last ${months} mo`}
                 icon={ShoppingBag}
                 trend={aovTrend.label}
                 trendUp={aovTrend.up}
+                trendSuffix="vs prior period"
               />
             </div>
 
@@ -171,7 +203,7 @@ export default function DashboardPage() {
                     revenueTrend.up ? "text-green-600" : "text-destructive",
                   )}>
                     {revenueTrend.up ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
-                    {revenueTrend.label} (30d)
+                    {revenueTrend.label} ({rangeShort})
                   </span>
                 </div>
                 <ResponsiveContainer width="100%" height={260}>

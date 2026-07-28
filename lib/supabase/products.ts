@@ -17,6 +17,7 @@ export type ProductQuery = {
   brand?: string
   concern?: string
   ingredient?: string
+  skinType?: string
   search?: string
   discountOnly?: boolean
   /** Products with at least one quantity-promotion tier */
@@ -29,6 +30,8 @@ export type ProductQuery = {
   sort?: string
   limit?: number
   offset?: number
+  /** Include unpublished (admin lists). */
+  includeUnpublished?: boolean
 }
 
 export type BrandStorefrontSummary = {
@@ -86,11 +89,25 @@ export function rowToProduct(row: any): Product {
     priceTiers: priceTiers.length ? priceTiers : undefined,
     image: row.image_url ?? row.image ?? "/product-cleanser.png",
     images: row.image_urls ?? undefined,
-    category: row.category ?? "",
+    category: (() => {
+      const cats: string[] = Array.isArray(row.categories)
+        ? row.categories.filter(Boolean)
+        : []
+      if (cats.length) return cats[0]
+      return row.category ?? ""
+    })(),
+    categories: (() => {
+      const cats: string[] = Array.isArray(row.categories)
+        ? row.categories.filter(Boolean)
+        : []
+      if (cats.length) return cats
+      return row.category ? [row.category] : []
+    })(),
     tag: row.tag ?? undefined,
     benefits: row.benefits ?? [],
     ingredients: row.ingredients ?? [],
     concerns: row.concerns ?? [],
+    skinTypes: Array.isArray(row.skin_types) ? row.skin_types.filter(Boolean) : [],
     stock: row.stock ?? 0,
     rating: row.rating ?? 0,
     reviewCount: row.review_count ?? 0,
@@ -103,12 +120,19 @@ export function rowToProduct(row: any): Product {
 function filterMock(q: ProductQuery): Product[] {
   let list = [...mockProducts]
   if (q.category && q.category !== "All") {
-    list = list.filter(p => p.category.toLowerCase().includes(q.category!.toLowerCase().replace(/-/g, " ")))
+    const needle = q.category.toLowerCase().replace(/-/g, " ")
+    list = list.filter(p => {
+      const cats = (p.categories?.length ? p.categories : [p.category]).map(c => c.toLowerCase())
+      return cats.some(c => c.includes(needle) || c === q.category!.toLowerCase())
+    })
   }
   if (q.brand && q.brand !== "All") list = list.filter(p => p.brand === q.brand)
   if (q.concern && q.concern !== "All") list = list.filter(p => p.concerns.includes(q.concern!))
   if (q.ingredient && q.ingredient !== "All") {
     list = list.filter(p => p.ingredients.some(i => i === q.ingredient))
+  }
+  if (q.skinType && q.skinType !== "All") {
+    list = list.filter(p => (p.skinTypes ?? []).includes(q.skinType!))
   }
   if (q.discountOnly) list = list.filter(p => (p.discountPct ?? 0) > 0)
   if (q.tiersOnly) list = list.filter(p => (p.priceTiers?.length ?? 0) > 0)
@@ -124,6 +148,7 @@ function filterMock(q: ProductQuery): Product[] {
         p.name.toLowerCase().includes(s) ||
         p.tagline.toLowerCase().includes(s) ||
         p.category.toLowerCase().includes(s) ||
+        (p.categories ?? []).some(c => c.toLowerCase().includes(s)) ||
         p.brand.toLowerCase().includes(s) ||
         p.description.toLowerCase().includes(s),
     )
@@ -135,6 +160,8 @@ function filterMock(q: ProductQuery): Product[] {
   else if (q.sort === "reviews") list.sort((a, b) => b.reviewCount - a.reviewCount)
   else if (q.sort === "discount") {
     list.sort((a, b) => (b.discountPct ?? 0) - (a.discountPct ?? 0))
+  } else if (q.sort === "name") {
+    list.sort((a, b) => a.name.localeCompare(b.name))
   }
 
   const offset = q.offset ?? 0
@@ -146,8 +173,9 @@ function filterMock(q: ProductQuery): Product[] {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function applyProductFilters(query: any, q: ProductQuery) {
   if (q.category && q.category !== "All") {
-    // Exact name match (products.category stores subcategory display name)
-    query = query.ilike("category", q.category.trim())
+    const cat = q.category.trim().replace(/"/g, '\\"')
+    // Array match after migration 024; legacy single `category` column as fallback
+    query = query.or(`categories.cs.{"${cat}"},category.eq."${cat}"`)
   }
   if (q.brand && q.brand !== "All") {
     query = query.eq("brand_name", q.brand)
@@ -158,11 +186,13 @@ function applyProductFilters(query: any, q: ProductQuery) {
   if (q.ingredient && q.ingredient !== "All") {
     query = query.contains("ingredients", [q.ingredient])
   }
+  if (q.skinType && q.skinType !== "All") {
+    query = query.contains("skin_types", [q.skinType])
+  }
   if (q.discountOnly) {
     query = query.gt("discount_pct", 0)
   }
   if (q.tiersOnly) {
-    // Non-empty jsonb array (PostgREST compares serialized [])
     query = query.neq("price_tiers", "[]")
   }
   if (q.tag) {
@@ -183,7 +213,6 @@ function applyProductFilters(query: any, q: ProductQuery) {
   const search = q.search ? sanitizeSearch(q.search) : ""
   if (search) {
     const pattern = `%${search}%`
-    // Quoted patterns so spaces in the search term don't break PostgREST `or`.
     query = query.or(
       `name.ilike."${pattern}",tagline.ilike."${pattern}",brand_name.ilike."${pattern}",category.ilike."${pattern}",description.ilike."${pattern}"`,
     )
@@ -206,6 +235,8 @@ function applyProductSort(query: any, sort?: string) {
       return query.order("discount_pct", { ascending: false })
     case "featured":
       return query.order("rating", { ascending: false })
+    case "name":
+      return query.order("name", { ascending: true })
     default:
       return query.order("created_at", { ascending: false })
   }
@@ -219,7 +250,10 @@ export async function queryProducts(q: ProductQuery = {}): Promise<Product[]> {
   let query = supabase
     .from("products")
     .select("*, brands(name)")
-    .eq("is_published", true)
+
+  if (!q.includeUnpublished) {
+    query = query.eq("is_published", true)
+  }
 
   query = applyProductFilters(query, q)
   query = applyProductSort(query, q.sort)
@@ -257,12 +291,19 @@ export async function getWholesaleProducts(limit = 48): Promise<Product[]> {
 /** Count matching published products without loading rows. */
 export async function countProducts(q: ProductQuery = {}): Promise<number> {
   const supabase = getReadClient()
-  if (!supabase) return filterMock(q).length
+  if (!supabase) {
+    // filterMock already slices — recount without limit
+    const { limit: _l, offset: _o, ...rest } = q
+    return filterMock(rest).length
+  }
 
   let query = supabase
     .from("products")
     .select("id", { count: "exact", head: true })
-    .eq("is_published", true)
+
+  if (!q.includeUnpublished) {
+    query = query.eq("is_published", true)
+  }
 
   query = applyProductFilters(query, q)
 
@@ -272,6 +313,38 @@ export async function countProducts(q: ProductQuery = {}): Promise<number> {
     return 0
   }
   return count ?? 0
+}
+
+/** Admin product list page (includes unpublished). */
+export async function getAdminProductsPage(q: {
+  search?: string
+  category?: string
+  page?: number
+  pageSize?: number
+}): Promise<{ products: Product[]; total: number }> {
+  const page = Math.max(1, q.page ?? 1)
+  const pageSize = Math.max(1, q.pageSize ?? 20)
+  const offset = (page - 1) * pageSize
+  const base: ProductQuery = {
+    search: q.search,
+    category: q.category && q.category !== "All" ? q.category : undefined,
+    includeUnpublished: true,
+    sort: "name",
+  }
+  const supabase = createAdminBrowserClient() ?? getReadClient()
+  if (!supabase) {
+    const all = filterMock({ ...base })
+    return {
+      products: all.slice(offset, offset + pageSize),
+      total: all.length,
+    }
+  }
+
+  const [products, total] = await Promise.all([
+    queryProducts({ ...base, limit: pageSize, offset }),
+    countProducts(base),
+  ])
+  return { products, total }
 }
 
 /** Admin catalog — all products including unpublished. Do not use on storefront. */
@@ -491,6 +564,13 @@ export async function saveProduct(
         .sort((a, b) => a.qty - b.qty)
     : []
 
+  const categories = (values.categories?.length
+    ? values.categories
+    : values.category
+      ? [values.category]
+      : []
+  ).map(c => c.trim()).filter(Boolean)
+
   const row = {
     name: values.name,
     tagline: values.tagline,
@@ -501,11 +581,13 @@ export async function saveProduct(
     price_tiers: tiers,
     image_url: values.image,
     image_urls: values.images,
-    category: values.category,
+    category: categories[0] ?? values.category ?? "",
+    categories,
     tag: values.tag ?? null,
     benefits: values.benefits,
     ingredients: values.ingredients,
     concerns: values.concerns,
+    skin_types: values.skinTypes ?? [],
     stock: values.stock,
     size: values.size ?? null,
     variants: values.variants ?? null,

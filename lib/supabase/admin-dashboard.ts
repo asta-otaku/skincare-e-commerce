@@ -49,7 +49,7 @@ export function formatTrend(current: number, prev: number) {
 
 export { formatPrice }
 
-export async function getDashboardStats(): Promise<DashboardStats> {
+export async function getDashboardStats(months: 1 | 2 | 3 = 1): Promise<DashboardStats> {
   const supabase = createAdminBrowserClient()
   const empty: DashboardStats = {
     revenue30d: 0,
@@ -71,12 +71,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   if (!supabase) return empty
 
   const now = new Date()
-  const d30 = new Date(now)
-  d30.setDate(d30.getDate() - 30)
-  const d60 = new Date(now)
-  d60.setDate(d60.getDate() - 60)
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const yearStart = new Date(now.getFullYear(), 0, 1)
+  const rangeStart = new Date(now)
+  rangeStart.setMonth(rangeStart.getMonth() - months)
+  const prevStart = new Date(rangeStart)
+  prevStart.setMonth(prevStart.getMonth() - months)
+  const customersSince = new Date(now)
+  customersSince.setMonth(customersSince.getMonth() - months)
+  const chartStart = new Date(now)
+  chartStart.setMonth(chartStart.getMonth() - Math.max(months, 3))
   const weekStart = new Date(now)
   weekStart.setDate(weekStart.getDate() - 6)
   weekStart.setHours(0, 0, 0, 0)
@@ -90,7 +92,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     supabase
       .from("orders")
       .select("*")
-      .gte("created_at", yearStart.toISOString())
+      .gte("created_at", chartStart.toISOString())
       .order("created_at", { ascending: false }),
     supabase
       .from("profiles")
@@ -100,7 +102,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .from("profiles")
       .select("*", { count: "exact", head: true })
       .eq("role", "customer")
-      .gte("created_at", monthStart.toISOString()),
+      .gte("created_at", customersSince.toISOString()),
     supabase.from("products").select("id, stock"),
   ])
 
@@ -111,26 +113,27 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const all = orders ?? []
   const paid = all.filter(o => o.payment_status === "paid")
 
-  const paid30 = paid.filter(o => new Date(o.created_at) >= d30)
+  const paidCurrent = paid.filter(o => new Date(o.created_at) >= rangeStart)
   const paidPrev = paid.filter(o => {
     const t = new Date(o.created_at)
-    return t >= d60 && t < d30
+    return t >= prevStart && t < rangeStart
   })
 
-  const revenue30d = paid30.reduce((s, o) => s + Number(o.total), 0)
+  const revenue30d = paidCurrent.reduce((s, o) => s + Number(o.total), 0)
   const revenuePrev30d = paidPrev.reduce((s, o) => s + Number(o.total), 0)
-  const pendingOrders = all.filter(o => o.status === "pending").length
+  const pendingOrders = all.filter(
+    o => o.status === "pending" && new Date(o.created_at) >= rangeStart,
+  ).length
 
-  const avgOrderValue = paid30.length ? revenue30d / paid30.length : 0
+  const avgOrderValue = paidCurrent.length ? revenue30d / paidCurrent.length : 0
   const aovPrev = paidPrev.length
     ? paidPrev.reduce((s, o) => s + Number(o.total), 0) / paidPrev.length
     : 0
 
   const monthlyMap = new Map<number, { revenue: number; orders: number }>()
   for (let i = 0; i < 12; i++) monthlyMap.set(i, { revenue: 0, orders: 0 })
-  for (const o of paid) {
+  for (const o of paidCurrent) {
     const d = new Date(o.created_at)
-    if (d.getFullYear() !== now.getFullYear()) continue
     const bucket = monthlyMap.get(d.getMonth())!
     bucket.revenue += Number(o.total)
     bucket.orders += 1
@@ -141,10 +144,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     orders: monthlyMap.get(i)!.orders,
   }))
 
-  // Category + top products from paid order line items
   const categoryTotals = new Map<string, number>()
   const productTotals = new Map<string, { sales: number; revenue: number }>()
-  for (const o of paid) {
+  for (const o of paidCurrent) {
     const items = Array.isArray(o.items) ? o.items : []
     for (const item of items) {
       const cat = String(item.category || "Other")
@@ -176,14 +178,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const weekdayMap = new Map<number, { orders: number; revenue: number }>()
   for (let i = 0; i < 7; i++) weekdayMap.set(i, { orders: 0, revenue: 0 })
-  for (const o of paid) {
+  for (const o of paidCurrent) {
     const d = new Date(o.created_at)
     if (d < weekStart) continue
     const bucket = weekdayMap.get(d.getDay())!
     bucket.orders += 1
     bucket.revenue += Number(o.total)
   }
-  // Display Mon→Sun
   const ordersByWeekday = [1, 2, 3, 4, 5, 6, 0].map(i => ({
     day: WEEKDAYS[i],
     orders: weekdayMap.get(i)!.orders,
@@ -191,12 +192,15 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   }))
 
   const productRows = products ?? []
-  const recentOrders = all.slice(0, 8).map(rowToOrder)
+  const recentOrders = all
+    .filter(o => new Date(o.created_at) >= rangeStart)
+    .slice(0, 8)
+    .map(rowToOrder)
 
   return {
     revenue30d: Math.round(revenue30d),
     revenuePrev30d: Math.round(revenuePrev30d),
-    paidOrders30d: paid30.length,
+    paidOrders30d: paidCurrent.length,
     pendingOrders,
     customerCount: customerCount ?? 0,
     customersThisMonth: customersThisMonth ?? 0,

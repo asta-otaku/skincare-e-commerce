@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation"
 import { Upload, X, Plus, ArrowLeft, Save, Trash2, GripVertical, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Product } from "@/lib/products"
-import { ALL_CONCERNS, ALL_INGREDIENTS } from "@/lib/products"
+import { ALL_CONCERNS, ALL_INGREDIENTS, ALL_SKIN_TYPES } from "@/lib/catalog"
 import { getActiveBrands, type Brand } from "@/lib/supabase/brands"
 import { getCategoryTree, type CategorySection } from "@/lib/supabase/categories"
-import { CategorySelect } from "@/components/category-select"
+import { CategoryMultiSelect } from "@/components/category-multi-select"
+import { TagPicker } from "@/components/tag-picker"
 
 /* ─── Form types ─────────────────────────────────────────────── */
 type VariantRow = { label: string; price: string }
@@ -32,6 +33,7 @@ type FormState = {
   hasTiers: boolean
   tiers: TierRow[]
   category: string
+  categories: string[]
   tag: Product["tag"] | ""
   size: string
   stock: string
@@ -40,6 +42,7 @@ type FormState = {
   benefits: string[]
   ingredients: string[]
   concerns: string[]
+  skinTypes: string[]
   images: ImageEntry[]
   hasVariants: boolean
   variants: VariantRow[]
@@ -67,14 +70,20 @@ function toFormState(product?: Product): FormState {
       ? product!.priceTiers!.map(t => ({ qty: String(t.qty), value: String(t.value) }))
       : [{ qty: "3", value: "" }, { qty: "6", value: "" }],
     category: product?.category ?? "",
+    categories: product?.categories?.length
+      ? product.categories
+      : product?.category
+        ? [product.category]
+        : [],
     tag: product?.tag ?? "",
     size: product?.size ?? "",
     stock: product ? String(product.stock) : "",
     description: product?.description ?? "",
     howToUse: (product as (Product & { howToUse?: string }) | undefined)?.howToUse ?? "",
     benefits: product?.benefits?.length ? product.benefits : [""],
-    ingredients: product?.ingredients?.length ? product.ingredients : [""],
+    ingredients: product?.ingredients?.filter(Boolean) ?? [],
     concerns: product?.concerns ?? [],
+    skinTypes: product?.skinTypes ?? [],
     // Existing images become entries without a file (they're already uploaded)
     images: rawImages.map(url => ({ preview: url })),
     hasVariants,
@@ -122,9 +131,11 @@ export function AdminProductForm({ product }: { product?: Product }) {
     })
     getCategoryTree().then(tree => {
       setCategoryTree(tree)
-      if (!product?.category) {
+      if (!product?.category && !(product?.categories?.length)) {
         const first = tree[0]?.categories[0]?.name
-        if (first) setForm(f => (f.category ? f : { ...f, category: first }))
+        if (first) {
+          setForm(f => (f.categories.length ? f : { ...f, categories: [first], category: first }))
+        }
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -162,8 +173,8 @@ export function AdminProductForm({ product }: { product?: Product }) {
     })
   }
 
-  /* ── Benefits / Ingredients array helpers ── */
-  function setArrayItem(key: "benefits" | "ingredients", i: number, val: string) {
+  /* ── Benefits array helpers ── */
+  function setArrayItem(key: "benefits", i: number, val: string) {
     setForm(f => {
       const arr = [...f[key]]
       arr[i] = val
@@ -171,32 +182,12 @@ export function AdminProductForm({ product }: { product?: Product }) {
     })
   }
 
-  function addArrayItem(key: "benefits" | "ingredients") {
+  function addArrayItem(key: "benefits") {
     setForm(f => ({ ...f, [key]: [...f[key], ""] }))
   }
 
-  function removeArrayItem(key: "benefits" | "ingredients", i: number) {
+  function removeArrayItem(key: "benefits", i: number) {
     setForm(f => ({ ...f, [key]: f[key].filter((_, idx) => idx !== i) }))
-  }
-
-  /* ── Concern toggle ── */
-  function toggleConcern(c: string) {
-    setForm(f => ({
-      ...f,
-      concerns: f.concerns.includes(c)
-        ? f.concerns.filter(x => x !== c)
-        : [...f.concerns, c],
-    }))
-  }
-
-  /* ── Ingredient toggle ── */
-  function toggleIngredientTag(tag: string) {
-    setForm(f => ({
-      ...f,
-      ingredients: f.ingredients.includes(tag)
-        ? f.ingredients.filter(x => x !== tag)
-        : [...f.ingredients, tag],
-    }))
   }
 
   /* ── Variant helpers ── */
@@ -241,6 +232,12 @@ export function AdminProductForm({ product }: { product?: Product }) {
     e.preventDefault()
     setSaving(true)
     setUploadError("")
+
+    if (!form.categories.length) {
+      setUploadError("Select at least one category.")
+      setSaving(false)
+      return
+    }
 
     try {
       // ── Step 1: Upload any new files to Supabase Storage ──────────
@@ -287,11 +284,13 @@ export function AdminProductForm({ product }: { product?: Product }) {
         priceTiers: priceTiers.length ? priceTiers : undefined,
         image: resolvedImages[0] ?? "/product-cleanser.png",
         images: resolvedImages.length > 0 ? resolvedImages : undefined,
-        category: form.category,
+        category: form.categories[0] ?? "",
+        categories: form.categories,
         tag: (form.tag || undefined) as Product["tag"] | undefined,
         benefits: form.benefits.filter(Boolean),
         ingredients: form.ingredients.filter(Boolean),
         concerns: form.concerns,
+        skinTypes: form.skinTypes,
         stock: parseInt(form.stock) || 0,
         size: form.size || undefined,
         howToUse: form.howToUse || undefined,
@@ -489,82 +488,39 @@ export function AdminProductForm({ product }: { product?: Product }) {
 
               {/* Key Ingredients */}
               <section className="border border-border p-6">
-                <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.18em]">Key Ingredients</h2>
+                <TagPicker
+                  label="Key Ingredients"
+                  hint="Search pinned ingredients or add a custom one. Selected items appear as chips."
+                  options={ALL_INGREDIENTS}
+                  value={form.ingredients}
+                  onChange={ingredients => setForm(f => ({ ...f, ingredients }))}
+                  placeholder="Search ingredients (e.g. Niacinamide)…"
+                />
+              </section>
 
-                {/* Quick-add from common list */}
-                <p className="mb-2 text-[11px] font-light text-muted-foreground">Quick-add from common ingredients:</p>
-                <div className="mb-4 flex flex-wrap gap-1.5">
-                  {ALL_INGREDIENTS.map(tag => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => toggleIngredientTag(tag)}
-                      className={cn(
-                        "border px-2.5 py-1 text-[11px] font-light transition-all",
-                        form.ingredients.includes(tag)
-                          ? "border-gold bg-lavender text-gold"
-                          : "border-border text-muted-foreground hover:border-gold/60",
-                      )}
-                    >
-                      {form.ingredients.includes(tag) ? <span className="mr-1">✓</span> : null}{tag}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Custom ingredient entries */}
-                <p className="mb-2 text-[11px] font-light text-muted-foreground">Or add custom ingredients:</p>
-                <div className="space-y-2">
-                  {form.ingredients.filter(i => !ALL_INGREDIENTS.includes(i)).map((ing, i) => {
-                    const realIdx = form.ingredients.indexOf(ing)
-                    return (
-                      <div key={i} className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={ing}
-                          onChange={e => setArrayItem("ingredients", realIdx, e.target.value)}
-                          placeholder="Custom ingredient"
-                          className="input-field flex-1"
-                        />
-                        <button type="button" onClick={() => removeArrayItem("ingredients", realIdx)}
-                          className="shrink-0 text-muted-foreground hover:text-destructive transition-colors">
-                          <X className="size-4" />
-                        </button>
-                      </div>
-                    )
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => addArrayItem("ingredients")}
-                    className="mt-1 flex items-center gap-1.5 text-[11px] font-light uppercase tracking-[0.15em] text-gold hover:underline underline-offset-2"
-                  >
-                    <Plus className="size-3.5" /> Add Custom Ingredient
-                  </button>
-                </div>
+              {/* Skin Types */}
+              <section className="border border-border p-6">
+                <TagPicker
+                  label="Skin Types"
+                  hint="Who is this product best for? Used on the storefront skin-type browse."
+                  options={ALL_SKIN_TYPES}
+                  value={form.skinTypes}
+                  onChange={skinTypes => setForm(f => ({ ...f, skinTypes }))}
+                  placeholder="Search skin types…"
+                  allowCustom={false}
+                />
               </section>
 
               {/* Skin Concerns */}
               <section className="border border-border p-6">
-                <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em]">Skin Concerns</h2>
-                <p className="mb-4 text-[11px] font-light text-muted-foreground">
-                  Determines which "Shop by Concern" pages this product appears on.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {ALL_CONCERNS.map(c => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => toggleConcern(c)}
-                      className={cn(
-                        "border px-3 py-1.5 text-xs font-light transition-all",
-                        form.concerns.includes(c)
-                          ? "border-gold bg-lavender text-gold"
-                          : "border-border text-muted-foreground hover:border-gold/60",
-                      )}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
+                <TagPicker
+                  label="Skin Concerns"
+                  hint="Determines which concern filters and shop-by-concern pages include this product."
+                  options={ALL_CONCERNS}
+                  value={form.concerns}
+                  onChange={concerns => setForm(f => ({ ...f, concerns }))}
+                  placeholder="Search concerns (e.g. Acne)…"
+                />
               </section>
             </div>
 
@@ -916,13 +872,17 @@ export function AdminProductForm({ product }: { product?: Product }) {
                     )}
                   </div>
 
-                  <Field label="Category" required>
-                    <CategorySelect
-                      value={form.category}
-                      onChange={v => setField("category", v)}
+                  <Field label="Categories" required hint="A product can belong to multiple subcategories. First selected is the primary.">
+                    <CategoryMultiSelect
                       tree={categoryTree}
-                      required
-                      className="input-field"
+                      value={form.categories}
+                      onChange={categories =>
+                        setForm(f => ({
+                          ...f,
+                          categories,
+                          category: categories[0] ?? "",
+                        }))
+                      }
                     />
                     {categoryTree.length === 0 && (
                       <p className="text-[10px] font-light text-muted-foreground">

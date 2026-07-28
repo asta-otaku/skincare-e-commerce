@@ -7,11 +7,13 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, Check, Plus, Save, Search, Trash2, Upload, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Deal, DealItem } from "@/lib/deals"
-import { ALL_CONCERNS, getEffectivePrice, type Product } from "@/lib/products"
+import { ALL_CONCERNS } from "@/lib/catalog"
+import { getEffectivePrice, type Product } from "@/lib/products"
 import { getActiveBrands, type Brand } from "@/lib/supabase/brands"
 import { getAllProducts } from "@/lib/supabase/products"
 import { saveDeal } from "@/lib/supabase/deals"
 import { revalidateDeals } from "@/app/actions/revalidate"
+import { TagPicker } from "@/components/tag-picker"
 
 type ImageEntry = { preview: string; file?: File }
 
@@ -124,15 +126,6 @@ export function AdminDealForm({ deal }: { deal?: Deal }) {
       brandIds: f.brandIds.includes(id)
         ? f.brandIds.filter(b => b !== id)
         : [...f.brandIds, id],
-    }))
-  }
-
-  function toggleConcern(c: string) {
-    setForm(f => ({
-      ...f,
-      concerns: f.concerns.includes(c)
-        ? f.concerns.filter(x => x !== c)
-        : [...f.concerns, c],
     }))
   }
 
@@ -504,28 +497,15 @@ export function AdminDealForm({ deal }: { deal?: Deal }) {
             </div>
           </section>
 
-          <section className="border border-border p-6 space-y-4">
-            <h2 className="text-xs font-medium uppercase tracking-[0.18em]">Concerns</h2>
-            <div className="flex flex-wrap gap-2">
-              {ALL_CONCERNS.map(c => {
-                const on = form.concerns.includes(c)
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => toggleConcern(c)}
-                    className={cn(
-                      "border px-3 py-1.5 text-xs font-light transition-colors",
-                      on
-                        ? "border-gold bg-lavender text-gold"
-                        : "border-border hover:border-gold/50",
-                    )}
-                  >
-                    {c}
-                  </button>
-                )
-              })}
-            </div>
+          <section className="border border-border p-6">
+            <TagPicker
+              label="Concerns"
+              hint="Search pinned concerns or add a custom one."
+              options={ALL_CONCERNS}
+              value={form.concerns}
+              onChange={concerns => setForm(f => ({ ...f, concerns }))}
+              placeholder="Search concerns…"
+            />
           </section>
         </div>
 

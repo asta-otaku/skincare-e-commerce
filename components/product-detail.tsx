@@ -106,6 +106,10 @@ export function ProductDetail({ product, hideBenefits = false }: { product: Prod
 
   const inStock = product.stock > 0
   const lowStock = product.stock > 0 && product.stock <= 10
+  const displaySize =
+    selectedVariant !== null && product.variants
+      ? product.variants[selectedVariant].label
+      : product.size
 
   return (
     <section className="mx-auto max-w-7xl px-5 py-8 md:py-16 lg:px-8">
@@ -209,8 +213,9 @@ export function ProductDetail({ product, hideBenefits = false }: { product: Prod
         {/* ── Right: Product info ── */}
         <div className="flex flex-col">
           <p className="text-[8px] md:text-[11px] font-light uppercase tracking-[0.24em] text-gold">{product.brand}</p>
-          <h1 className="mt-2 text-balance font-serif text-2xl md:text-4xl font-medium leading-tight text-foreground md:text-5xl">
+          <h1 className="mt-2 text-balance font-serif text-2xl md:text-4xl font-medium leading-tight text-foreground lg:text-5xl">
             {product.name}
+            {displaySize ? ` — ${displaySize}` : ""}
           </h1>
 
           {/* Stars + review count */}

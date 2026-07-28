@@ -8,6 +8,7 @@ import { useCart } from "@/components/cart-provider"
 import { useSearch } from "@/components/search-modal"
 import { useUserAuth } from "@/components/user-auth-provider"
 import { getCategoryTree, DEFAULT_CATEGORY_TREE, type CategorySection } from "@/lib/supabase/categories"
+import { ALL_CONCERNS, ALL_INGREDIENTS, ALL_SKIN_TYPES, slugifyCatalogLabel } from "@/lib/catalog"
 import { cn } from "@/lib/utils"
 import { whatsAppHref } from "@/lib/whatsapp"
 
@@ -34,9 +35,6 @@ function treeToNav(tree: CategorySection[]): NavItem[] {
 }
 
 const FALLBACK_NAV = treeToNav(DEFAULT_CATEGORY_TREE)
-
-const CONCERNS = ["Acne", "Hyperpigmentation", "Anti-Ageing", "Dry Skin", "Oily Skin", "Sensitive Skin"]
-const INGREDIENTS = ["Vitamin C", "Retinol", "Niacinamide", "AHA/BHA", "Hyaluronic Acid", "SPF"]
 
 /* ─── Component ─────────────────────────────────────────────── */
 export function SiteNavbar() {
@@ -186,24 +184,37 @@ export function SiteNavbar() {
               </button>
 
               {megaOpen && (
-                <div className="absolute right-0 top-full z-50 grid w-[420px] grid-cols-2 gap-0 border border-border bg-background shadow-xl">
+                <div className="absolute right-0 top-full z-50 grid w-[480px] grid-cols-2 gap-0 border border-border bg-background shadow-xl">
                   {/* Left — Skin Needs */}
                   <div className="border-r border-border p-5">
                     <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Skin Needs</p>
                     <p className="mb-2 text-[9px] font-medium uppercase tracking-[0.15em] text-muted-foreground/60">By Concern</p>
-                    {CONCERNS.map(c => (
-                      <Link key={c} href={`/concern/${c.toLowerCase().replace(/\s+/g, "-").replace("/", "-")}`}
-                        className="block py-1 text-xs font-light text-foreground/80 transition-colors hover:text-gold">
-                        {c}
-                      </Link>
-                    ))}
-                    <p className="mt-3 mb-1 text-[9px] font-medium uppercase tracking-[0.15em] text-muted-foreground/60">By Ingredient</p>
-                    {INGREDIENTS.map(i => (
-                      <Link key={i} href={`/ingredient/${i.toLowerCase().replace(/\s+/g, "-").replace("/", "-")}`}
-                        className="block py-1 text-xs font-light text-foreground/80 transition-colors hover:text-gold">
-                        {i}
-                      </Link>
-                    ))}
+                    <div className="mb-3 max-h-36 overflow-y-auto pr-1">
+                      {ALL_CONCERNS.map(c => (
+                        <Link key={c} href={`/concern/${slugifyCatalogLabel(c)}`}
+                          className="block py-1 text-xs font-light text-foreground/80 transition-colors hover:text-gold">
+                          {c}
+                        </Link>
+                      ))}
+                    </div>
+                    <p className="mb-1 text-[9px] font-medium uppercase tracking-[0.15em] text-muted-foreground/60">By Ingredient</p>
+                    <div className="mb-3 max-h-28 overflow-y-auto pr-1">
+                      {ALL_INGREDIENTS.map(i => (
+                        <Link key={i} href={`/ingredient/${slugifyCatalogLabel(i)}`}
+                          className="block py-1 text-xs font-light text-foreground/80 transition-colors hover:text-gold">
+                          {i}
+                        </Link>
+                      ))}
+                    </div>
+                    <p className="mb-1 text-[9px] font-medium uppercase tracking-[0.15em] text-muted-foreground/60">By Skin Type</p>
+                    <div className="max-h-28 overflow-y-auto pr-1">
+                      {ALL_SKIN_TYPES.map(t => (
+                        <Link key={t} href={`/shop?skinType=${slugifyCatalogLabel(t)}`}
+                          className="block py-1 text-xs font-light text-foreground/80 transition-colors hover:text-gold">
+                          {t}
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                   {/* Right — Other links */}
                   <div className="p-5">
@@ -365,13 +376,14 @@ export function SiteNavbar() {
               })}
 
               {/* Skin Needs accordion */}
-              {(["concerns", "ingredients"] as const).map(type => {
-                const isC = type === "concerns"
-                const label = isC ? "Shop by Concern" : "Shop by Ingredient"
-                const items = isC ? CONCERNS : INGREDIENTS
+              {([
+                { key: "concerns", label: "Shop by Concern", items: ALL_CONCERNS, href: (item: string) => `/concern/${slugifyCatalogLabel(item)}` },
+                { key: "ingredients", label: "Shop by Ingredient", items: ALL_INGREDIENTS, href: (item: string) => `/ingredient/${slugifyCatalogLabel(item)}` },
+                { key: "skinTypes", label: "Shop by Skin Type", items: ALL_SKIN_TYPES, href: (item: string) => `/shop?skinType=${slugifyCatalogLabel(item)}` },
+              ] as const).map(({ key, label, items, href }) => {
                 const expanded = mobileExpanded === label
                 return (
-                  <div key={label}>
+                  <div key={key}>
                     <button
                       type="button"
                       onClick={() => setMobileExpanded(expanded ? null : label)}
@@ -381,11 +393,11 @@ export function SiteNavbar() {
                       <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", expanded && "rotate-180")} />
                     </button>
                     {expanded && (
-                      <div className="bg-secondary pb-1">
+                      <div className="max-h-56 overflow-y-auto bg-secondary pb-1">
                         {items.map(item => (
                           <Link
                             key={item}
-                            href={`/${type === "concerns" ? "concern" : "ingredient"}/${item.toLowerCase().replace(/\s+/g, "-").replace("/", "-")}`}
+                            href={href(item)}
                             onClick={() => setMobileOpen(false)}
                             className="block px-8 py-2.5 text-sm font-light text-foreground/70 hover:text-gold"
                           >
