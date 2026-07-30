@@ -39,6 +39,7 @@ export async function sendOrderConfirmationIfNew(
         name: i.name,
         quantity: i.quantity,
         price: i.price,
+        image: i.image,
       })),
       total: order.total,
       shippingMethod: order.shippingMethod,

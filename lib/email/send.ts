@@ -65,6 +65,7 @@ export async function sendOrderShipped(opts: {
   to: string
   name: string
   reference: string
+  items?: OrderEmailItem[]
 }) {
   return send({
     to: opts.to,
@@ -77,6 +78,7 @@ export async function sendOrderFulfilled(opts: {
   to: string
   name: string
   reference: string
+  items?: OrderEmailItem[]
 }) {
   return send({
     to: opts.to,

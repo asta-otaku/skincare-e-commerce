@@ -70,9 +70,29 @@ export async function POST(request: Request) {
         const to = order.customer.email
         if (to) {
           if (status === "shipped") {
-            await sendOrderShipped({ to, name: order.customer.name, reference })
+            await sendOrderShipped({
+              to,
+              name: order.customer.name,
+              reference,
+              items: order.items.map(i => ({
+                name: i.name,
+                quantity: i.quantity,
+                price: i.price,
+                image: i.image,
+              })),
+            })
           } else {
-            await sendOrderFulfilled({ to, name: order.customer.name, reference })
+            await sendOrderFulfilled({
+              to,
+              name: order.customer.name,
+              reference,
+              items: order.items.map(i => ({
+                name: i.name,
+                quantity: i.quantity,
+                price: i.price,
+                image: i.image,
+              })),
+            })
           }
         }
       }

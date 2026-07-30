@@ -19,6 +19,7 @@ import {
   Inbox,
   Store,
   FolderTree,
+  Mail,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -68,6 +69,11 @@ const NAV = [
     href: "/admin/journals",
     icon: BookOpen,
   },
+  // {
+  //   label: "Emails",
+  //   href: "/admin/email-preview",
+  //   icon: Mail,
+  // },
 ]
 
 export function AdminSidebar() {
