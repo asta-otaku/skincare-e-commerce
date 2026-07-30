@@ -1,0 +1,30 @@
+{
+  "name": "HAYDA SKINCo.",
+  "short_name": "HAYDA",
+  "description": "Premium skincare for Nigerian skin and climate. Trusted brands, authentic products, delivered nationwide.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#293049",
+  "lang": "en-NG",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
