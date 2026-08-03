@@ -24,7 +24,7 @@ export function ShareButtons({ title, slug }: { title: string; slug: string }) {
 
   const url = typeof window !== "undefined"
     ? `${window.location.origin}/journal/${slug}`
-    : `https://haydaskinco.com/journal/${slug}`
+    : `https://www.haydaskinco.com/journal/${slug}`
 
   const encodedUrl   = encodeURIComponent(url)
   const encodedTitle = encodeURIComponent(title)

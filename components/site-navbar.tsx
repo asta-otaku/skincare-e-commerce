@@ -111,7 +111,7 @@ export function SiteNavbar() {
               alt="HAYDA SKINCo. logo mark"
               width={0}
               height={0}
-              className="object-contain size-10 md:size-16"
+              className="object-contain size-20"
               priority
             />
 
@@ -271,8 +271,8 @@ export function SiteNavbar() {
               </div>
             ) : (
               <Link
-              href="/login"
-                  aria-label="Sign in"
+                href="/login"
+                aria-label="Sign in"
                 className="hidden text-foreground/70 transition-colors hover:text-gold sm:block"
               >
                 <User className="size-[18px]" />

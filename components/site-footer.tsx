@@ -192,7 +192,7 @@ export function SiteFooter() {
                 alt="HAYDA SKINCo. logo"
                 width={0}
                 height={0}
-                className="size-10 md:size-16 object-contain"
+                className="size-20 object-contain"
               />
             </Link>
             <p className="mt-3 max-w-xs text-sm font-light leading-relaxed text-muted-foreground">
