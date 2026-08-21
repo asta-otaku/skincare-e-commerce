@@ -103,7 +103,17 @@ export function rowToProduct(row: any): Product {
       if (cats.length) return cats
       return row.category ? [row.category] : []
     })(),
-    tag: row.tag ?? undefined,
+    tag: (() => {
+      const tags: string[] = Array.isArray(row.tags) ? row.tags.filter(Boolean) : []
+      if (tags.length) return tags[0]
+      return row.tag ?? undefined
+    })(),
+    tags: (() => {
+      const allowed = new Set(["Bestseller", "New", "Sale", "Low Stock"])
+      const fromArr: string[] = Array.isArray(row.tags) ? row.tags.filter(Boolean) : []
+      if (fromArr.length) return fromArr.filter(t => allowed.has(t)) as Product["tags"]
+      return row.tag && allowed.has(row.tag) ? [row.tag as NonNullable<Product["tag"]>] : []
+    })(),
     benefits: row.benefits ?? [],
     ingredients: row.ingredients ?? [],
     concerns: row.concerns ?? [],
@@ -136,7 +146,10 @@ function filterMock(q: ProductQuery): Product[] {
   }
   if (q.discountOnly) list = list.filter(p => (p.discountPct ?? 0) > 0)
   if (q.tiersOnly) list = list.filter(p => (p.priceTiers?.length ?? 0) > 0)
-  if (q.tag) list = list.filter(p => p.tag === q.tag)
+  if (q.tag) list = list.filter(p => {
+    const tags = p.tags?.length ? p.tags : (p.tag ? [p.tag] : [])
+    return tags.includes(q.tag as never)
+  })
   if (q.excludeId) list = list.filter(p => p.id !== q.excludeId)
   if (q.inStockOnly) list = list.filter(p => p.stock > 0)
   if (q.minRating && q.minRating > 0) list = list.filter(p => p.rating >= q.minRating!)
@@ -196,7 +209,8 @@ function applyProductFilters(query: any, q: ProductQuery) {
     query = query.neq("price_tiers", "[]")
   }
   if (q.tag) {
-    query = query.eq("tag", q.tag)
+    const t = q.tag.replace(/"/g, '\\"')
+    query = query.or(`tags.cs.{"${t}"},tag.eq."${t}"`)
   }
   if (q.excludeId) {
     query = query.neq("id", q.excludeId)
@@ -419,7 +433,10 @@ export async function getProductsByTag(
   const supabase = getReadClient()
   if (!supabase) {
     return filterMock({ sort: "rating", limit: limit * 2 })
-      .filter(p => p.tag && tags.includes(p.tag))
+      .filter(p => {
+        const pt = p.tags?.length ? p.tags : (p.tag ? [p.tag] : [])
+        return pt.some(t => tags.includes(t))
+      })
       .slice(0, limit)
   }
 
@@ -427,17 +444,34 @@ export async function getProductsByTag(
     return queryProducts({ tag: tags[0], sort: "rating", limit })
   }
 
+  // overlaps on tags[] OR legacy single tag in list
+  const orParts = [
+    `tags.ov.{${tags.map(t => `"${t}"`).join(",")}}`,
+    ...tags.map(t => `tag.eq."${t}"`),
+  ]
   const { data, error } = await supabase
     .from("products")
     .select("*, brands(name)")
     .eq("is_published", true)
-    .in("tag", tags)
+    .or(orParts.join(","))
     .order("rating", { ascending: false })
     .limit(limit)
 
   if (error) {
     console.error("[products] getProductsByTag:", error.message)
-    return []
+    // Fallback: fetch per-tag
+    const batches = await Promise.all(tags.map(t => queryProducts({ tag: t, sort: "rating", limit })))
+    const seen = new Set<string>()
+    const merged: Product[] = []
+    for (const batch of batches) {
+      for (const p of batch) {
+        if (seen.has(p.id)) continue
+        seen.add(p.id)
+        merged.push(p)
+        if (merged.length >= limit) return merged
+      }
+    }
+    return merged
   }
   return (data ?? []).map(rowToProduct)
 }
@@ -571,6 +605,13 @@ export async function saveProduct(
       : []
   ).map(c => c.trim()).filter(Boolean)
 
+  const tags = (values.tags?.length
+    ? values.tags
+    : values.tag
+      ? [values.tag]
+      : []
+  ).filter(Boolean)
+
   const row = {
     name: values.name,
     tagline: values.tagline,
@@ -583,7 +624,8 @@ export async function saveProduct(
     image_urls: values.images,
     category: categories[0] ?? values.category ?? "",
     categories,
-    tag: values.tag ?? null,
+    tag: tags[0] ?? null,
+    tags,
     benefits: values.benefits,
     ingredients: values.ingredients,
     concerns: values.concerns,
@@ -603,6 +645,14 @@ export async function saveProduct(
     : await supabase.from("products").insert({ ...row, id: values.id }).select("id").single()
 
   if (error) throw new Error(error.message)
+
+  // Auto-grow mutable catalogs when admins add custom ingredients/concerns
+  const { ensureCatalogEntries } = await import("@/lib/supabase/catalog")
+  await Promise.all([
+    ensureCatalogEntries("ingredients", values.ingredients ?? []),
+    ensureCatalogEntries("concerns", values.concerns ?? []),
+  ])
+
   return data.id
 }
 

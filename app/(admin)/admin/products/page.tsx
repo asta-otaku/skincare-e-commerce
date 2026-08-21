@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { Plus, Search, Edit2, Trash2, Eye, Package, RefreshCw } from "lucide-react"
-import { formatPrice, type Product } from "@/lib/products"
+import { formatPrice, productTags, type Product } from "@/lib/products"
 import { getAdminProductsPage, deleteProduct } from "@/lib/supabase/products"
 import { getCategoryTree } from "@/lib/supabase/categories"
 import { AdminPagination, ADMIN_PAGE_SIZE } from "@/components/admin-pagination"
@@ -64,7 +64,7 @@ export default function AdminProductsPage() {
 
   function stockLabel(stock: number) {
     if (stock === 0) return { label: "Out of Stock", className: "text-destructive", dot: "bg-destructive" }
-    if (stock <= 10) return { label: "Low Stock", className: "text-amber-600", dot: "bg-amber-500" }
+    if (stock <= 5) return { label: "Low Stock", className: "text-amber-600", dot: "bg-amber-500" }
     return { label: "In Stock", className: "text-green-700", dot: "bg-green-500" }
   }
 
@@ -185,17 +185,24 @@ export default function AdminProductsPage() {
                           <span className="text-sm font-medium">{formatPrice(product.price)}</span>
                         </td>
                         <td className="px-6 py-4">
-                          {product.tag ? (
-                            <span className={cn(
-                              "border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em]",
-                              product.tag === "Bestseller"
-                                ? "border-gold/40 bg-lavender text-gold"
-                                : product.tag === "Sale"
-                                ? "border-destructive/30 bg-destructive/10 text-destructive"
-                                : "border-border text-muted-foreground",
-                            )}>
-                              {product.tag}
-                            </span>
+                          {productTags(product).length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {productTags(product).map(t => (
+                                <span
+                                  key={t}
+                                  className={cn(
+                                    "border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em]",
+                                    t === "Bestseller"
+                                      ? "border-gold/40 bg-lavender text-gold"
+                                      : t === "Sale"
+                                        ? "border-destructive/30 bg-destructive/10 text-destructive"
+                                        : "border-border text-muted-foreground",
+                                  )}
+                                >
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
                           ) : (
                             <span className="text-[10px] text-muted-foreground">—</span>
                           )}

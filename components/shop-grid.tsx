@@ -49,10 +49,16 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
   const [filtered, setFiltered] = useState<Product[]>(initialProducts ?? [])
   const [loading, setLoading] = useState(false)
   const [brandNames, setBrandNames] = useState<string[]>([])
+  const [concernOptions, setConcernOptions] = useState<string[]>([...ALL_CONCERNS])
+  const [ingredientOptions, setIngredientOptions] = useState<string[]>([...ALL_INGREDIENTS])
 
   useEffect(() => {
     getCategoryTree().then(setCategoryTree)
     getActiveBrands().then(list => setBrandNames(list.map(b => b.name)))
+    void import("@/lib/supabase/catalog").then(({ getCatalogNames }) => {
+      getCatalogNames("concerns").then(n => { if (n.length) setConcernOptions(n) })
+      getCatalogNames("ingredients").then(n => { if (n.length) setIngredientOptions(n) })
+    })
   }, [])
 
   // Keep filters in sync when navigating via navbar (/shop?category=… / ?brand=… / ?skinType=…)
@@ -170,8 +176,8 @@ export function ShopGrid({ initialProducts }: { initialProducts?: Product[] }) {
             </div>
           </div>
           <FilterSelect label="Brand"      value={brand}      onChange={setBrand}      options={["All", ...brandNames]} />
-          <FilterSelect label="Concern"    value={concern}    onChange={setConcern}    options={["All", ...ALL_CONCERNS]} />
-          <FilterSelect label="Ingredient" value={ingredient} onChange={setIngredient} options={["All", ...ALL_INGREDIENTS]} />
+          <FilterSelect label="Concern"    value={concern}    onChange={setConcern}    options={["All", ...concernOptions]} />
+          <FilterSelect label="Ingredient" value={ingredient} onChange={setIngredient} options={["All", ...ingredientOptions]} />
           <FilterSelect label="Skin Type"  value={skinType}   onChange={setSkinType}   options={["All", ...ALL_SKIN_TYPES]} />
           {/* Min Rating filter */}
           <div>

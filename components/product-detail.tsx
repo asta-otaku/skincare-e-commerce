@@ -18,10 +18,12 @@ import {
   getProductMoq,
   getTierDiscount,
   hasDiscount,
+  productTags,
   type Product,
 } from "@/lib/products"
 import { isDealCartId } from "@/lib/deals"
 import { slugifyCategory } from "@/lib/supabase/categories"
+import { slugifyCatalogLabel } from "@/lib/catalog"
 import { cn } from "@/lib/utils"
 
 type Tab = "description" | "how-to-use" | "ingredients" | "reviews"
@@ -106,6 +108,7 @@ export function ProductDetail({ product, hideBenefits = false }: { product: Prod
 
   const inStock = product.stock > 0
   const lowStock = product.stock > 0 && product.stock <= 10
+  const tags = productTags(product)
   const displaySize =
     selectedVariant !== null && product.variants
       ? product.variants[selectedVariant].label
@@ -172,13 +175,22 @@ export function ProductDetail({ product, hideBenefits = false }: { product: Prod
 
           {/* Main image */}
           <div className="relative flex-1 overflow-hidden border border-border">
-            {product.tag && (
-              <span className={cn(
-                "absolute left-4 top-4 z-10 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em]",
-                product.tag === "Bestseller" ? "bg-gold text-gold-foreground" : "bg-accent text-accent-foreground",
-              )}>
-                {product.tag}
-              </span>
+            {tags.length > 0 && (
+              <div className="absolute left-4 top-4 z-10 flex flex-col gap-1.5 items-start">
+                {tags.map(t => (
+                  <span
+                    key={t}
+                    className={cn(
+                      "px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em]",
+                      t === "Bestseller" || t === "Low Stock"
+                        ? "bg-gold text-gold-foreground"
+                        : "bg-accent text-accent-foreground",
+                    )}
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
             )}
             <div className="relative aspect-4/5">
               <Image
@@ -539,7 +551,7 @@ export function ProductDetail({ product, hideBenefits = false }: { product: Prod
                 {product.ingredients.map(i => (
                   <Link
                     key={i}
-                    href={`/ingredient/${i.toLowerCase().replace(/\s+/g, "-").replace("/", "-")}`}
+                    href={`/ingredient/${slugifyCatalogLabel(i)}`}
                     className="border border-gold/40 bg-lavender px-3 py-1.5 text-xs font-light text-gold transition-colors hover:bg-lavender"
                   >
                     {i}

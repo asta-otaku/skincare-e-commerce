@@ -17,6 +17,10 @@ export type PriceBand = {
   label: string
 }
 
+export type ProductTag = "Bestseller" | "New" | "Sale" | "Low Stock"
+
+export const PRODUCT_TAGS: ProductTag[] = ["Bestseller", "New", "Sale", "Low Stock"]
+
 export type Product = {
   id: string
   name: string
@@ -51,7 +55,10 @@ export type Product = {
   category: string
   /** All assigned subcategory names (multi-category). `category` is the primary (first). */
   categories?: string[]
-  tag?: "Bestseller" | "New" | "Sale" | "Low Stock"
+  /** @deprecated Prefer `tags` — kept as primary/first tag for older call sites. */
+  tag?: ProductTag
+  /** Product badges — Bestseller, New, Sale, Low Stock (multi allowed). */
+  tags?: ProductTag[]
   benefits: string[]
   ingredients: string[]
   concerns: string[]
@@ -63,6 +70,12 @@ export type Product = {
   size?: string
   /** Absolute SKU prices (not deltas). Delta is derived vs product.price. */
   variants?: { label: string; price: number }[]
+}
+
+/** Resolved tag list for a product (supports legacy single `tag`). */
+export function productTags(p: Pick<Product, "tag" | "tags">): ProductTag[] {
+  if (p.tags?.length) return p.tags
+  return p.tag ? [p.tag] : []
 }
 
 export const BRANDS = [

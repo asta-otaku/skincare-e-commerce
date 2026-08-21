@@ -6,8 +6,14 @@ import Link from "next/link"
 import { Check, Plus, Heart, Star } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
 import { useFavorites } from "@/components/favorites-provider"
-import { formatPrice, getEffectivePrice, hasDiscount, type Product } from "@/lib/products"
+import { formatPrice, getEffectivePrice, hasDiscount, productTags, type Product } from "@/lib/products"
 import { cn } from "@/lib/utils"
+
+function tagClass(tag: string) {
+  return tag === "Bestseller" || tag === "Low Stock"
+    ? "bg-gold text-gold-foreground"
+    : "bg-accent text-accent-foreground"
+}
 
 export function ProductCard({
   product,
@@ -26,6 +32,7 @@ export function ProductCard({
   const [added, setAdded] = useState(false)
   const favorited = isFavorited(product.id)
   const detailHref = href ?? `/product/${product.id}`
+  const tags = productTags(product)
 
   function handleAdd(e: React.MouseEvent) {
     e.preventDefault()
@@ -49,22 +56,25 @@ export function ProductCard({
           isWhiteBackground && "bg-white",
         )}
       >
-        {product.tag && (
-          <span
-            className={cn(
-              "absolute left-4 top-4 z-10 px-3 py-1 text-[8px] md:text-[10px] font-medium uppercase tracking-[0.18em]",
-              product.tag === "Bestseller"
-                ? "bg-gold text-gold-foreground"
-                : "bg-accent text-accent-foreground",
-            )}
-          >
-            {product.tag}
-          </span>
+        {tags.length > 0 && (
+          <div className="absolute left-4 top-4 z-10 flex flex-col gap-1.5 items-start">
+            {tags.map(t => (
+              <span
+                key={t}
+                className={cn(
+                  "px-3 py-1 text-[8px] md:text-[10px] font-medium uppercase tracking-[0.18em]",
+                  tagClass(t),
+                )}
+              >
+                {t}
+              </span>
+            ))}
+          </div>
         )}
         {hasDiscount(product) && (
           <span
             className="absolute left-4 z-10 px-3 py-1 text-[8px] md:text-[10px] font-medium uppercase tracking-[0.18em] bg-foreground text-background"
-            style={{ top: product.tag ? "2.75rem" : "1rem" }}
+            style={{ top: tags.length ? `${1 + tags.length * 1.75}rem` : "1rem" }}
           >
             -{product.discountPct}%
           </span>

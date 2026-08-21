@@ -8,6 +8,7 @@ import { ArrowLeft, Check, Plus, Save, Search, Trash2, Upload, X } from "lucide-
 import { cn } from "@/lib/utils"
 import type { Deal, DealItem } from "@/lib/deals"
 import { ALL_CONCERNS } from "@/lib/catalog"
+import { getCatalogNames } from "@/lib/supabase/catalog"
 import { getEffectivePrice, type Product } from "@/lib/products"
 import { getActiveBrands, type Brand } from "@/lib/supabase/brands"
 import { getAllProducts } from "@/lib/supabase/products"
@@ -103,10 +104,14 @@ export function AdminDealForm({ deal }: { deal?: Deal }) {
   const [uploadError, setUploadError] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [concernOptions, setConcernOptions] = useState<string[]>([...ALL_CONCERNS])
 
   useEffect(() => {
     getActiveBrands().then(setBrands)
     getAllProducts().then(setProducts)
+    getCatalogNames("concerns").then(names => {
+      if (names.length) setConcernOptions(names)
+    })
   }, [])
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -501,7 +506,7 @@ export function AdminDealForm({ deal }: { deal?: Deal }) {
             <TagPicker
               label="Concerns"
               hint="Search pinned concerns or add a custom one."
-              options={ALL_CONCERNS}
+              options={concernOptions}
               value={form.concerns}
               onChange={concerns => setForm(f => ({ ...f, concerns }))}
               placeholder="Search concerns…"

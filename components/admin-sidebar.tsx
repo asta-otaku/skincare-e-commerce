@@ -20,6 +20,7 @@ import {
   Store,
   FolderTree,
   Mail,
+  FlaskConical,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -43,6 +44,11 @@ const NAV = [
     label: "Categories",
     href: "/admin/categories",
     icon: FolderTree,
+  },
+  {
+    label: "Catalog Tags",
+    href: "/admin/catalog",
+    icon: FlaskConical,
   },
   {
     label: "Brands",

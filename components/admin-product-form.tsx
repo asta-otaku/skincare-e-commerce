@@ -5,8 +5,10 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Upload, X, Plus, ArrowLeft, Save, Trash2, GripVertical, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { Product } from "@/lib/products"
-import { ALL_CONCERNS, ALL_INGREDIENTS, ALL_SKIN_TYPES } from "@/lib/catalog"
+import type { Product, ProductTag } from "@/lib/products"
+import { PRODUCT_TAGS, productTags } from "@/lib/products"
+import { ALL_SKIN_TYPES } from "@/lib/catalog"
+import { getCatalogNames } from "@/lib/supabase/catalog"
 import { getActiveBrands, type Brand } from "@/lib/supabase/brands"
 import { getCategoryTree, type CategorySection } from "@/lib/supabase/categories"
 import { CategoryMultiSelect } from "@/components/category-multi-select"
@@ -34,7 +36,7 @@ type FormState = {
   tiers: TierRow[]
   category: string
   categories: string[]
-  tag: Product["tag"] | ""
+  tags: ProductTag[]
   size: string
   stock: string
   description: string
@@ -48,10 +50,17 @@ type FormState = {
   variants: VariantRow[]
 }
 
-const TAGS: Array<Product["tag"] | ""> = ["", "Bestseller", "New", "Sale", "Low Stock"]
-
 const inputClass =
   "w-full border border-border bg-background px-4 py-3 text-sm font-light outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground/40"
+
+/** Split pasted benefit prose on sentence boundaries (full stops). */
+function splitBenefitsPaste(raw: string): string[] {
+  return raw
+    .split(/\.(?:\s+|$)/)
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(s => (s.endsWith(".") ? s : s))
+}
 
 /* ─── Helpers ────────────────────────────────────────────────── */
 function toFormState(product?: Product): FormState {
@@ -75,7 +84,7 @@ function toFormState(product?: Product): FormState {
       : product?.category
         ? [product.category]
         : [],
-    tag: product?.tag ?? "",
+    tags: productTags(product ?? {}),
     size: product?.size ?? "",
     stock: product ? String(product.stock) : "",
     description: product?.description ?? "",
@@ -115,6 +124,8 @@ export function AdminProductForm({ product }: { product?: Product }) {
   const [form, setForm] = useState<FormState>(toFormState(product))
   const [brands, setBrands] = useState<Brand[]>([])
   const [categoryTree, setCategoryTree] = useState<CategorySection[]>([])
+  const [ingredientOptions, setIngredientOptions] = useState<string[]>([])
+  const [concernOptions, setConcernOptions] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploadError, setUploadError] = useState("")
@@ -138,6 +149,8 @@ export function AdminProductForm({ product }: { product?: Product }) {
         }
       }
     })
+    getCatalogNames("ingredients").then(setIngredientOptions)
+    getCatalogNames("concerns").then(setConcernOptions)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -188,6 +201,29 @@ export function AdminProductForm({ product }: { product?: Product }) {
 
   function removeArrayItem(key: "benefits", i: number) {
     setForm(f => ({ ...f, [key]: f[key].filter((_, idx) => idx !== i) }))
+  }
+
+  function handleBenefitsPaste(i: number, e: React.ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData.getData("text")
+    if (!text.includes(".")) return
+    e.preventDefault()
+    const parts = splitBenefitsPaste(text)
+    if (!parts.length) return
+    setForm(f => {
+      const next = [...f.benefits]
+      // Replace current row + following empties with split sentences
+      next.splice(i, 1, ...parts)
+      // Drop trailing empty placeholders
+      const cleaned = next.filter((b, idx) => b.trim() || idx === next.length - 1)
+      return { ...f, benefits: cleaned.length ? cleaned : parts }
+    })
+  }
+
+  function toggleProductTag(tag: ProductTag) {
+    setForm(f => ({
+      ...f,
+      tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag],
+    }))
   }
 
   /* ── Variant helpers ── */
@@ -286,7 +322,8 @@ export function AdminProductForm({ product }: { product?: Product }) {
         images: resolvedImages.length > 0 ? resolvedImages : undefined,
         category: form.categories[0] ?? "",
         categories: form.categories,
-        tag: (form.tag || undefined) as Product["tag"] | undefined,
+        tag: form.tags[0],
+        tags: form.tags,
         benefits: form.benefits.filter(Boolean),
         ingredients: form.ingredients.filter(Boolean),
         concerns: form.concerns,
@@ -455,7 +492,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
               <section className="border border-border p-6">
                 <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.18em]">Benefits</h2>
                 <p className="mb-3 text-[11px] font-light text-muted-foreground">
-                  Listed as checkmarks on the storefront product page.
+                  Listed as checkmarks on the storefront product page. Paste a paragraph of sentences — each full stop starts a new line.
                 </p>
                 <div className="space-y-2">
                   {form.benefits.map((b, i) => (
@@ -465,6 +502,7 @@ export function AdminProductForm({ product }: { product?: Product }) {
                         type="text"
                         value={b}
                         onChange={e => setArrayItem("benefits", i, e.target.value)}
+                        onPaste={e => handleBenefitsPaste(i, e)}
                         placeholder={`Benefit ${i + 1}`}
                         className="input-field flex-1"
                       />
@@ -490,8 +528,8 @@ export function AdminProductForm({ product }: { product?: Product }) {
               <section className="border border-border p-6">
                 <TagPicker
                   label="Key Ingredients"
-                  hint="Search pinned ingredients or add a custom one. Selected items appear as chips."
-                  options={ALL_INGREDIENTS}
+                  hint="Search catalog ingredients or add a custom one — new values are saved to Admin → Catalog Tags."
+                  options={ingredientOptions.length ? ingredientOptions : []}
                   value={form.ingredients}
                   onChange={ingredients => setForm(f => ({ ...f, ingredients }))}
                   placeholder="Search ingredients (e.g. Niacinamide)…"
@@ -515,8 +553,8 @@ export function AdminProductForm({ product }: { product?: Product }) {
               <section className="border border-border p-6">
                 <TagPicker
                   label="Skin Concerns"
-                  hint="Determines which concern filters and shop-by-concern pages include this product."
-                  options={ALL_CONCERNS}
+                  hint="Determines which concern filters and shop-by-concern pages include this product. Custom values are added to the shared catalog."
+                  options={concernOptions}
                   value={form.concerns}
                   onChange={concerns => setForm(f => ({ ...f, concerns }))}
                   placeholder="Search concerns (e.g. Acne)…"
@@ -891,14 +929,27 @@ export function AdminProductForm({ product }: { product?: Product }) {
                     )}
                   </Field>
 
-                  <Field label="Tag (optional)">
-                    <select
-                      value={form.tag}
-                      onChange={e => setField("tag", e.target.value as FormState["tag"])}
-                      className="input-field"
-                    >
-                      {TAGS.map(t => <option key={t ?? "none"} value={t}>{t || "None"}</option>)}
-                    </select>
+                  <Field label="Tags (optional)" hint="A product can have multiple badges (e.g. Bestseller + Low Stock).">
+                    <div className="flex flex-wrap gap-2">
+                      {PRODUCT_TAGS.map(t => {
+                        const on = form.tags.includes(t)
+                        return (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => toggleProductTag(t)}
+                            className={cn(
+                              "border px-3 py-1.5 text-xs font-light transition-all",
+                              on
+                                ? "border-gold bg-lavender text-gold"
+                                : "border-border text-muted-foreground hover:border-gold/60",
+                            )}
+                          >
+                            {on ? "✓ " : ""}{t}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </Field>
                 </div>
               </section>
