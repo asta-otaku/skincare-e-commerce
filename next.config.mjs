@@ -14,6 +14,8 @@ const supabaseHost = supabaseHostname()
 
 const nextConfig = {
   images: {
+    // Skip Vercel Image Optimization (Hobby quota). Serves originals via next/image.
+    unoptimized: true,
     qualities: [75, 100],
     remotePatterns: supabaseHost
       ? [
