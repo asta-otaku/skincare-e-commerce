@@ -22,7 +22,6 @@ function tagClass(tag: string) {
  */
 export function ProductCard({
   product,
-  index = 0,
   isWhiteBackground = false,
   href,
 }: {
@@ -36,12 +35,12 @@ export function ProductCard({
   const tags = productTags(product)
 
   return (
-    <article className="group flex flex-col" style={{ animationDelay: `${index * 90}ms` }}>
+    <article className="group flex flex-col">
       <Link
         href={detailHref}
         aria-label={`View ${product.name}`}
         className={cn(
-          "relative aspect-4/5 overflow-hidden border border-border bg-secondary transition-colors duration-500 group-hover:border-gold/60",
+          "atelier-card-frame relative aspect-4/5 overflow-hidden border border-border bg-secondary",
           isWhiteBackground && "bg-white",
         )}
       >
@@ -76,7 +75,7 @@ export function ProductCard({
           alt={product.name}
           fill
           sizes="(max-width: 768px) 50vw, 25vw"
-          className="object-contain mix-blend-multiply transition-transform duration-700 ease-out group-hover:scale-105"
+          className="atelier-card-media object-contain mix-blend-multiply"
         />
 
         <ProductCardAddButton product={product} />
@@ -85,7 +84,7 @@ export function ProductCard({
       <div className="flex flex-1 flex-col items-center px-1 pt-5 text-center">
         <p className="text-[8px] md:text-[10px] font-light uppercase tracking-[0.22em] text-gold">{product.brand}</p>
         <h3 className="mt-2 font-serif text-lg md:text-xl font-medium leading-snug text-foreground">
-          <Link href={detailHref} className="transition-colors hover:text-gold line-clamp-2">
+          <Link href={detailHref} className="atelier-card-name line-clamp-2">
             {product.name}
           </Link>
         </h3>

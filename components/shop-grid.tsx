@@ -382,13 +382,13 @@ export function ShopGrid({
                 type="button"
                 aria-label="Close filters"
                 onClick={() => setFiltersOpen(false)}
-                className="fixed inset-0 z-[60] bg-foreground/30"
+                className="atelier-menu fixed inset-0 z-[60] bg-foreground/30"
               />
               <div
                 role="dialog"
                 aria-modal="true"
                 aria-label="Filters"
-                className="fixed inset-y-0 left-0 z-[70] flex w-[min(100%,22rem)] flex-col bg-background shadow-2xl"
+                className="atelier-menu fixed inset-y-0 left-0 z-[70] flex w-[min(100%,22rem)] flex-col bg-background shadow-[0_16px_40px_-24px_rgba(41,48,73,0.45)]"
               >
                 <div className="flex items-center justify-between border-b border-border px-4 py-4">
                   <p className="text-xs font-medium uppercase tracking-[0.16em]">Filters</p>
@@ -445,7 +445,7 @@ export function ShopGrid({
               </button>
             </div>
           ) : (
-            <div className={cn("grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 xl:grid-cols-4", loading && "opacity-60 transition-opacity")}>
+            <div className={cn("atelier-shop-grid grid grid-cols-2 items-start gap-x-5 gap-y-10 sm:grid-cols-3 xl:grid-cols-4", loading && "opacity-60")}>
               {filtered.map((p, i) => (
                 <ProductCard key={p.id} product={p} index={i} />
               ))}

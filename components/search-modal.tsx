@@ -5,7 +5,6 @@ import Image from "next/image"
 import Link from "next/link"
 import { Search, X, ArrowRight } from "lucide-react"
 import { formatPrice, getEffectivePrice, type Product } from "@/lib/products"
-import { DEFAULT_CATEGORY_TREE, resolveCategoryName } from "@/lib/supabase/categories"
 import { searchProducts } from "@/lib/supabase/products"
 import { cn } from "@/lib/utils"
 
@@ -162,19 +161,6 @@ export function SearchModal() {
               {cat}
             </button>
           ))}
-              key={cat.key}
-              type="button"
-              onClick={() => setActiveCategory(cat.value)}
-              className={cn(
-                "shrink-0 border px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.12em] transition-all duration-200",
-                activeCategory === cat.value
-                  ? "border-gold bg-gold text-gold-foreground"
-                  : "border-border text-muted-foreground hover:border-foreground hover:text-foreground",
-              )}
-            >
-              {cat.label}
-            </button>
-          ))}
         </div>
 
         {/* Results */}
@@ -224,7 +210,20 @@ export function SearchModal() {
                       />
                     </div>
                     <div className="text-center">
-                      <p className="text-[10px] font-light uppercase tracking-[0.16em] text-gold">
+                      <p className="text-[9px] font-light uppercase tracking-[0.2em] text-gold">
+                        {product.category}
+                      </p>
+                      <p className="mt-0.5 text-sm font-medium leading-snug transition-colors group-hover:text-gold">
+                        {product.name}
+                      </p>
+                      <p className="mt-1 text-xs font-light text-muted-foreground">
+                        {formatPrice(getEffectivePrice(product))}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>

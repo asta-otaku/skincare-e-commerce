@@ -1,94 +1,84 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react"
-import { formatPrice, getEffectivePrice, productTags, type Product } from "@/lib/products"
 import { cn } from "@/lib/utils"
 
-function slideEyebrow(product: Product) {
-  const tags = productTags(product)
-  if (tags.includes("Bestseller")) return "Bestseller"
-  if (tags.includes("New")) return "New arrival"
-  return product.category || "Featured"
-}
+const HERO_SLIDES = [
+  {
+    eyebrow: "New Arrivals",
+    title: "Niacinamide\n& Beyond",
+    subtitle: "Discover targeted serums and treatments from The Ordinary, COSRX & Paula's Choice.",
+    cta: "Shop Serums",
+    href: "/shop?category=serums-treatment",
+    gradient: "from-[#293049] via-[#5C6B86] to-[#FACBD3]",
+    image: "/product-serum.png",
+    productName: "Niacinamide 10% + Zinc",
+    productBrand: "The Ordinary",
+    productPrice: "₦3,800",
+    productHref: "/product/ordinary-niacinamide",
+  },
+  {
+    eyebrow: "Bestsellers",
+    title: "Skin Barrier\nEssentials",
+    subtitle: "CeraVe and La Roche-Posay formulas trusted by dermatologists worldwide.",
+    cta: "Shop Moisturisers",
+    href: "/shop?category=face-moisturizers",
+    gradient: "from-[#293049] via-[#FACBD3] to-[#FDF0F3]",
+    image: "/product-cream.png",
+    productName: "Moisturising Cream",
+    productBrand: "CeraVe",
+    productPrice: "₦8,900",
+    productHref: "/product/cerave-moisturising-cream",
+  },
+  {
+    eyebrow: "Sun Protection",
+    title: "SPF Every\nSingle Day",
+    subtitle: "Premium sunscreens for Lagos weather — lightweight, no white cast, daily protection.",
+    cta: "Shop Sunscreen",
+    href: "/shop?category=sunscreens",
+    gradient: "from-[#E8919E] via-[#FACBD3] to-[#FDF0F3]",
+    image: "/product-cleanser.png",
+    productName: "Anthelios UVMune SPF 50+",
+    productBrand: "La Roche-Posay",
+    productPrice: "₦16,000",
+    productHref: "/product/lrp-anthelios-spf50",
+  },
+]
 
-function EmptyHero() {
-  return (
-    <section className="bg-[#293049]">
-      <div className="mx-auto flex min-h-[52vh] max-w-7xl flex-col justify-center px-5 py-16 lg:px-8">
-        <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-white/80">
-          HAYDA SKINCo.
-        </p>
-        <h1 className="mt-4 max-w-xl font-serif text-4xl font-medium leading-[1.1] text-white md:text-6xl">
-          Shop the collection
-        </h1>
-        <p className="mt-5 max-w-md text-base font-light leading-relaxed text-white/85">
-          Authentic skincare from the brands we stock, ready to browse.
-        </p>
-        <Link
-          href="/shop"
-          className="mt-8 inline-flex w-fit items-center gap-2 bg-white px-7 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-foreground transition-colors hover:bg-secondary"
-        >
-          Shop all <ArrowRight className="size-3.5" />
-        </Link>
-      </div>
-    </section>
-  )
-}
-
-export function HomeHeroSlider({ products }: { products: Product[] }) {
-  const n = products.length
-  const track = n > 0 ? [products[n - 1], ...products, products[0]] : []
+export function HomeHeroSlider() {
+  const n = HERO_SLIDES.length
+  const track = [HERO_SLIDES[n - 1], ...HERO_SLIDES, HERO_SLIDES[0]]
   const [index, setIndex] = useState(1)
   const [animate, setAnimate] = useState(true)
-  const [canAutoplay, setCanAutoplay] = useState(false)
+  const [reduceMotion, setReduceMotion] = useState(false)
   const indexRef = useRef(index)
 
   useEffect(() => {
     indexRef.current = index
   }, [index])
 
-  const activeSlide = n > 0 ? ((index - 1) % n + n) % n : 0
-
-  function reducedMotion() {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  }
+  const activeSlide = ((index - 1) % n + n) % n
 
   function goToSlide(slideIdx: number) {
-    setAnimate(!reducedMotion())
+    setAnimate(true)
     setIndex(slideIdx + 1)
   }
 
   function next() {
-    if (reducedMotion()) {
-      setAnimate(false)
-      setIndex(i => {
-        const current = ((i - 1) % n + n) % n
-        return (current + 1) % n + 1
-      })
-      return
-    }
     setAnimate(true)
     setIndex(i => i + 1)
   }
 
   function prev() {
-    if (reducedMotion()) {
-      setAnimate(false)
-      setIndex(i => {
-        const current = ((i - 1) % n + n) % n
-        return (current - 1 + n) % n + 1
-      })
-      return
-    }
     setAnimate(true)
     setIndex(i => i - 1)
   }
 
   function handleTransitionEnd(e: React.TransitionEvent<HTMLDivElement>) {
-    if (e.target !== e.currentTarget || n < 1) return
+    if (e.target !== e.currentTarget) return
     const i = indexRef.current
     if (i === n + 1) {
       setAnimate(false)
@@ -109,80 +99,72 @@ export function HomeHeroSlider({ products }: { products: Product[] }) {
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)")
-    const sync = () => setCanAutoplay(!media.matches && n > 1)
+    const sync = () => setReduceMotion(media.matches)
     sync()
     media.addEventListener("change", sync)
     return () => media.removeEventListener("change", sync)
-  }, [n])
+  }, [])
 
   useEffect(() => {
-    if (!canAutoplay) return
-    const timer = window.setInterval(() => {
-      setAnimate(true)
-      setIndex(i => i + 1)
-    }, 5500)
-    return () => window.clearInterval(timer)
-  }, [canAutoplay])
-
-  if (n === 0) return <EmptyHero />
+    if (reduceMotion) return
+    const t = setInterval(next, 5500)
+    return () => clearInterval(t)
+  }, [reduceMotion])
 
   return (
-    <section className="overflow-hidden bg-[#293049]" aria-roledescription="carousel" aria-label="Featured products">
+    <section className="relative overflow-hidden" aria-roledescription="carousel" aria-label="Featured campaigns">
       <div
         className={cn(
           "flex will-change-transform",
-          animate && "transition-transform duration-700 ease-in-out motion-reduce:transition-none",
+          animate && !reduceMotion && "transition-transform duration-700 ease-in-out",
         )}
         style={{ transform: `translateX(-${index * 100}%)` }}
         onTransitionEnd={handleTransitionEnd}
       >
-        {track.map((product, i) => {
+        {track.map((slide, i) => {
           const isActive = i === index
-          const priceLabel = formatPrice(getEffectivePrice(product))
-          const TitleTag = isActive ? "h1" : "p"
           return (
             <div
-              key={`${product.id}-${i}`}
-              className="w-full shrink-0"
+              key={`${slide.title}-${i}`}
+              className={cn("w-full shrink-0 bg-linear-to-br", slide.gradient)}
               aria-hidden={!isActive}
             >
-              <div className="mx-auto grid max-w-7xl lg:min-h-[72vh] lg:grid-cols-2">
-                <div className="order-2 flex min-w-0 flex-col justify-center bg-linear-to-br from-[#293049] to-[#3a4660] px-5 py-10 text-white lg:order-1 lg:px-8 lg:py-16">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-white/80">
-                    {slideEyebrow(product)}
+              <div className="mx-auto grid min-h-[82vh] max-w-7xl grid-cols-1 items-center px-5 lg:grid-cols-2 lg:px-8">
+                <div className="flex flex-col justify-center py-8 md:py-16 lg:py-0">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-white">
+                    {slide.eyebrow}
                   </p>
-                  <TitleTag className="mt-4 max-w-xl break-words font-serif text-4xl font-medium leading-[1.08] text-white md:text-5xl">
-                    {product.name}
-                  </TitleTag>
-                  {product.tagline && (
-                    <p className="mt-5 max-w-md break-words text-base font-light leading-relaxed text-white/85">
-                      {product.tagline}
-                    </p>
-                  )}
+                  <h1 className="mt-4 min-h-[2.2em] font-serif text-3xl font-medium leading-[1.1] text-white md:text-6xl lg:min-h-[calc(2*1.1*4.5rem)] lg:text-[4.5rem] whitespace-pre-line">
+                    {slide.title}
+                  </h1>
+                  <p className="mt-5 min-h-[4.5rem] max-w-sm text-base font-light leading-relaxed text-white">
+                    {slide.subtitle}
+                  </p>
                   <div className="mt-8 flex flex-wrap gap-3">
                     <Link
-                      href={`/product/${product.id}`}
-                      className="flex items-center gap-2 bg-white px-7 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-foreground transition-colors hover:bg-secondary"
+                      href={slide.href}
+                      className="flex items-center gap-2 bg-gold px-7 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-gold-foreground transition-colors hover:bg-gold/90"
                       tabIndex={isActive ? undefined : -1}
                     >
-                      Shop now <ArrowRight className="size-3.5" />
+                      {slide.cta} <ArrowRight className="size-3.5" />
                     </Link>
                     <Link
                       href="/shop"
-                      className="flex items-center gap-2 border border-white/40 px-7 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-white transition-colors hover:border-white"
+                      className="flex items-center gap-2 border border-white/30 px-7 py-3.5 text-xs font-medium uppercase tracking-[0.18em] text-white transition-colors hover:border-white"
                       tabIndex={isActive ? undefined : -1}
                     >
-                      View all
+                      View All
                     </Link>
                   </div>
+                  <div className="mt-10 h-1" aria-hidden />
                 </div>
 
-                <div className="order-1 min-w-0 bg-secondary px-5 py-6 lg:order-2 lg:flex lg:flex-col lg:justify-center lg:px-10 lg:py-12">
+                <div className="flex flex-col justify-center pb-16 lg:h-[82vh] lg:pb-0">
                   <div className="relative mx-auto aspect-4/5 w-full max-h-[46vh] max-w-md bg-white lg:max-h-[62vh] lg:max-w-none">
                     <div className="absolute inset-4 sm:inset-8">
                       <Image
-                        src={product.image || "/placeholder.svg"}
-                        alt={product.name}
+                        src={slide.image}
+                        alt={isActive ? slide.productName : ""}
                         fill
                         sizes="(max-width: 1024px) 90vw, 40vw"
                         className="object-contain"
@@ -192,13 +174,13 @@ export function HomeHeroSlider({ products }: { products: Product[] }) {
                   </div>
 
                   <Link
-                    href={`/product/${product.id}`}
-                    className="mx-auto mt-3 flex w-full max-w-md items-center gap-3 border border-border bg-white px-3 py-3 transition-colors hover:border-gold/40 lg:max-w-none"
+                    href={slide.productHref}
+                    className="mx-auto mt-3 flex w-full max-w-md items-center gap-3 border border-border bg-white px-3 py-3 shadow-md transition-colors hover:border-[#293049] lg:max-w-none"
                     tabIndex={isActive ? undefined : -1}
                   >
                     <div className="relative size-12 shrink-0 bg-secondary">
                       <Image
-                        src={product.image || "/placeholder.svg"}
+                        src={slide.image}
                         alt=""
                         fill
                         sizes="48px"
@@ -207,10 +189,10 @@ export function HomeHeroSlider({ products }: { products: Product[] }) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-gold">
-                        {product.brand}
+                        {slide.productBrand}
                       </p>
-                      <p className="truncate text-sm font-medium leading-snug text-foreground">{product.name}</p>
-                      <p className="text-xs font-light text-muted-foreground">{priceLabel}</p>
+                      <p className="truncate text-sm font-medium leading-snug text-foreground">{slide.productName}</p>
+                      <p className="text-xs font-light text-muted-foreground">{slide.productPrice}</p>
                     </div>
                     <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />
                   </Link>
@@ -221,46 +203,40 @@ export function HomeHeroSlider({ products }: { products: Product[] }) {
         })}
       </div>
 
-      {n > 1 && (
-        <div className="mx-auto grid max-w-7xl lg:grid-cols-2">
-          <div className="flex items-center justify-between bg-[#293049] px-5 py-4 lg:px-8">
-            <div className="flex items-center gap-2.5">
-              {products.map((product, i) => (
-                <button
-                  key={product.id}
-                  type="button"
-                  onClick={() => goToSlide(i)}
-                  aria-label={`Go to slide ${i + 1}`}
-                  aria-current={i === activeSlide ? "true" : undefined}
-                  className={cn(
-                    "h-1 rounded-full transition-all duration-300",
-                    i === activeSlide ? "w-8 bg-white" : "w-2 bg-white/40 hover:bg-white/70",
-                  )}
-                />
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                aria-label="Previous slide"
-                onClick={prev}
-                className="flex size-9 items-center justify-center border border-white/30 text-white transition-colors hover:bg-white hover:text-foreground"
-              >
-                <ChevronLeft className="size-4" />
-              </button>
-              <button
-                type="button"
-                aria-label="Next slide"
-                onClick={next}
-                className="flex size-9 items-center justify-center border border-white/30 text-white transition-colors hover:bg-white hover:text-foreground"
-              >
-                <ChevronRight className="size-4" />
-              </button>
-            </div>
-          </div>
-          <div className="hidden bg-secondary lg:block" aria-hidden />
-        </div>
-      )}
+      <div className="pointer-events-none absolute bottom-6 left-5 flex items-center gap-2.5 lg:left-8">
+        {HERO_SLIDES.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => goToSlide(i)}
+            aria-label={`Go to slide ${i + 1}`}
+            aria-current={i === activeSlide ? "true" : undefined}
+            className={cn(
+              "pointer-events-auto h-1 rounded-full transition-all duration-300",
+              i === activeSlide ? "w-8 bg-gold" : "w-2 bg-white/40 hover:bg-white/70",
+            )}
+          />
+        ))}
+      </div>
+
+      <div className="absolute bottom-6 right-5 flex gap-2 lg:right-8">
+        <button
+          type="button"
+          aria-label="Previous slide"
+          onClick={prev}
+          className="flex size-9 items-center justify-center border border-foreground/20 bg-background/60 text-foreground/60 backdrop-blur-sm transition-colors hover:text-foreground"
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+        <button
+          type="button"
+          aria-label="Next slide"
+          onClick={next}
+          className="flex size-9 items-center justify-center border border-foreground/20 bg-background/60 text-foreground/60 backdrop-blur-sm transition-colors hover:text-foreground"
+        >
+          <ChevronRight className="size-4" />
+        </button>
+      </div>
     </section>
   )
 }

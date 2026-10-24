@@ -1,9 +1,8 @@
-import type { Metadata } from "next"
 import { Suspense } from "react"
 import { PageHeader } from "@/components/page-header"
 import { ShopGrid } from "@/components/shop-grid"
 import { ALL_SKIN_TYPES, resolveCatalogLabel } from "@/lib/catalog"
-import { getCategoryTree, resolveCategoryName, slugifyCategory, type CategorySection } from "@/lib/supabase/categories"
+import { getCategoryTree, resolveCategoryName } from "@/lib/supabase/categories"
 import { queryProducts } from "@/lib/supabase/products"
 import { FREE_STANDARD_DELIVERY } from "@/lib/storefront-copy"
 
@@ -38,26 +37,6 @@ async function resolveShopCollection(sp: ShopSearch) {
     ? resolveCatalogLabel(ALL_SKIN_TYPES, skinParam) ?? skinParam
     : undefined
   const onSale = sp.sale === "true"
-  const named = [brandName, categoryName, skinName].filter((part): part is string => Boolean(part))
-
-  let eyebrow = "All Products"
-  let title = "Shop All Skincare"
-  let description = `Trusted brands. Authentic products. ${FREE_STANDARD_DELIVERY}.`
-
-  if (named.length > 1) {
-    eyebrow = "Shop"
-    title = named.join(" · ")
-    description = `${title}. ${FREE_STANDARD_DELIVERY}.`
-  } else if (categoryName) {
-    eyebrow = "Shop"
-    title = categoryName
-    description = `${categoryName} from HAYDA SKINCo. ${FREE_STANDARD_DELIVERY}.`
-  } else if (brandName) {
-    eyebrow = "Shop by brand"
-    title = brandName
-    description = `Authentic ${brandName} products. ${FREE_STANDARD_DELIVERY}.`
-  } else if (skinName) {
-    eyebrow = "Shop by skin type"
   const browse =
     sp.filter === "concerns" ? "concern" : sp.filter === "ingredients" ? "ingredient" : undefined
   const named = [brandName, categoryName, skinName].filter((part): part is string => Boolean(part))
@@ -94,6 +73,12 @@ async function resolveShopCollection(sp: ShopSearch) {
     eyebrow = "Discover"
     title = "Shop by Ingredient"
     description = `Choose an ingredient and see the products that use it. ${FREE_STANDARD_DELIVERY}.`
+  }
+
+  return { eyebrow, title, description, categoryName, brandName, skinName, onSale }
+}
+
+export default async function ShopPage({
   searchParams,
 }: {
   searchParams: Promise<ShopSearch>

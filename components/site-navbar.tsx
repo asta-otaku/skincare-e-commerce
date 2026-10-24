@@ -87,8 +87,10 @@ export function SiteNavbar() {
       <header
         ref={navRef}
         className={cn(
-          "sticky top-0 z-40 w-full border-b transition-all duration-300",
-          scrolled ? "border-border bg-background/95 backdrop-blur-md shadow-sm" : "border-transparent bg-background",
+          "atelier-nav sticky top-0 z-40 w-full border-b",
+          scrolled
+            ? "border-border bg-background/95 shadow-[0_12px_40px_-24px_rgba(41,48,73,0.55)] backdrop-blur-md"
+            : "border-transparent bg-background shadow-none",
         )}
       >
         {/* Main bar */}
@@ -137,21 +139,26 @@ export function SiteNavbar() {
                   )}
                 >
                   {item.label}
-                  <ChevronDown className={cn("size-3 transition-transform", activeDropdown === item.label && "rotate-180")} />
+                  <ChevronDown className={cn("size-3 transition-transform duration-700 ease-[cubic-bezier(0.22,0.61,0.36,1)] motion-reduce:transition-none", activeDropdown === item.label && "rotate-180")} />
                 </button>
-                {activeDropdown === item.label && (
-                  <div className="absolute left-0 top-full z-50 min-w-[200px] max-h-[70vh] overflow-y-auto border border-border bg-background shadow-xl">
-                    {item.items!.map(sub => (
-                      <Link
-                        key={sub.label}
-                        href={sub.href}
-                        className="block px-4 py-2.5 text-xs font-light text-foreground/80 transition-colors hover:bg-muted hover:text-gold"
-                      >
-                        {sub.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
+                <div
+                  inert={activeDropdown !== item.label}
+                  className={cn(
+                    "atelier-dropdown absolute left-0 top-full z-50 max-h-[70vh] min-w-[200px] overflow-y-auto border border-border bg-background shadow-[0_16px_40px_-24px_rgba(41,48,73,0.45)]",
+                    activeDropdown === item.label && "is-open",
+                  )}
+                >
+                  {item.items!.map(sub => (
+                    <Link
+                      key={sub.label}
+                      href={sub.href}
+                      tabIndex={activeDropdown === item.label ? undefined : -1}
+                      className="block px-4 py-2.5 text-xs font-light text-foreground/80 transition-colors duration-700 hover:bg-secondary hover:text-[#293049] motion-reduce:transition-none"
+                    >
+                      {sub.label}
+                    </Link>
+                  ))}
+                </div>
               </div>
             ))}
 
@@ -182,11 +189,16 @@ export function SiteNavbar() {
                 )}
               >
                 More
-                <ChevronDown className={cn("size-3 transition-transform", megaOpen && "rotate-180")} />
+                <ChevronDown className={cn("size-3 transition-transform duration-700 ease-[cubic-bezier(0.22,0.61,0.36,1)] motion-reduce:transition-none", megaOpen && "rotate-180")} />
               </button>
 
-              {megaOpen && (
-                <div className="absolute right-0 top-full z-50 grid w-[480px] grid-cols-2 gap-0 border border-border bg-background shadow-xl">
+              <div
+                inert={!megaOpen}
+                className={cn(
+                  "atelier-dropdown absolute right-0 top-full z-50 grid w-[480px] grid-cols-2 gap-0 border border-border bg-background shadow-[0_16px_40px_-24px_rgba(41,48,73,0.45)]",
+                  megaOpen && "is-open",
+                )}
+              >
                   {/* Left — Skin Needs */}
                   <div className="border-r border-border p-5">
                     <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Skin Needs</p>
@@ -234,7 +246,6 @@ export function SiteNavbar() {
                     ))}
                   </div>
                 </div>
-              )}
             </div>
           </nav>
 
@@ -302,10 +313,10 @@ export function SiteNavbar() {
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-[2px]" onClick={() => setMobileOpen(false)} />
+          <div className="atelier-menu absolute inset-0 bg-foreground/40 backdrop-blur-[2px]" onClick={() => setMobileOpen(false)} />
 
           {/* Sidebar panel */}
-          <div className="absolute left-0 top-0 h-full w-[320px] max-w-[85vw] overflow-y-auto bg-background shadow-2xl">
+          <div className="atelier-menu absolute left-0 top-0 h-full w-[320px] max-w-[85vw] overflow-y-auto bg-background shadow-[0_16px_40px_-24px_rgba(41,48,73,0.45)]">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <Link href="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-2">
@@ -365,10 +376,10 @@ export function SiteNavbar() {
                       className="flex w-full items-center justify-between px-5 py-3.5 text-sm font-medium text-foreground"
                     >
                       {item.label}
-                      <ChevronDown className={cn("size-4 transition-transform text-muted-foreground", expanded && "rotate-180")} />
+                      <ChevronDown className={cn("size-4 text-muted-foreground transition-transform duration-700 ease-[cubic-bezier(0.22,0.61,0.36,1)] motion-reduce:transition-none", expanded && "rotate-180")} />
                     </button>
                     {expanded && (
-                      <div className="bg-secondary pb-1">
+                      <div className="atelier-menu bg-secondary pb-1">
                         {item.items.map(sub => (
                           <Link
                             key={sub.label}
@@ -400,10 +411,10 @@ export function SiteNavbar() {
                       className="flex w-full items-center justify-between px-5 py-3.5 text-sm font-medium text-foreground"
                     >
                       {label}
-                      <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", expanded && "rotate-180")} />
+                      <ChevronDown className={cn("size-4 text-muted-foreground transition-transform duration-700 ease-[cubic-bezier(0.22,0.61,0.36,1)] motion-reduce:transition-none", expanded && "rotate-180")} />
                     </button>
                     {expanded && (
-                      <div className="max-h-56 overflow-y-auto bg-secondary pb-1">
+                      <div className="atelier-menu max-h-56 overflow-y-auto bg-secondary pb-1">
                         {items.map(item => (
                           <Link
                             key={item}

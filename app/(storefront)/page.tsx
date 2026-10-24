@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Suspense } from "react"
 import { ArrowRight, Sparkles } from "lucide-react"
+import { AtelierReveal } from "@/components/atelier-reveal"
 import { HomeHeroSlider } from "@/components/home-hero-slider"
 import { ProductCard } from "@/components/product-card"
 import { getProductsByTag, getDiscountedProducts } from "@/lib/supabase/products"
@@ -41,30 +42,6 @@ const SKIN_TYPES = ALL_SKIN_TYPES.map(label => ({
   href: `/shop?skinType=${slugifyCatalogLabel(label)}`,
 }))
 
-async function loadHeroProducts() {
-  const bestsellers = await getProductsByTag("Bestseller", 3)
-  if (bestsellers.length >= 3) return bestsellers.slice(0, 3)
-
-  const arrivals = await getProductsByTag("New", 3)
-  const picked = [...bestsellers]
-  const seen = new Set(picked.map(product => product.id))
-  for (const product of arrivals) {
-    if (seen.has(product.id)) continue
-    picked.push(product)
-    if (picked.length >= 3) break
-  }
-  return picked.slice(0, 3)
-}
-
-function HeroSkeleton() {
-  return <div className="min-h-[28rem] animate-pulse bg-secondary lg:min-h-[70vh]" aria-hidden />
-}
-
-async function HomeHero() {
-  const products = await loadHeroProducts()
-  return <HomeHeroSlider products={products} />
-}
-
 function ProductGridSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-4">
@@ -82,6 +59,7 @@ function ProductGridSkeleton({ count = 4 }: { count?: number }) {
 async function BestsellersSection() {
   const bestsellers = await getProductsByTag("Bestseller", 4)
   return (
+    <AtelierReveal>
     <section className="mx-auto max-w-7xl px-5 py-8 md:py-16 lg:px-8">
       <div className="mb-8 flex items-end justify-between">
         <div>
@@ -106,12 +84,14 @@ async function BestsellersSection() {
         </Link>
       </div>
     </section>
+    </AtelierReveal>
   )
 }
 
 async function FeaturedSection() {
   const featuredNew = await getProductsByTag("New", 4)
   return (
+    <AtelierReveal>
     <section className="mx-auto max-w-7xl px-5 py-8 md:py-16 lg:px-8">
       <div className="mb-8 flex items-end justify-between">
         <div>
@@ -136,6 +116,7 @@ async function FeaturedSection() {
         </Link>
       </div>
     </section>
+    </AtelierReveal>
   )
 }
 
@@ -145,6 +126,7 @@ async function JournalSection() {
   if (!recentArticles.length) return null
 
   return (
+    <AtelierReveal>
     <section className="mx-auto max-w-7xl px-5 py-8 md:py-16 lg:px-8">
       <div className="mb-8 flex items-end justify-between">
         <div>
@@ -164,7 +146,7 @@ async function JournalSection() {
                 alt={article.title}
                 fill
                 sizes="(max-width: 768px) 100vw, 33vw"
-                className="object-cover transition-transform duration-700 group-hover:scale-105"
+                className="object-cover transition-transform duration-[800ms] ease-[cubic-bezier(0.22,0.61,0.36,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
               />
             </div>
             <div className="pt-4">
@@ -181,6 +163,7 @@ async function JournalSection() {
         ))}
       </div>
     </section>
+    </AtelierReveal>
   )
 }
 
@@ -193,6 +176,7 @@ async function SaleSection() {
   if (!saleProducts.length && !saleDeals.length) return null
 
   return (
+    <AtelierReveal>
     <section className="bg-secondary py-8 md:py-16">
       <div className="mx-auto max-w-7xl px-5 lg:px-8">
         <div className="mb-8 flex items-end justify-between">
@@ -238,12 +222,14 @@ async function SaleSection() {
         </div>
       </div>
     </section>
+    </AtelierReveal>
   )
 }
 
 async function BrandsSection() {
   const brands = await getActiveBrands()
   return (
+    <AtelierReveal>
     <section className="border-y border-border bg-background py-14 md:py-16">
       <div className="mx-auto max-w-7xl px-5 lg:px-8">
         <div className="mb-8 flex items-end justify-between gap-4">
@@ -265,22 +251,22 @@ async function BrandsSection() {
               <span className="font-serif text-lg font-medium tracking-tight text-foreground md:text-xl">
                 {brand.name}
               </span>
-              <ArrowRight className="size-4 shrink-0 text-gold transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="size-4 shrink-0 text-gold transition-transform duration-700 ease-[cubic-bezier(0.22,0.61,0.36,1)] motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 group-hover:translate-x-0.5" />
             </Link>
           ))}
         </div>
       </div>
     </section>
+    </AtelierReveal>
   )
 }
 
 export default function HomePage() {
   return (
     <>
-      <Suspense fallback={<HeroSkeleton />}>
-        <HomeHero />
-      </Suspense>
+      <HomeHeroSlider />
 
+      <AtelierReveal>
       <section className="mx-auto max-w-7xl px-5 py-12 md:py-20 lg:px-8">
         <div className="mb-10 flex items-center gap-6 md:mb-14">
           <h2 className="shrink-0 font-serif text-3xl font-medium tracking-tight md:text-4xl">
@@ -307,7 +293,7 @@ export default function HomePage() {
                 alt={cat.label}
                 fill
                 sizes="(max-width: 768px) 50vw, 25vw"
-                className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                className="object-cover transition-transform duration-[800ms] ease-[cubic-bezier(0.22,0.61,0.36,1)] group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
               />
               <span className="absolute inset-x-3 bottom-3 border border-border bg-background/95 px-2 py-2 text-center text-[10px] font-medium uppercase leading-snug tracking-[0.14em] text-foreground md:text-[11px]">
                 {cat.label}
@@ -325,6 +311,7 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+      </AtelierReveal>
 
       <Suspense fallback={
         <div className="mx-auto max-w-7xl px-5 py-8 md:py-16 lg:px-8">
@@ -334,6 +321,7 @@ export default function HomePage() {
         <BestsellersSection />
       </Suspense>
 
+      <AtelierReveal>
       <section className="bg-secondary py-8 md:py-16">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <div className="mb-8 text-center">
@@ -355,6 +343,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      </AtelierReveal>
 
       <Suspense fallback={
         <div className="mx-auto max-w-7xl px-5 py-8 md:py-16 lg:px-8">
@@ -382,6 +371,7 @@ export default function HomePage() {
         <BrandsSection />
       </Suspense>
 
+      <AtelierReveal>
       <section className="bg-foreground py-8 md:py-16">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <div className="flex flex-col items-center gap-6 text-center md:flex-row md:text-left md:justify-between">
@@ -406,6 +396,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      </AtelierReveal>
     </>
   )
 }
