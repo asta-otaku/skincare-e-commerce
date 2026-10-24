@@ -42,61 +42,64 @@ export default function AboutPage() {
         description="HAYDA SKINCo. was built to make premium skincare accessible — no fakes, no guesswork, just authentic products delivered to your door."
       />
 
-      {/* Intro split */}
-      <section className="mx-auto grid max-w-7xl items-center gap-12 px-5 py-20 md:py-24 lg:grid-cols-2 lg:gap-16 lg:px-8">
-        <div className="relative aspect-[4/5] w-full overflow-hidden">
-          <Image
-            src="/brand-story.png"
-            alt="HAYDA SKINCo. curated skincare products"
-            fill
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            className="object-cover"
-          />
-          <span className="pointer-events-none absolute inset-3 border border-gold/40" />
-        </div>
-        <div>
-          <p className="text-xs font-light uppercase tracking-[0.3em] text-gold">Lagos, Nigeria</p>
-          <h2 className="mt-5 text-balance font-serif text-3xl font-medium leading-tight text-foreground md:text-4xl">
+      <section className="mx-auto grid max-w-7xl items-end gap-10 px-5 py-16 md:py-24 lg:grid-cols-12 lg:gap-16 lg:px-8">
+        <figure className="lg:col-span-7">
+          <div className="relative aspect-[4/5] w-full overflow-hidden sm:aspect-[5/4] lg:aspect-[4/5]">
+            <Image
+              src="/brand-story.png"
+              alt="HAYDA SKINCo. curated skincare products"
+              fill
+              sizes="(max-width: 1024px) 100vw, 58vw"
+              className="object-cover"
+            />
+            <span className="pointer-events-none absolute inset-3 border border-gold/40" />
+          </div>
+          <figcaption className="mt-4 text-xs font-light uppercase tracking-[0.3em] text-gold">
+            Lagos, Nigeria
+          </figcaption>
+        </figure>
+        <div className="lg:col-span-5 lg:pb-8">
+          <h2 className="text-balance font-serif text-4xl font-medium leading-[1.12] text-foreground md:text-5xl">
             Premium skincare, finally accessible
           </h2>
-          <p className="mt-6 text-pretty text-base font-light leading-relaxed text-muted-foreground">
+          <p className="mt-8 text-pretty text-base font-light leading-relaxed text-muted-foreground md:text-lg">
             HAYDA SKINCo. was born from a simple frustration: finding authentic, dermatologist-trusted skincare in Nigeria was unnecessarily hard. Products were overpriced, often counterfeit, and always scattered across multiple stores.
-          </p>
-          <p className="mt-4 text-pretty text-base font-light leading-relaxed text-muted-foreground">
-            We built HAYDA to fix that. One destination, only verified brands — CeraVe, The Ordinary, La Roche-Posay, COSRX, Paula's Choice, and more — curated for every skin type, concern, and budget, with nationwide delivery from Lagos.
           </p>
         </div>
       </section>
 
-      {/* Values */}
-      <section className="border-y border-border bg-secondary">
-        <div className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
-          <div className="mb-14 flex flex-col items-center text-center">
+      <section className="border-y border-border">
+        <p className="mx-auto max-w-4xl px-5 py-16 text-pretty font-serif text-2xl font-light leading-snug text-foreground md:py-24 md:text-3xl md:leading-snug lg:px-8">
+          We built HAYDA to fix that. One destination, only verified brands — CeraVe, The Ordinary, La Roche-Posay, COSRX, Paula&apos;s Choice, and more — curated for every skin type, concern, and budget, with nationwide delivery from Lagos.
+        </p>
+      </section>
+
+      <section className="bg-secondary">
+        <div className="mx-auto max-w-7xl px-5 py-16 md:py-24 lg:px-8">
+          <div className="max-w-xl">
             <p className="text-xs font-light uppercase tracking-[0.3em] text-gold">What We Stand For</p>
             <h2 className="mt-4 font-serif text-3xl font-medium text-foreground md:text-4xl">
               Our Promise
             </h2>
-            <span className="mt-7 h-px w-16 bg-gold" />
           </div>
-          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-12 divide-y divide-border border-y border-border">
             {values.map((value) => (
-              <div key={value.title} className="flex flex-col items-center text-center">
-                <span className="flex size-14 items-center justify-center rounded-full border border-gold/50 text-gold">
-                  <value.icon className="size-6" />
-                </span>
-                <h3 className="mt-5 font-serif text-xl font-medium text-foreground">
-                  {value.title}
-                </h3>
-                <p className="mt-3 text-sm font-light leading-relaxed text-muted-foreground">
+              <article key={value.title} className="grid gap-4 py-8 md:grid-cols-12 md:items-start md:gap-8 md:py-10">
+                <div className="flex items-center gap-3 md:col-span-4">
+                  <value.icon className="size-5 shrink-0 text-gold" aria-hidden />
+                  <h3 className="font-serif text-2xl font-medium text-foreground">
+                    {value.title}
+                  </h3>
+                </div>
+                <p className="text-pretty text-sm font-light leading-relaxed text-muted-foreground md:col-span-7 md:col-start-6 md:text-base">
                   {value.body}
                 </p>
-              </div>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
       <section className="mx-auto max-w-3xl px-5 py-24 text-center lg:px-8">
         <h2 className="text-balance font-serif text-3xl font-medium leading-tight text-foreground md:text-4xl">
           Begin your ritual

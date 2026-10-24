@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import {
@@ -25,11 +25,10 @@ import { isDealCartId } from "@/lib/deals"
 import { slugifyCategory } from "@/lib/supabase/categories"
 import { slugifyCatalogLabel } from "@/lib/catalog"
 import { cn } from "@/lib/utils"
+import { FREE_STANDARD_DELIVERY } from "@/lib/storefront-copy"
 
 type Tab = "description" | "how-to-use" | "ingredients" | "reviews"
 
-/* ─── Star row helper ─────────────────────────────────────────── */
-function StarRow({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) {
   const cls = size === "md" ? "size-4" : "size-3.5"
   return (
     <div className="flex items-center gap-0.5">
@@ -265,11 +264,52 @@ export function ProductDetail({ product, hideBenefits = false }: { product: Prod
               After {product.discountPct}% → {formatPrice(discountedSku)}, then −{formatPrice(tierDiscount)} volume
             </p>
           )}
-          <p className="mt-1 text-sm font-light text-muted-foreground">
-            Line total{" "}
-            <span className="font-medium text-foreground">{formatPrice(totalPrice)}</span>
-            {" "}· qty {qty}
-          </p>
+          {product.reviewCount > 0 && (
+            <div className="mt-3 flex items-center gap-2">
+              <StarRow rating={Math.round(product.rating)} size="md" />
+              <span className="text-[10px] md:text-sm font-light text-muted-foreground">
+                {product.rating.toFixed(1)} · {product.reviewCount}{" "}
+                {product.reviewCount === 1 ? "review" : "reviews"}
+              </span>
+            </div>
+          )}
+
+          {/* Price — retail unit, or volume bands when MOQ / tiers apply */}
+          <div className="mt-5 flex flex-wrap items-baseline gap-3">
+            {unitPrice < skuPrice && (
+              <p className="font-serif text-lg md:text-xl font-light text-muted-foreground line-through">
+                {formatPrice(skuPrice)}
+              </p>
+            )}
+            <p className="font-serif text-2xl md:text-3xl font-medium text-foreground">
+              {formatPrice(unitPrice)}
+            </p>
+            {showVolumePricing && (
+              <span className="text-[10px] md:text-sm font-light text-muted-foreground">/ unit</span>
+            )}
+            {hasDiscount(product) && (
+              <span className="border border-gold/40 bg-gold/10 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-gold">
+                −{product.discountPct}%
+              </span>
+            )}
+            {showVolumePricing && tierDiscount > 0 && (
+              <span className="border border-border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                −{formatPrice(tierDiscount)} vol.
+              </span>
+            )}
+          </div>
+          {showVolumePricing && hasDiscount(product) && tierDiscount > 0 && (
+            <p className="mt-1 text-xs font-light text-muted-foreground">
+              After {product.discountPct}% → {formatPrice(discountedSku)}, then −{formatPrice(tierDiscount)} volume
+            </p>
+          )}
+          {showVolumePricing && (
+            <p className="mt-1 text-sm font-light text-muted-foreground">
+              Line total{" "}
+              <span className="font-medium text-foreground">{formatPrice(totalPrice)}</span>
+              {" "}· qty {qty}
+            </p>
+          )}
 
           {moq > 1 && (
             <p className="mt-2 text-sm font-light text-muted-foreground">
@@ -277,7 +317,7 @@ export function ProductDetail({ product, hideBenefits = false }: { product: Prod
             </p>
           )}
 
-          {priceBands.length > 0 && (product.priceTiers?.length || moq > 1) && (
+          {showVolumePricing && priceBands.length > 0 && (
             <div className="mt-4 border border-border">
               <p className="border-b border-border px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                 Price range
@@ -319,44 +359,11 @@ export function ProductDetail({ product, hideBenefits = false }: { product: Prod
 
           <span className="my-6 h-px w-full bg-border" />
 
-          <p className="text-pretty text-sm font-light leading-relaxed text-muted-foreground md:text-[15px]">
-            {product.description}
-          </p>
-
-          {/* Key ingredients chips */}
-          {product.ingredients.length > 0 && (
-            <div className="mt-5">
-              <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Key Ingredients</p>
-              <div className="flex flex-wrap gap-1.5">
-                {product.ingredients.map(i => (
-                  <span key={i} className="border border-border px-3 py-1 text-xs font-light text-foreground/80">
-                    {i}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Variant / size selector */}
-          {product.variants && product.variants.length > 0 ? (
-            <div className="mt-5">
-              <div className="mb-2 flex items-baseline gap-2">
-                <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Size / Variant</p>
-                {selectedVariant !== null && (
-                  <span className="text-xs font-light text-muted-foreground">
-                    — {product.variants[selectedVariant].label}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {product.variants.map((v, idx) => (
-                  <button
-                    key={v.label}
-                    type="button"
-                    onClick={() => setSelectedVariant(idx)}
-                    className={cn(
-                      "flex flex-col items-center border px-4 py-2 text-xs transition-all",
-                      selectedVariant === idx
+          {buyBlurb ? (
+            <p className="line-clamp-3 text-pretty text-sm font-light leading-relaxed text-muted-foreground md:text-[15px]">
+              {buyBlurb}
+            </p>
+          ) : null}
                         ? "border-foreground bg-foreground text-background"
                         : "border-border text-foreground hover:border-foreground",
                     )}
@@ -462,6 +469,7 @@ export function ProductDetail({ product, hideBenefits = false }: { product: Prod
       </div>
 
       {/* ── Tabs: Description / How to Use / Ingredients ── */}
+              ref={buyButtonRef}
       <div className="mt-8 md:mt-16">
         <div className="flex border-b border-border gap-0">
           {(["description", "how-to-use", "ingredients"] as Tab[]).map(t => (
@@ -479,22 +487,53 @@ export function ProductDetail({ product, hideBenefits = false }: { product: Prod
               {t === "how-to-use" ? "How to Use" : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
+          <div className="mt-7 grid grid-cols-3 gap-3 border-t border-border pt-6 text-[11px] text-muted-foreground md:text-xs">
+            <div className="flex items-start gap-2">
+              <Truck className="mt-0.5 size-4 shrink-0 text-gold" />
+              <span className="font-light leading-snug">{FREE_STANDARD_DELIVERY}</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-gold" />
+              <span className="font-light leading-snug">100% authentic</span>
+            </div>
+            <Link href="/returns" className="flex items-start gap-2 transition-colors hover:text-foreground">
+              <RotateCcw className="mt-0.5 size-4 shrink-0 text-gold" />
+              <span className="font-light leading-snug underline-offset-2 hover:underline">Easy returns</span>
+            </Link>
+          </div>
         </div>
+      </div>
 
-        <div className="py-8 max-w-3xl text-[13px] md:text-[15px] text-muted-foreground leading-relaxed">
-          {tab === "description" && (
-            <>
-              <p>{product.description}</p>
-              {!hideBenefits && product.benefits.length > 0 && (
-                <>
-                  <h4 className="mt-7 mb-3 text-sm font-medium uppercase tracking-[0.15em] text-foreground">Benefits</h4>
-                  <ul className="space-y-2">
-                    {product.benefits.map(b => (
-                      <li key={b} className="flex items-center gap-3 text-[10px] md:text-sm">
-                        <Check className="size-2.5 md:size-4 text-gold shrink-0" /> {b}
-                      </li>
-                    ))}
-                  </ul>
+      {!buyInView && (
+        <div className="fixed bottom-3 left-3 right-[5.5rem] z-40 border border-border bg-background/95 p-3 shadow-[0_8px_30px_rgba(0,0,0,0.08)] backdrop-blur md:hidden">
+          <div className="flex items-center gap-3">
+            <div className="min-w-0">
+              <p className="font-serif text-lg font-medium leading-none text-foreground">{formatPrice(unitPrice)}</p>
+              <p className={cn(
+                "mt-1 truncate text-[10px] font-light",
+                inStock ? (lowStock ? "text-amber-600" : "text-muted-foreground") : "text-destructive",
+              )}>
+                {inStock ? (lowStock ? `Only ${product.stock} left` : "In stock") : "Out of stock"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={!inStock}
+              className={cn(
+                "flex h-11 min-w-0 flex-1 items-center justify-center gap-2 px-3 text-[11px] font-medium uppercase tracking-[0.14em] transition-all duration-300",
+                !inStock
+                  ? "cursor-not-allowed bg-muted text-muted-foreground"
+                  : added
+                    ? "bg-gold text-gold-foreground"
+                    : "bg-foreground text-background",
+              )}
+            >
+              {added ? <><Check className="size-3.5" /> Added</> : "Add to Cart"}
+            </button>
+          </div>
+        </div>
+      )}
                 </>
               )}
               {product.concerns.length > 0 && (

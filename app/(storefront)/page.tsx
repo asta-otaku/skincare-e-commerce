@@ -9,7 +9,6 @@ import { getActiveBrands } from "@/lib/supabase/brands"
 import { dealAsProduct } from "@/lib/deals"
 import { getActiveDeals } from "@/lib/supabase/deals"
 import { getPublishedJournals } from "@/lib/supabase/journals"
-import { cn } from "@/lib/utils"
 import { ALL_SKIN_TYPES, slugifyCatalogLabel } from "@/lib/catalog"
 
 export const revalidate = 60
@@ -19,45 +18,52 @@ const COLLECTIONS = [
     label: "Sunscreen",
     href: "/shop?category=sunscreens",
     image: "/sunscreen.jpeg",
-    tone: "bg-[#293049]",
   },
   {
     label: "Face Toners",
     href: "/shop?category=face-toners-mists",
     image: "/toner.jpeg",
-    tone: "bg-[#FACBD3]",
   },
   {
     label: "Body Moisturizer",
     href: "/shop?category=body-moisturizers-oils",
     image: "/moisturizer.jpeg",
-    tone: "bg-[#F5E6A8]",
   },
   {
     label: "Serum",
     href: "/shop?category=serums-treatment",
     image: "/serum.jpeg",
-    tone: "bg-[#E8EEF4]",
   },
 ]
 
-const SKIN_TYPE_COLORS = [
-  "bg-red-50 border-red-100 hover:border-red-300",
-  "bg-amber-50 border-amber-100 hover:border-amber-300",
-  "bg-secondary border-border hover:border-gold/40",
-  "bg-blue-50 border-blue-100 hover:border-blue-300",
-  "bg-green-50 border-green-100 hover:border-green-300",
-  "bg-pink-50 border-pink-100 hover:border-pink-300",
-  "bg-violet-50 border-violet-100 hover:border-violet-300",
-  "bg-sky-50 border-sky-100 hover:border-sky-300",
-  "bg-orange-50 border-orange-100 hover:border-orange-300",
-]
-
-const SKIN_TYPES = ALL_SKIN_TYPES.map((label, i) => ({
+const SKIN_TYPES = ALL_SKIN_TYPES.map(label => ({
   label,
   href: `/shop?skinType=${slugifyCatalogLabel(label)}`,
-  color: SKIN_TYPE_COLORS[i % SKIN_TYPE_COLORS.length],
 }))
+
+async function loadHeroProducts() {
+  const bestsellers = await getProductsByTag("Bestseller", 3)
+  if (bestsellers.length >= 3) return bestsellers.slice(0, 3)
+
+  const arrivals = await getProductsByTag("New", 3)
+  const picked = [...bestsellers]
+  const seen = new Set(picked.map(product => product.id))
+  for (const product of arrivals) {
+    if (seen.has(product.id)) continue
+    picked.push(product)
+    if (picked.length >= 3) break
+  }
+  return picked.slice(0, 3)
+}
+
+function HeroSkeleton() {
+  return <div className="min-h-[28rem] animate-pulse bg-secondary lg:min-h-[70vh]" aria-hidden />
+}
+
+async function HomeHero() {
+  const products = await loadHeroProducts()
+  return <HomeHeroSlider products={products} />
+}
 
 function ProductGridSkeleton({ count = 4 }: { count?: number }) {
   return (
@@ -238,28 +244,30 @@ async function SaleSection() {
 async function BrandsSection() {
   const brands = await getActiveBrands()
   return (
-    <section className="border-y border-border bg-background py-14">
+    <section className="border-y border-border bg-background py-14 md:py-16">
       <div className="mx-auto max-w-7xl px-5 lg:px-8">
-        <p className="mb-8 text-center text-[11px] font-medium uppercase tracking-[0.3em] text-muted-foreground">
-          Trusted brands in stock
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-4">
+        <div className="mb-8 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Shop by brand</p>
+            <h2 className="mt-1.5 font-serif text-xl font-medium md:text-3xl">Trusted brands</h2>
+          </div>
+          <Link href="/brands" className="shrink-0 text-xs font-medium uppercase tracking-[0.15em] text-gold hover:underline underline-offset-2">
+            View all
+          </Link>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {brands.slice(0, 6).map(brand => (
             <Link
               key={brand.id}
               href={`/shop?brand=${encodeURIComponent(brand.name)}`}
-              className="group flex items-center justify-center border border-border px-4 md:px-5 py-3 transition-all hover:border-gold/60 hover:bg-secondary min-w-[120px]"
+              className="group flex items-center justify-between gap-4 border border-border bg-background px-5 py-5 transition-colors hover:border-gold/40 hover:bg-secondary"
             >
-              <span className="text-[10px] md:text-sm font-medium text-foreground/60 group-hover:text-foreground transition-colors">
+              <span className="font-serif text-lg font-medium tracking-tight text-foreground md:text-xl">
                 {brand.name}
               </span>
+              <ArrowRight className="size-4 shrink-0 text-gold transition-transform group-hover:translate-x-0.5" />
             </Link>
           ))}
-        </div>
-        <div className="mt-8 text-center">
-          <Link href="/brands" className="text-xs font-medium uppercase tracking-[0.15em] text-gold hover:underline underline-offset-2">
-            View all brands →
-          </Link>
         </div>
       </div>
     </section>
@@ -269,7 +277,9 @@ async function BrandsSection() {
 export default function HomePage() {
   return (
     <>
-      <HomeHeroSlider />
+      <Suspense fallback={<HeroSkeleton />}>
+        <HomeHero />
+      </Suspense>
 
       <section className="mx-auto max-w-7xl px-5 py-12 md:py-20 lg:px-8">
         <div className="mb-10 flex items-center gap-6 md:mb-14">
@@ -287,23 +297,19 @@ export default function HomePage() {
 
         <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4 md:gap-6">
           {COLLECTIONS.map(cat => (
-            <Link key={cat.label} href={cat.href} className="group flex flex-col items-center gap-4">
-              <div
-                className={cn(
-                  "relative aspect-3/4 w-full overflow-hidden rounded-2xl",
-                  cat.tone,
-                )}
-              >
-                <Image
-                  src={cat.image}
-                  alt={cat.label}
-                  fill
-                  sizes="(max-width: 768px) 50vw, 25vw"
-                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                />
-                <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-foreground/10 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-              </div>
-              <span className="inline-flex min-w-[70%] items-center justify-center border border-foreground px-3 py-2 md:px-4 md:py-2.5 text-center text-[8px] font-medium uppercase tracking-[0.2em] text-foreground transition-colors group-hover:border-gold group-hover:bg-gold group-hover:text-gold-foreground md:text-[11px]">
+            <Link
+              key={cat.label}
+              href={cat.href}
+              className="group relative block aspect-3/4 overflow-hidden border border-border bg-secondary"
+            >
+              <Image
+                src={cat.image}
+                alt={cat.label}
+                fill
+                sizes="(max-width: 768px) 50vw, 25vw"
+                className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+              />
+              <span className="absolute inset-x-3 bottom-3 border border-border bg-background/95 px-2 py-2 text-center text-[10px] font-medium uppercase leading-snug tracking-[0.14em] text-foreground md:text-[11px]">
                 {cat.label}
               </span>
             </Link>
@@ -340,10 +346,10 @@ export default function HomePage() {
               <Link
                 key={c.label}
                 href={c.href}
-                className={cn("group flex flex-col items-center gap-2 border p-3 md:p-5 text-center transition-all", c.color)}
+                className="group flex flex-col items-center gap-2 border border-border bg-background p-3 text-center transition-colors hover:bg-secondary md:p-5"
               >
-                <p className="text-[10px] md:text-sm font-medium group-hover:underline underline-offset-2">{c.label}</p>
-                <ArrowRight className="size-2.5 md:size-3 text-muted-foreground group-hover:text-foreground transition-colors" />
+                <p className="text-xs font-medium group-hover:underline underline-offset-2 md:text-sm">{c.label}</p>
+                <ArrowRight className="size-3 text-muted-foreground transition-colors group-hover:text-foreground" />
               </Link>
             ))}
           </div>

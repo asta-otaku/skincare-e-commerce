@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
     default: 'HAYDA SKINCo. — Hub for all your skin needs',
-    template: '%s | HAYDA SKINCo.',
+    template: '%s',
   },
   description:
     'HAYDA SKINCo. is your one-stop destination for premium skincare in Nigeria. Shop trusted brands, serums, moisturisers, sunscreens, and combo deals — authentic products delivered nationwide.',

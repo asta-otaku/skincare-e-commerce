@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Check } from "lucide-react"
+import { FREE_STANDARD_DELIVERY, SOCIAL_LINKS } from "@/lib/storefront-copy"
 import { getWhatsAppDisplay, getWhatsAppNumber } from "@/lib/whatsapp"
 
 const COLUMNS = [

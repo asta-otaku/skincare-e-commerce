@@ -49,7 +49,7 @@ export default function AdminInboxPage() {
   ]
 
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-auto">
+    <div className="admin-page">
       <div className="admin-page-header">
         <div className="min-w-0">
           <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-gold">Inbox</p>
@@ -107,7 +107,7 @@ function ContactList({ rows }: { rows: ContactRow[] }) {
     return <Empty label="No contact messages yet." />
   }
   return (
-    <ul className="space-y-3">
+    <ul className="admin-table-panel space-y-3">
       {rows.map(r => (
         <li key={r.id} className="border border-border p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -130,7 +130,7 @@ function WholesaleList({ rows }: { rows: WholesaleRow[] }) {
     return <Empty label="No wholesale enquiries yet." />
   }
   return (
-    <ul className="space-y-3">
+    <ul className="admin-table-panel space-y-3">
       {rows.map(r => (
         <li key={r.id} className="border border-border p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -159,8 +159,8 @@ function NewsletterList({ rows }: { rows: NewsletterRow[] }) {
   }
   return (
     <>
-      <div className="hidden overflow-x-auto border border-border md:block">
-      <table className="w-full text-left text-sm">
+      <div className="admin-table-panel admin-table-scroll hidden border border-border md:block">
+      <table className="admin-data-table w-full text-left text-sm">
         <thead className="border-b border-border bg-secondary text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
           <tr>
             <th className="px-4 py-3 font-light">Email</th>
@@ -178,10 +178,13 @@ function NewsletterList({ rows }: { rows: NewsletterRow[] }) {
               <td className="px-4 py-3 font-light text-muted-foreground">{formatDate(r.created_at)}</td>
             </tr>
           ))}
+          <tr className="admin-table-fill" aria-hidden="true">
+            <td colSpan={4} />
+          </tr>
         </tbody>
       </table>
       </div>
-      <ul className="divide-y divide-border border border-border md:hidden">
+      <ul className="admin-table-panel divide-y divide-border border border-border md:hidden">
         {rows.map(r => (
           <li key={r.id} className="p-4">
             <p className="text-sm font-medium break-all">{r.email}</p>
@@ -196,7 +199,7 @@ function NewsletterList({ rows }: { rows: NewsletterRow[] }) {
 
 function Empty({ label }: { label: string }) {
   return (
-    <div className="border border-dashed border-border py-16 text-center text-sm font-light text-muted-foreground">
+    <div className="admin-table-panel border border-dashed border-border py-16 text-center text-sm font-light text-muted-foreground">
       {label}
     </div>
   )

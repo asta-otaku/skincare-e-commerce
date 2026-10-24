@@ -90,7 +90,7 @@ export default function AdminBrandsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-auto">
+    <div className="admin-page">
       <div className="admin-page-header">
         <div>
           <h1 className="font-serif text-2xl font-medium">Brands</h1>
@@ -153,7 +153,7 @@ export default function AdminBrandsPage() {
           </div>
         </form>
 
-        <div>
+        <div className="flex min-h-0 flex-col">
           <div className="mb-4 relative max-w-sm">
             <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -171,7 +171,7 @@ export default function AdminBrandsPage() {
               No brands yet. Add one to use on products.
             </p>
           ) : (
-            <ul className="border border-border divide-y divide-border">
+            <ul className="admin-table-panel border border-border divide-y divide-border">
               {filtered.map(b => (
                 <li key={b.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                   <div>

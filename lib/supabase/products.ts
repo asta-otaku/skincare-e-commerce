@@ -8,6 +8,11 @@
  * filters, search, and limits run in the database as the catalog grows.
  */
 import { createClient as createSb } from "@supabase/supabase-js"
+import {
+  archiveColumnEnabled,
+  isMissingArchiveColumn,
+  markArchiveColumnMissing,
+} from "@/lib/supabase/archive-column"
 import { createClient, createAdminBrowserClient } from "@/lib/supabase/client"
 import type { Product } from "@/lib/products"
 import { products as mockProducts, BRANDS as mockBrands } from "@/lib/products"
@@ -32,6 +37,8 @@ export type ProductQuery = {
   offset?: number
   /** Include unpublished (admin lists). */
   includeUnpublished?: boolean
+  /** Admin archive filter. Storefront always excludes archived products. */
+  archive?: "active" | "archived" | "all"
   /** Full row for admin/PDP; card = grid fields only (default on storefront). */
   fields?: "card" | "full"
 }
@@ -130,6 +137,7 @@ export function rowToProduct(row: any): Product {
     concerns: row.concerns ?? [],
     skinTypes: Array.isArray(row.skin_types) ? row.skin_types.filter(Boolean) : [],
     stock: row.stock ?? 0,
+    archived: row.is_archived === true,
     rating: row.rating ?? 0,
     reviewCount: row.review_count ?? 0,
     size: row.size || undefined,
@@ -198,6 +206,22 @@ function filterMock(q: ProductQuery): Product[] {
   if (limit != null) return list.slice(offset, offset + limit)
   if (offset > 0) return list.slice(offset)
   return list
+}
+
+function applyArchiveFilter(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any,
+  archive?: ProductQuery["archive"],
+) {
+  if (!archiveColumnEnabled() || archive === "all") return query
+  if (archive === "archived") return query.eq("is_archived", true)
+  return query.eq("is_archived", false)
+}
+
+function noteArchiveQueryError(message: string) {
+  if (!isMissingArchiveColumn(message)) return false
+  markArchiveColumnMissing()
+  return true
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -277,8 +301,11 @@ function applyProductSort(query: any, sort?: string) {
 }
 
 /** Filtered + sorted product query against Supabase (or mock). */
-export async function queryProducts(q: ProductQuery = {}): Promise<Product[]> {
-  const supabase = getReadClient()
+export async function queryProducts(
+  q: ProductQuery = {},
+  client?: ReturnType<typeof getReadClient>,
+): Promise<Product[]> {
+  const supabase = client ?? getReadClient()
   if (!supabase) return filterMock(q)
 
   const useFull = q.fields === "full" || q.includeUnpublished
@@ -289,6 +316,7 @@ export async function queryProducts(q: ProductQuery = {}): Promise<Product[]> {
   if (!q.includeUnpublished) {
     query = query.eq("is_published", true)
   }
+  query = applyArchiveFilter(query, q.archive)
 
   query = applyProductFilters(query, q)
   query = applyProductSort(query, q.sort)
@@ -309,6 +337,9 @@ export async function queryProducts(q: ProductQuery = {}): Promise<Product[]> {
 
   const { data, error } = await query
   if (error) {
+    if (noteArchiveQueryError(error.message) && archiveColumnEnabled() === false) {
+      return queryProducts(q, client)
+    }
     console.error("[products] queryProducts:", error.message)
     return []
   }
@@ -331,8 +362,11 @@ export async function getWholesaleProducts(limit = 48): Promise<Product[]> {
 }
 
 /** Count matching published products without loading rows. */
-export async function countProducts(q: ProductQuery = {}): Promise<number> {
-  const supabase = getReadClient()
+export async function countProducts(
+  q: ProductQuery = {},
+  client?: ReturnType<typeof getReadClient>,
+): Promise<number> {
+  const supabase = client ?? getReadClient()
   if (!supabase) {
     // filterMock already slices — recount without limit
     const { limit: _l, offset: _o, ...rest } = q
@@ -346,11 +380,13 @@ export async function countProducts(q: ProductQuery = {}): Promise<number> {
   if (!q.includeUnpublished) {
     query = query.eq("is_published", true)
   }
+  query = applyArchiveFilter(query, q.archive)
 
   query = applyProductFilters(query, q)
 
   const { count, error } = await query
   if (error) {
+    if (noteArchiveQueryError(error.message)) return countProducts(q, client)
     console.error("[products] countProducts:", error.message)
     return 0
   }
@@ -363,6 +399,7 @@ export async function getAdminProductsPage(q: {
   category?: string
   page?: number
   pageSize?: number
+  archive?: "active" | "archived" | "all"
 }): Promise<{ products: Product[]; total: number }> {
   const page = Math.max(1, q.page ?? 1)
   const pageSize = Math.max(1, q.pageSize ?? 20)
@@ -371,11 +408,16 @@ export async function getAdminProductsPage(q: {
     search: q.search,
     category: q.category && q.category !== "All" ? q.category : undefined,
     includeUnpublished: true,
+    archive: q.archive ?? "active",
     sort: "name",
   }
   const supabase = createAdminBrowserClient() ?? getReadClient()
   if (!supabase) {
-    const all = filterMock({ ...base })
+    const all = filterMock({ ...base }).filter(p => {
+      if (base.archive === "archived") return p.archived === true
+      if (base.archive === "all") return true
+      return p.archived !== true
+    })
     return {
       products: all.slice(offset, offset + pageSize),
       total: all.length,
@@ -383,8 +425,8 @@ export async function getAdminProductsPage(q: {
   }
 
   const [products, total] = await Promise.all([
-    queryProducts({ ...base, limit: pageSize, offset }),
-    countProducts(base),
+    queryProducts({ ...base, limit: pageSize, offset }, supabase),
+    countProducts(base, supabase),
   ])
   return { products, total }
 }
@@ -435,13 +477,17 @@ export async function getProductsByIds(ids: string[]): Promise<Product[]> {
       .filter((p): p is Product => Boolean(p))
   }
 
-  const { data, error } = await supabase
+  let request = supabase
     .from("products")
     .select(PRODUCT_CARD_SELECT)
     .in("id", unique)
     .eq("is_published", true)
+  if (archiveColumnEnabled()) request = request.eq("is_archived", false)
+
+  const { data, error } = await request
 
   if (error) {
+    if (noteArchiveQueryError(error.message)) return getProductsByIds(ids)
     console.error("[products] getProductsByIds:", error.message)
     return []
   }
@@ -452,12 +498,16 @@ export async function getProductIds(): Promise<string[]> {
   const supabase = getReadClient()
   if (!supabase) return mockProducts.map(p => p.id)
 
-  const { data, error } = await supabase
-    .from("products")
-    .select("id")
-    .eq("is_published", true)
+  let request = supabase.from("products").select("id").eq("is_published", true)
+  if (archiveColumnEnabled()) request = request.eq("is_archived", false)
 
-  if (error || !data) return []
+  const { data, error } = await request
+
+  if (error) {
+    if (noteArchiveQueryError(error.message)) return getProductIds()
+    return []
+  }
+  if (!data) return []
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return data.map((r: any) => r.id as string)
 }
@@ -502,15 +552,19 @@ export async function getProductsByTag(
     `tags.ov.{${tags.map(t => `"${t}"`).join(",")}}`,
     ...tags.map(t => `tag.eq."${t}"`),
   ]
-  const { data, error } = await supabase
+  let request = supabase
     .from("products")
     .select("*, brands(name)")
     .eq("is_published", true)
+  if (archiveColumnEnabled()) request = request.eq("is_archived", false)
+
+  const { data, error } = await request
     .or(orParts.join(","))
     .order("rating", { ascending: false })
     .limit(limit)
 
   if (error) {
+    if (noteArchiveQueryError(error.message)) return getProductsByTag(tag, limit)
     console.error("[products] getProductsByTag:", error.message)
     // Fallback: fetch per-tag
     const batches = await Promise.all(tags.map(t => queryProducts({ tag: t, sort: "rating", limit })))
@@ -597,13 +651,16 @@ export async function getBrandStorefrontSummaries(): Promise<BrandStorefrontSumm
   }
 
   // Single catalog pass — avoid one query per brand
-  const { data: rows, error } = await supabase
+  let request = supabase
     .from("products")
     .select("name, brand_name, rating")
     .eq("is_published", true)
-    .order("rating", { ascending: false })
+  if (archiveColumnEnabled()) request = request.eq("is_archived", false)
+
+  const { data: rows, error } = await request.order("rating", { ascending: false })
 
   if (error) {
+    if (noteArchiveQueryError(error.message)) return getBrandStorefrontSummaries()
     console.error("[products] getBrandStorefrontSummaries:", error.message)
     return []
   }
@@ -720,6 +777,22 @@ export async function deleteProduct(id: string): Promise<void> {
   if (!supabase) return
   const { error } = await supabase.from("products").delete().eq("id", id)
   if (error) throw new Error(error.message)
+}
+
+export async function setProductArchived(id: string, archived: boolean): Promise<void> {
+  const supabase = createAdminBrowserClient()
+  if (!supabase) return
+  const { error } = await supabase
+    .from("products")
+    .update({ is_archived: archived, updated_at: new Date().toISOString() })
+    .eq("id", id)
+  if (error) {
+    throw new Error(
+      isMissingArchiveColumn(error.message)
+        ? "Archive is not available yet. Apply supabase/migrations/030_archive_and_sub_admin.sql in Supabase, then try again."
+        : error.message,
+    )
+  }
 }
 
 export async function getAllBrands() {

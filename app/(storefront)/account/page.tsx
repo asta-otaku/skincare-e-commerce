@@ -8,6 +8,7 @@ import { useFavorites } from "@/components/favorites-provider"
 import { OrderItemThumb } from "@/components/order-item-thumb"
 import { getMyOrders } from "@/lib/supabase/orders"
 import { getMyReviews } from "@/lib/supabase/reviews"
+import { getRewardsSummary, type RewardsSummary } from "@/lib/supabase/rewards"
 import type { Order, OrderStatus } from "@/lib/orders"
 import { formatPrice } from "@/lib/products"
 import { cn } from "@/lib/utils"
@@ -21,18 +22,35 @@ const STATUS_STYLE: Record<OrderStatus, { label: string; cls: string }> = {
   refunded:   { label: "Refunded",   cls: "text-destructive bg-destructive/10 border-destructive/20" },
 }
 
+function formatOrderDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
+}
+
 export default function AccountPage() {
   const { favorites } = useFavorites()
   const [orders, setOrders] = useState<Order[]>([])
   const [reviews, setReviews] = useState<Awaited<ReturnType<typeof getMyReviews>>>([])
+  const [rewards, setRewards] = useState<RewardsSummary | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([getMyOrders(), getMyReviews()]).then(([orderData, reviewData]) => {
-      setOrders(orderData)
-      setReviews(reviewData)
-      setLoading(false)
-    })
+    let cancelled = false
+    Promise.all([getMyOrders(), getMyReviews(), getRewardsSummary()]).then(
+      ([orderData, reviewData, rewardsData]) => {
+        if (cancelled) return
+        setOrders(orderData)
+        setReviews(reviewData)
+        setRewards(rewardsData)
+        setLoading(false)
+      },
+    )
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const totalSpent = orders
@@ -40,7 +58,14 @@ export default function AccountPage() {
     .reduce((s, o) => s + o.total, 0)
 
   const recent = orders.slice(0, 3)
+  const latest = orders[0]
+  const latestCount = latest ? latest.items.reduce((n, i) => n + i.quantity, 0) : 0
   const reviewCount = reviews.length
+  const nextGoal = rewards?.nextTierAt ?? 0
+  const hasNextTier = Boolean(rewards && rewards.nextTier !== rewards.tier && nextGoal > 0)
+  const progress = hasNextTier && rewards
+    ? Math.min(100, Math.round((rewards.balance / nextGoal) * 100))
+    : 0
 
   const stats = [
     {
@@ -71,6 +96,120 @@ export default function AccountPage() {
 
   return (
     <div className="space-y-8">
+      <div className="grid gap-4 lg:grid-cols-5">
+        <section className="flex flex-col justify-between border border-gold/30 bg-secondary p-6 md:p-8 lg:col-span-3">
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[11px] font-light uppercase tracking-[0.28em] text-gold">HAYDA Rewards</p>
+              {rewards && (
+                <span className="border border-gold/40 bg-lavender px-3 py-1 text-[11px] font-medium text-gold">
+                  {rewards.tier} Member
+                </span>
+              )}
+            </div>
+            <p className="mt-5 font-serif text-6xl font-medium tabular-nums leading-none">
+              {loading || !rewards ? "—" : rewards.balance.toLocaleString()}
+            </p>
+            <p className="mt-3 text-sm font-light text-muted-foreground">
+              {rewards ? "points available" : "Earn 1 point per ₦100 spent"}
+            </p>
+            {rewards && (
+              <p className="mt-4 max-w-sm text-sm font-light leading-relaxed text-foreground/80">
+                Earn 1 point per ₦100 spent.
+              </p>
+            )}
+            {!loading && !rewards && (
+              <p className="mt-4 max-w-sm text-sm font-light leading-relaxed text-muted-foreground">
+                Your balance will show here when rewards are available.
+              </p>
+            )}
+            {hasNextTier && rewards && (
+              <div className="mt-6 max-w-md">
+                <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px] font-light text-muted-foreground">
+                  <span>{rewards.tier}</span>
+                  <span>
+                    {rewards.balance.toLocaleString()} / {nextGoal.toLocaleString()} pts to {rewards.nextTier}
+                  </span>
+                </div>
+                <div className="h-1 w-full overflow-hidden bg-background">
+                  <div className="h-full bg-gold" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
+          <Link
+            href="/account/rewards"
+            className="mt-8 inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-foreground transition-colors hover:text-gold"
+          >
+            View rewards <ArrowRight className="size-3" />
+          </Link>
+        </section>
+
+        <section className="flex h-full flex-col border border-border p-6 md:p-8 lg:col-span-2">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-[11px] font-light uppercase tracking-[0.22em] text-muted-foreground">Latest order</h2>
+            <Link
+              href="/account/orders"
+              className="text-[11px] font-light text-gold underline-offset-2 hover:underline"
+            >
+              View all
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="mt-5 h-28 animate-pulse bg-muted/40" />
+          ) : !latest ? (
+            <div className="mt-6 flex flex-1 flex-col">
+              <p className="font-serif text-2xl font-medium">No orders yet</p>
+              <p className="mt-2 text-sm font-light leading-relaxed text-muted-foreground">
+                When you check out, your orders will show up here.
+              </p>
+              <Link
+                href="/shop"
+                className="mt-5 inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-gold hover:underline"
+              >
+                Browse the shop <ArrowRight className="size-3" />
+              </Link>
+            </div>
+          ) : (
+            <Link
+              href={`/account/orders/${latest.reference}`}
+              className="group mt-5 flex flex-1 items-start gap-4"
+            >
+              {latest.items[0] ? (
+                <OrderItemThumb
+                  productId={latest.items[0].productId}
+                  image={latest.items[0].image}
+                  name={latest.items[0].name}
+                  size="xl"
+                  className="size-16 ring-0"
+                  sizes="64px"
+                />
+              ) : (
+                <div className="flex size-16 shrink-0 items-center justify-center border border-border bg-muted">
+                  <ShoppingBag className="size-5 text-muted-foreground" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium leading-snug">
+                  {latest.items[0]?.name ?? "Order"}
+                </p>
+                <p className="mt-1 font-mono text-[11px] text-muted-foreground">{latest.reference}</p>
+                <p className="mt-1 text-xs font-light text-muted-foreground">
+                  {formatOrderDate(latest.createdAt)} · {latestCount} {latestCount === 1 ? "item" : "items"}
+                </p>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span className={cn("border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em]", STATUS_STYLE[latest.status].cls)}>
+                    {STATUS_STYLE[latest.status].label}
+                  </span>
+                  <span className="text-sm font-medium">{formatPrice(latest.total)}</span>
+                </div>
+              </div>
+            </Link>
+          )}
+        </section>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map(stat => (
           <Link
@@ -87,42 +226,22 @@ export default function AccountPage() {
         ))}
       </div>
 
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs font-medium uppercase tracking-[0.2em]">Recent Orders</h2>
-          <Link
-            href="/account/orders"
-            className="flex items-center gap-1 text-[11px] font-light text-gold hover:underline underline-offset-2"
-          >
-            View all <ArrowRight className="size-3" />
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="h-32 border border-border bg-muted/20 animate-pulse" />
-        ) : recent.length === 0 ? (
-          <div className="border border-border px-5 py-10 text-center">
-            <p className="font-serif text-lg font-medium">No orders yet</p>
-            <p className="mt-1 text-sm font-light text-muted-foreground">
-              When you check out, your orders will show up here.
-            </p>
+      {!loading && recent.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xs font-medium uppercase tracking-[0.2em]">Recent Orders</h2>
             <Link
-              href="/shop"
-              className="mt-4 inline-block text-xs font-medium uppercase tracking-[0.15em] text-gold hover:underline"
+              href="/account/orders"
+              className="flex items-center gap-1 text-[11px] font-light text-gold hover:underline underline-offset-2"
             >
-              Browse the shop
+              View all <ArrowRight className="size-3" />
             </Link>
           </div>
-        ) : (
+
           <div className="divide-y divide-border border border-border">
             {recent.map(order => {
               const s = STATUS_STYLE[order.status]
               const thumb = order.items[0]
-              const date = new Date(order.createdAt).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
               const itemCount = order.items.reduce((n, i) => n + i.quantity, 0)
               return (
                 <Link
@@ -147,7 +266,7 @@ export default function AccountPage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-mono text-xs font-medium">{order.reference}</p>
                     <p className="text-xs font-light text-muted-foreground mt-0.5">
-                      {date} · {itemCount} item{itemCount !== 1 ? "s" : ""}
+                      {formatOrderDate(order.createdAt)} · {itemCount} item{itemCount !== 1 ? "s" : ""}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
@@ -166,8 +285,8 @@ export default function AccountPage() {
               )
             })}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {favorites.length > 0 && (
         <section>
@@ -245,10 +364,7 @@ export default function AccountPage() {
         )}
       </section>
 
-      <section className="border border-border/60 bg-secondary p-5">
-        <p className="mb-3 text-[11px] font-light uppercase tracking-[0.18em] text-muted-foreground">
-          Quick Actions
-        </p>
+      <section className="border-t border-border pt-6">
         <div className="flex flex-wrap gap-2">
           {[
             { label: "Manage account", href: "/account/settings" },

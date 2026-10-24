@@ -123,7 +123,7 @@ export default function EmailPreviewPage() {
   const html = useMemo(() => current.html(), [current])
 
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-auto">
+    <div className="admin-page">
       <div className="admin-page-header">
         <div>
           <h1 className="font-serif text-2xl font-medium">Email preview</h1>

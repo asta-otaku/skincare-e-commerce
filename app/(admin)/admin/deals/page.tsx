@@ -55,7 +55,7 @@ export default function AdminDealsPage() {
   const activeCount = deals.filter(d => d.status === "active").length
 
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-auto">
+    <div className="admin-page">
       {/* Header */}
       <div className="admin-page-header">
         <div>
@@ -116,9 +116,9 @@ export default function AdminDealsPage() {
         </div>
 
         {/* Table / cards */}
-        <div className="border border-border">
-          <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="admin-table-panel border border-border">
+          <div className="admin-table-scroll hidden md:block">
+          <table className="admin-data-table w-full text-sm">
             <thead className="border-b border-border bg-muted">
               <tr>
                 <th className="px-5 py-3.5 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Deal</th>
@@ -229,6 +229,9 @@ export default function AdminDealsPage() {
                   </td>
                 </tr>
               )}
+              <tr className="admin-table-fill" aria-hidden="true">
+                <td colSpan={5} />
+              </tr>
             </tbody>
           </table>
           </div>

@@ -113,14 +113,14 @@ export function SiteNavbar() {
               height={200}
               sizes="80px"
               quality={100}
-              className="object-contain size-20"
+              className="size-16 object-contain lg:size-14"
               priority
             />
 
           </Link>
 
           {/* Desktop nav — primary shopping categories only */}
-          <nav className="hidden flex-1 items-center justify-center gap-0.5 lg:flex">
+          <nav className="hidden min-w-0 flex-1 items-center justify-center lg:flex">
             {/* Category dropdowns from admin category tree */}
             {categoryNav.map(item => (
               <div
@@ -132,7 +132,7 @@ export function SiteNavbar() {
                 <button
                   type="button"
                   className={cn(
-                    "flex items-center gap-1 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.1em] transition-colors whitespace-nowrap",
+                    "flex items-center gap-0.5 whitespace-nowrap px-1.5 py-2 text-[11px] font-medium uppercase tracking-[0.04em] transition-colors xl:px-2.5 xl:tracking-[0.08em]",
                     activeDropdown === item.label ? "text-foreground" : "text-foreground/65 hover:text-foreground",
                   )}
                 >
@@ -156,14 +156,14 @@ export function SiteNavbar() {
             ))}
 
             {/* Brands & Deals — direct links */}
-            <Link href="/brands" className="px-3 py-2 text-[11px] font-medium uppercase tracking-[0.1em] text-foreground/65 hover:text-foreground transition-colors whitespace-nowrap">
+            <Link href="/brands" className="whitespace-nowrap px-1.5 py-2 text-[11px] font-medium uppercase tracking-[0.04em] text-foreground/65 transition-colors hover:text-foreground xl:px-2.5 xl:tracking-[0.08em]">
               Brands
             </Link>
-            <Link href="/deals" className="relative px-3 py-2 text-[11px] font-medium uppercase tracking-[0.1em] text-gold hover:text-gold/80 transition-colors whitespace-nowrap">
+            <Link href="/deals" className="relative whitespace-nowrap px-1.5 py-2 text-[11px] font-medium uppercase tracking-[0.04em] text-gold transition-colors hover:text-gold/80 xl:px-2.5 xl:tracking-[0.08em]">
               Deals
               <span className="absolute -right-0.5 -top-0.5 flex size-1.5 rounded-full bg-gold" />
             </Link>
-            <Link href="/offers" className="relative px-3 py-2 text-[11px] font-medium uppercase tracking-[0.1em] text-red-600 hover:text-red-700 transition-colors whitespace-nowrap">
+            <Link href="/offers" className="relative whitespace-nowrap px-1.5 py-2 text-[11px] font-medium uppercase tracking-[0.04em] text-red-600 transition-colors hover:text-red-700 xl:px-2.5 xl:tracking-[0.08em]">
               Offers
               <span className="absolute -right-0.5 -top-0.5 flex size-1.5 rounded-full bg-red-500" />
             </Link>
@@ -177,7 +177,7 @@ export function SiteNavbar() {
               <button
                 type="button"
                 className={cn(
-                  "flex items-center gap-1 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.1em] transition-colors",
+                  "flex items-center gap-0.5 whitespace-nowrap px-1.5 py-2 text-[11px] font-medium uppercase tracking-[0.04em] transition-colors xl:px-2.5 xl:tracking-[0.08em]",
                   megaOpen ? "text-foreground" : "text-foreground/65 hover:text-foreground",
                 )}
               >
@@ -190,7 +190,7 @@ export function SiteNavbar() {
                   {/* Left — Skin Needs */}
                   <div className="border-r border-border p-5">
                     <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Skin Needs</p>
-                    <p className="mb-2 text-[9px] font-medium uppercase tracking-[0.15em] text-muted-foreground/60">By Concern</p>
+                    <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground/60">By Concern</p>
                     <div className="mb-3 max-h-36 overflow-y-auto pr-1">
                       {ALL_CONCERNS.map(c => (
                         <Link key={c} href={`/concern/${slugifyCatalogLabel(c)}`}
@@ -199,7 +199,7 @@ export function SiteNavbar() {
                         </Link>
                       ))}
                     </div>
-                    <p className="mb-1 text-[9px] font-medium uppercase tracking-[0.15em] text-muted-foreground/60">By Ingredient</p>
+                    <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground/60">By Ingredient</p>
                     <div className="mb-3 max-h-28 overflow-y-auto pr-1">
                       {ALL_INGREDIENTS.map(i => (
                         <Link key={i} href={`/ingredient/${slugifyCatalogLabel(i)}`}
@@ -208,7 +208,7 @@ export function SiteNavbar() {
                         </Link>
                       ))}
                     </div>
-                    <p className="mb-1 text-[9px] font-medium uppercase tracking-[0.15em] text-muted-foreground/60">By Skin Type</p>
+                    <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground/60">By Skin Type</p>
                     <div className="max-h-28 overflow-y-auto pr-1">
                       {ALL_SKIN_TYPES.map(t => (
                         <Link key={t} href={`/shop?skinType=${slugifyCatalogLabel(t)}`}
@@ -239,7 +239,7 @@ export function SiteNavbar() {
           </nav>
 
           {/* Right: icons */}
-          <div className="flex flex-1 items-center justify-end gap-3 md:gap-4">
+          <div className="flex flex-1 items-center justify-end gap-3 md:gap-4 lg:flex-none lg:gap-3">
             <button
               type="button"
               onClick={openSearch}

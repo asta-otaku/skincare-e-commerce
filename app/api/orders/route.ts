@@ -16,6 +16,7 @@ import { bareDealId, dealSalePrice, isDealCartId } from "@/lib/deals"
 import { type CheckoutItem } from "@/lib/supabase/orders"
 import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import { getSiteUrl } from "@/lib/site"
+import { isMissingArchiveColumn, markArchiveColumnMissing } from "@/lib/supabase/archive-column"
 
 type Body = {
   items: CheckoutItem[]
@@ -174,14 +175,21 @@ export async function POST(request: Request) {
     }
 
     const allProductIds = [...new Set([...productIds, ...componentIds])]
-    const productsRes = allProductIds.length
+    const productColumns =
+      "id, name, price, discount_pct, price_tiers, moq, stock, is_published, image_url, category, categories, variants"
+    let productsRes = allProductIds.length
       ? await supabase
           .from("products")
-          .select(
-            "id, name, price, discount_pct, price_tiers, moq, stock, is_published, image_url, category, categories, variants",
-          )
+          .select(`${productColumns}, is_archived`)
           .in("id", allProductIds)
-      : { data: [] as Record<string, unknown>[] }
+      : { data: [] as Record<string, unknown>[], error: null }
+    if (productsRes.error && isMissingArchiveColumn(productsRes.error.message)) {
+      markArchiveColumnMissing()
+      productsRes = await supabase
+        .from("products")
+        .select(productColumns)
+        .in("id", allProductIds)
+    }
 
     const productsById = new Map(
       (productsRes.data ?? []).map(r => [String(r.id), r as Record<string, unknown>]),
@@ -222,7 +230,7 @@ export async function POST(request: Request) {
           if (!cid) continue
           const cqty = Math.max(1, Math.floor(Number(di.qty) || 1)) * qty
           const prow = productsById.get(cid)
-          if (!prow || prow.is_published === false) {
+          if (!prow || prow.is_published === false || prow.is_archived === true) {
             problems.push(`${di.name || cid} in ${String(deal.title || "deal")} is unavailable`)
             continue
           }
@@ -249,7 +257,7 @@ export async function POST(request: Request) {
       }
 
       const row = productsById.get(item.productId)
-      if (!row || row.is_published === false) {
+      if (!row || row.is_published === false || row.is_archived === true) {
         problems.push(`${item.name || item.productId} is unavailable`)
         continue
       }

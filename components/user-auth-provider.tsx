@@ -10,6 +10,7 @@ import {
   extractFirstName,
   supabaseUserToUserSession,
 } from "@/lib/auth"
+import { SUSPENDED_AUTH_CODE, SUSPENDED_NOTICE_KEY } from "@/components/suspended-account-dialog"
 
 /* ─── Context ────────────────────────────────────────────────── */
 type UserAuthCtx = {
@@ -57,11 +58,15 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
       const base = supabaseUserToUserSession(user)
       const { data: profile } = await supabase!
         .from("profiles")
-        .select("full_name, first_name, phone, is_suspended")
+        .select("full_name, first_name, phone, is_suspended, role")
         .eq("id", user.id)
         .single()
       if (profile?.is_suspended) {
+        sessionStorage.setItem(SUSPENDED_NOTICE_KEY, "1")
         await supabase!.auth.signOut()
+        if (typeof window !== "undefined" && new URL(window.location.href).searchParams.get("suspended") !== "1") {
+          window.location.assign("/login?suspended=1")
+        }
         return null
       }
       if (!profile) return base
@@ -70,6 +75,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
         ...base,
         name: profile.full_name ?? base.name,
         firstName,
+        role: profile.role,
       }
     }
 
@@ -126,7 +132,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle()
       if (profile?.is_suspended) {
         await supabase.auth.signOut()
-        return "This account has been suspended."
+        return SUSPENDED_AUTH_CODE
       }
     }
     // Attach guest checkouts that used this email

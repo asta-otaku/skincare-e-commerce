@@ -43,21 +43,21 @@ function MarkdownContent({ content }: { content: string }) {
   const blocks = content.split(/\n{2,}/)
 
   return (
-    <div className="space-y-6">
+    <div>
       {blocks.map((block, i) => {
         const trimmed = block.trim()
         if (!trimmed) return null
 
         if (trimmed.startsWith("## ")) {
           return (
-            <h2 key={i} className="font-serif text-2xl font-medium text-foreground mt-10 mb-2 first:mt-0">
+            <h2 key={i} className="font-serif text-[1.75rem] font-medium leading-snug text-foreground mt-14 mb-3 first:mt-0">
               {trimmed.slice(3)}
             </h2>
           )
         }
         if (trimmed.startsWith("# ")) {
           return (
-            <h1 key={i} className="font-serif text-3xl font-medium text-foreground">
+            <h1 key={i} className="font-serif text-3xl font-medium leading-tight text-foreground mt-12 first:mt-0">
               {trimmed.slice(2)}
             </h1>
           )
@@ -103,7 +103,7 @@ export default async function JournalArticlePage({ params }: { params: Promise<{
   const suggestions = [...related, ...otherRelated]
 
   return (
-    <div className="mx-auto max-w-7xl px-5 py-10 md:py-14 lg:px-8">
+    <div className="mx-auto max-w-5xl px-5 py-12 md:py-16 lg:px-8">
 
       {/* Back */}
       <Link
@@ -113,10 +113,10 @@ export default async function JournalArticlePage({ params }: { params: Promise<{
         <ArrowLeft className="size-3.5" /> The Journal
       </Link>
 
-      <div className="grid gap-12 lg:grid-cols-[1fr_300px] lg:gap-16 xl:gap-20">
+      <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,40rem)_17.5rem] lg:justify-center lg:gap-x-16">
 
         {/* Main article */}
-        <article>
+        <article className="min-w-0 max-w-[40rem]">
           {/* Meta */}
           <div className="flex flex-wrap items-center gap-3 text-[10px] font-light uppercase tracking-[0.2em]">
             <span className="bg-accent px-3 py-1 text-accent-foreground">{article.category}</span>
@@ -126,12 +126,12 @@ export default async function JournalArticlePage({ params }: { params: Promise<{
           </div>
 
           {/* Title */}
-          <h1 className="mt-5 font-serif text-3xl font-medium leading-tight text-foreground md:text-4xl lg:text-5xl">
+          <h1 className="mt-6 text-balance font-serif text-4xl font-medium leading-[1.12] text-foreground md:text-5xl md:leading-[1.08]">
             {article.title}
           </h1>
 
           {/* Byline */}
-          <div className="mt-4 flex flex-wrap items-center gap-4 border-b border-border pb-6 text-xs font-light text-muted-foreground">
+          <div className="mt-6 flex flex-wrap items-center gap-4 border-b border-border pb-6 text-xs font-light text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <User className="size-3.5" /> {article.author}
             </span>
@@ -141,7 +141,7 @@ export default async function JournalArticlePage({ params }: { params: Promise<{
           </div>
 
           {/* Hero image */}
-          <div className="relative mt-8 aspect-[16/9] w-full overflow-hidden border border-border">
+          <div className="relative mt-10 aspect-[16/9] w-full overflow-hidden border border-border">
             <Image
               src={article.image || "/placeholder.svg"}
               alt={article.title}
@@ -153,12 +153,12 @@ export default async function JournalArticlePage({ params }: { params: Promise<{
           </div>
 
           {/* Excerpt */}
-          <p className="mt-8 border-l-2 border-gold pl-5 font-serif text-lg font-light italic leading-relaxed text-muted-foreground">
+          <p className="mt-10 max-w-[65ch] border-l-2 border-gold pl-5 font-serif text-lg font-light italic leading-relaxed text-muted-foreground md:text-xl">
             {article.excerpt}
           </p>
 
           {/* Body */}
-          <div className="mt-8">
+          <div className="mt-10 max-w-[65ch]">
             <MarkdownContent content={article.content} />
           </div>
 

@@ -1,35 +1,54 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 import { X, MessageCircle } from "lucide-react"
 import { whatsAppHref } from "@/lib/whatsapp"
 
-const MESSAGE = "Hi! I'd like to enquire about a product on HAYDA SKINCo."
+const DEFAULT_MESSAGE = "Hi! I'd like to enquire about a product on HAYDA SKINCo."
+
+function isCheckoutPath(pathname: string) {
+  const path = pathname.replace(/\/$/, "") || "/"
+  return path === "/checkout" || path === "/checkout/callback"
+}
+
+function messageForPath(pathname: string) {
+  const onProduct = pathname.startsWith("/product/")
+  const onDeal = pathname.startsWith("/deal/") || pathname === "/deals" || pathname.startsWith("/deals/")
+  if (onProduct || onDeal) {
+    return `Hi! I'd like to enquire about ${pathname} on HAYDA SKINCo.`
+  }
+  return DEFAULT_MESSAGE
+}
 
 export function WhatsAppWidget() {
+  const pathname = usePathname()
   const [expanded, setExpanded] = useState(false)
+  const hidden = isCheckoutPath(pathname)
+  const href = whatsAppHref(messageForPath(pathname))
 
-  const href = whatsAppHref(MESSAGE)
+  useEffect(() => {
+    if (hidden) setExpanded(false)
+  }, [hidden])
+
+  if (hidden) return null
 
   return (
     <div className="fixed bottom-6 right-5 z-50 flex flex-col items-end gap-3 md:bottom-8 md:right-8">
-      {/* Chat bubble */}
       {expanded && (
-        <div className="w-72 rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
-          {/* Header */}
+        <div className="w-72 max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
           <div className="flex items-center gap-3 bg-[#25D366] px-4 py-3.5">
             <div className="flex size-9 items-center justify-center rounded-full bg-white/20">
               <MessageCircle className="size-5 text-white" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-white leading-none">HAYDA SKINCo.</p>
+              <p className="text-sm font-medium leading-none text-white">HAYDA SKINCo.</p>
               <p className="mt-0.5 text-[11px] text-white/80">Typically replies instantly</p>
             </div>
-            <button type="button" onClick={() => setExpanded(false)} className="text-white/80 hover:text-white transition-colors">
+            <button type="button" onClick={() => setExpanded(false)} className="text-white/80 transition-colors hover:text-white">
               <X className="size-4" />
             </button>
           </div>
-          {/* Body */}
           <div className="p-4">
             <div className="rounded-lg bg-muted p-3 text-sm font-light leading-relaxed text-foreground">
               👋 Hello! Welcome to <strong>HAYDA SKINCo.</strong><br /><br />
@@ -51,7 +70,6 @@ export function WhatsAppWidget() {
         </div>
       )}
 
-      {/* FAB button */}
       <button
         type="button"
         onClick={() => setExpanded(v => !v)}

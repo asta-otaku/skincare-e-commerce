@@ -170,7 +170,7 @@ export default function AdminCategoriesPage() {
   const totalCats = tree.reduce((n, s) => n + s.categories.length, 0)
 
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-auto">
+    <div className="admin-page">
       <div className="admin-page-header">
         <div>
           <h1 className="font-serif text-2xl font-medium">Categories</h1>

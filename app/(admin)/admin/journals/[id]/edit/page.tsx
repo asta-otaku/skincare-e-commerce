@@ -35,7 +35,7 @@ export default function EditJournalPage({ params }: { params: Promise<{ id: stri
 
   if (status === "loading") {
     return (
-      <div className="flex flex-1 flex-col gap-8 overflow-auto">
+      <div className="admin-page">
         <div className="admin-page-body">
           <div className="space-y-4 max-w-2xl animate-pulse">
             <div className="h-8 w-48 bg-muted" />

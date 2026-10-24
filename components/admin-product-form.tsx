@@ -1,18 +1,19 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Upload, X, Plus, ArrowLeft, Save, Trash2, GripVertical, Check } from "lucide-react"
+import { Upload, X, Plus, ArrowLeft, Save, Trash2, GripVertical, Check, Archive, ArchiveRestore } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Product, ProductTag } from "@/lib/products"
 import { PRODUCT_TAGS, productTags } from "@/lib/products"
 import { ALL_SKIN_TYPES } from "@/lib/catalog"
 import { getCatalogNames } from "@/lib/supabase/catalog"
+import { setProductArchived } from "@/lib/supabase/products"
 import { getActiveBrands, type Brand } from "@/lib/supabase/brands"
 import { getCategoryTree, type CategorySection } from "@/lib/supabase/categories"
 import { CategoryMultiSelect } from "@/components/category-multi-select"
 import { TagPicker } from "@/components/tag-picker"
+import { AdminProductPreview } from "@/components/admin-product-preview"
 
 /* ─── Form types ─────────────────────────────────────────────── */
 type VariantRow = { label: string; price: string }
@@ -102,6 +103,33 @@ function toFormState(product?: Product): FormState {
   }
 }
 
+/** Non-blocking merchandising warnings. Does not change what save accepts. */
+function getPublishWarnings(form: Pick<FormState, "name" | "brand" | "tagline" | "price" | "stock" | "images">) {
+  const warnings: string[] = []
+  if (!form.images.some(image => image.preview.trim())) {
+    warnings.push("Missing image")
+  }
+  if (!form.brand.trim()) {
+    warnings.push("Missing brand")
+  }
+  const name = form.name.trim().replace(/\s+/g, " ")
+  const tagline = form.tagline.trim().replace(/\s+/g, " ")
+  if (!tagline) {
+    warnings.push("Tagline is empty")
+  } else if (name && tagline.toLowerCase() === name.toLowerCase()) {
+    warnings.push("Tagline matches the product name")
+  }
+  const price = Number(form.price)
+  if (!form.price.trim() || !Number.isFinite(price) || price <= 0) {
+    warnings.push("Price is missing or not above ₦0")
+  }
+  // save stores `parseInt(stock) || 0`, so a blank field publishes as zero.
+  if ((parseInt(form.stock, 10) || 0) === 0) {
+    warnings.push("Stock is 0")
+  }
+  return warnings
+}
+
 function Field({
   label, required, hint, children,
 }: {
@@ -128,6 +156,8 @@ export function AdminProductForm({ product }: { product?: Product }) {
   const [concernOptions, setConcernOptions] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [archiveOpen, setArchiveOpen] = useState(false)
+  const [archiving, setArchiving] = useState(false)
   const [uploadError, setUploadError] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -357,11 +387,44 @@ export function AdminProductForm({ product }: { product?: Product }) {
     }, 1200)
   }
 
+  async function confirmArchive() {
+    if (!product) return
+    setArchiving(true)
+    setUploadError("")
+    try {
+      await setProductArchived(product.id, !product.archived)
+      const { revalidateProducts } = await import("@/app/actions/revalidate")
+      await revalidateProducts(product.id)
+      router.push("/admin/products")
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Could not update archive status.")
+      setArchiving(false)
+      setArchiveOpen(false)
+    }
+  }
+
+  const publishWarnings = getPublishWarnings(form)
+
+  function renderStorefrontPreview() {
+    return (
+      <AdminProductPreview
+        name={form.name}
+        brand={form.brand}
+        tagline={form.tagline}
+        price={form.price}
+        discountPct={form.discountPct}
+        imageSrc={form.images[0]?.preview}
+      />
+    )
+  }
+
   /* ─────────────────────────────────────────────────────────── */
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-auto">
+    <div className="admin-page">
       {/* Sticky header */}
       <div className="admin-page-header">
+        <div className="flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <button
             type="button"
@@ -374,8 +437,23 @@ export function AdminProductForm({ product }: { product?: Product }) {
           <h1 className="font-serif text-lg font-medium sm:text-xl truncate">
             {isEdit ? `Edit — ${product.name}` : "Add Product"}
           </h1>
+          {product?.archived && (
+            <span className="border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              Archived
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {isEdit && (
+            <button
+              type="button"
+              onClick={() => setArchiveOpen(true)}
+              className="flex items-center gap-2 border border-border px-4 py-2 text-xs font-light uppercase tracking-[0.15em] hover:border-foreground transition-colors"
+            >
+              {product?.archived ? <ArchiveRestore className="size-3.5" /> : <Archive className="size-3.5" />}
+              {product?.archived ? "Restore" : "Archive"}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => router.push("/admin/products")}
@@ -408,10 +486,27 @@ export function AdminProductForm({ product }: { product?: Product }) {
             )}
           </button>
         </div>
+        </div>
+        {publishWarnings.length > 0 && (
+          <div aria-live="polite">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Publish checklist
+            </p>
+            <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-xs font-light text-amber-700">
+              {publishWarnings.map(warning => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        </div>
       </div>
 
       <form id="product-form" onSubmit={handleSubmit}>
         <div className="admin-page-body">
+          <div className="mb-6 lg:hidden">
+            {renderStorefrontPreview()}
+          </div>
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_340px]">
 
             {/* ── LEFT COLUMN ──────────────────────────────────── */}
@@ -564,6 +659,10 @@ export function AdminProductForm({ product }: { product?: Product }) {
 
             {/* ── RIGHT COLUMN ─────────────────────────────────── */}
             <div className="space-y-6">
+
+              <div className="hidden lg:block">
+                {renderStorefrontPreview()}
+              </div>
 
               {/* Image gallery */}
               <section className="border border-border p-6">
@@ -954,55 +1053,44 @@ export function AdminProductForm({ product }: { product?: Product }) {
                 </div>
               </section>
 
-              {/* Storefront preview card */}
-              {(form.name || form.price) && (
-                <section className="border border-dashed border-border p-5">
-                  <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Preview</p>
-                  <div className="flex items-center gap-3">
-                    {form.images[0] && (
-                      <div className="relative size-14 shrink-0 overflow-hidden border border-border bg-secondary">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={form.images[0].preview} alt="" className="absolute inset-0 h-full w-full object-contain mix-blend-multiply" />
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-light uppercase tracking-[0.15em] text-gold truncate">{form.brand || "Brand"}</p>
-                      <p className="text-sm font-medium truncate">{form.name || "Product name"}</p>
-                      <p className="text-xs font-light text-muted-foreground truncate">{form.tagline}</p>
-                      <p className="mt-1 text-sm font-light">
-                        {form.price ? (
-                          Number(form.discountPct) > 0 ? (
-                            <span className="flex items-baseline gap-2">
-                              <span className="text-sm line-through text-muted-foreground">
-                                ₦{Number(form.price).toLocaleString()}
-                              </span>
-                              <span>
-                                ₦{Math.round(Number(form.price) * (1 - Math.min(100, Number(form.discountPct)) / 100)).toLocaleString()}
-                              </span>
-                              <span className="text-xs text-gold">-{form.discountPct}%</span>
-                            </span>
-                          ) : (
-                            `₦${Number(form.price).toLocaleString()}`
-                          )
-                        ) : (
-                          "₦—"
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  {form.concerns.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1">
-                      {form.concerns.map(c => (
-                        <span key={c} className="border border-border px-2 py-0.5 text-[10px] font-light text-muted-foreground">{c}</span>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              )}
             </div>
           </div>
         </div>
       </form>
+
+      {archiveOpen && product && (
+        <>
+          <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-[2px]" onClick={() => !archiving && setArchiveOpen(false)} />
+          <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 border border-border bg-background p-6 shadow-2xl">
+            <h3 className="mb-2 font-serif text-xl font-medium">
+              {product.archived ? "Restore Product" : "Archive Product"}
+            </h3>
+            <p className="mb-6 text-sm font-light text-muted-foreground">
+              {product.archived
+                ? `${product.name} will show on the store again.`
+                : `${product.name} will be hidden from the store. You can restore it later.`}
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setArchiveOpen(false)}
+                disabled={archiving}
+                className="flex-1 border border-border py-3 text-xs font-medium uppercase tracking-[0.15em] hover:border-foreground disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmArchive()}
+                disabled={archiving}
+                className="flex flex-1 items-center justify-center gap-2 bg-foreground py-3 text-xs font-medium uppercase tracking-[0.15em] text-background hover:bg-gold hover:text-gold-foreground disabled:opacity-60"
+              >
+                {archiving ? "Working…" : product.archived ? "Restore" : "Archive"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Ensure inputs always show a visible border in admin */}
       <style jsx global>{`

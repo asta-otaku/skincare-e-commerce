@@ -44,7 +44,7 @@ export default function AdminJournalsPage() {
   const drafts = articles.filter((a) => a.status === "draft").length
 
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-auto">
+    <div className="admin-page">
       {/* Header */}
       <div className="admin-page-header">
         <div>
@@ -136,13 +136,13 @@ export default function AdminJournalsPage() {
 
         {/* Articles */}
         {!loading && filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-border">
+          <div className="admin-table-panel flex flex-col items-center justify-center py-20 text-center border border-dashed border-border">
             <BookOpen className="size-10 text-muted-foreground mb-3" />
             <p className="font-serif text-lg font-medium">No articles found</p>
             <p className="mt-1 text-sm font-light text-muted-foreground">Try adjusting your search or write a new article.</p>
           </div>
         ) : !loading && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="admin-table-panel grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {filtered.map((article) => (
               <div key={article.id} className="group border border-border bg-card flex flex-col overflow-hidden">
                 {/* Image */}

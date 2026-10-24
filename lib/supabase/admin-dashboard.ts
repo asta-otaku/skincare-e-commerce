@@ -85,8 +85,9 @@ export async function getDashboardStats(months: 1 | 2 | 3 = 1): Promise<Dashboar
 
   const [
     { data: orders, error: ordersErr },
-    { count: customerCount },
-    { count: customersThisMonth },
+    { count: customerCountFallback },
+    { count: customersThisMonthFallback },
+    customerCounts,
     { data: products },
   ] = await Promise.all([
     supabase
@@ -103,12 +104,21 @@ export async function getDashboardStats(months: 1 | 2 | 3 = 1): Promise<Dashboar
       .select("*", { count: "exact", head: true })
       .eq("role", "customer")
       .gte("created_at", customersSince.toISOString()),
+    supabase.rpc("admin_customer_counts", { since: customersSince.toISOString() }),
     supabase.from("products").select("id, stock"),
   ])
 
   if (ordersErr) {
     console.error("[dashboard] orders:", ordersErr.message)
   }
+
+  const countPayload = customerCounts.data as { total?: number; recent?: number } | null
+  const customerCount = !customerCounts.error && countPayload
+    ? Number(countPayload.total) || 0
+    : customerCountFallback ?? 0
+  const customersThisMonth = !customerCounts.error && countPayload
+    ? Number(countPayload.recent) || 0
+    : customersThisMonthFallback ?? 0
 
   const all = orders ?? []
   const paid = all.filter(o => o.payment_status === "paid")
@@ -202,8 +212,8 @@ export async function getDashboardStats(months: 1 | 2 | 3 = 1): Promise<Dashboar
     revenuePrev30d: Math.round(revenuePrev30d),
     paidOrders30d: paidCurrent.length,
     pendingOrders,
-    customerCount: customerCount ?? 0,
-    customersThisMonth: customersThisMonth ?? 0,
+    customerCount,
+    customersThisMonth,
     productCount: productRows.length,
     inStockCount: productRows.filter(p => Number(p.stock) > 0).length,
     avgOrderValue: Math.round(avgOrderValue),

@@ -180,7 +180,7 @@ export function AdminJournalEditor({ journal }: { journal?: Journal }) {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-auto">
+    <div className="admin-page">
       {/* Header */}
       <div className="admin-page-header">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">

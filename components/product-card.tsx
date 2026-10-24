@@ -41,7 +41,7 @@ export function ProductCard({
         href={detailHref}
         aria-label={`View ${product.name}`}
         className={cn(
-          "relative aspect-4/5 overflow-hidden border border-border transition-colors duration-500 group-hover:border-gold/60",
+          "relative aspect-4/5 overflow-hidden border border-border bg-secondary transition-colors duration-500 group-hover:border-gold/60",
           isWhiteBackground && "bg-white",
         )}
       >

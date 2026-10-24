@@ -5,6 +5,7 @@
  */
 import { createClient as createSb } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
+import { isMissingArchiveColumn, markArchiveColumnMissing } from "@/lib/supabase/archive-column"
 import { bareDealId, isDealCartId } from "@/lib/deals"
 
 export type StockAvailability = {
@@ -65,10 +66,20 @@ export async function fetchLiveStock(
   const map: Record<string, { stock: number; published: boolean }> = {}
 
   if (allProductIds.length) {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("products")
-      .select("id, stock, is_published")
+      .select("id, stock, is_published, is_archived")
       .in("id", allProductIds)
+
+    if (error && isMissingArchiveColumn(error.message)) {
+      markArchiveColumnMissing()
+      const retry = await supabase
+        .from("products")
+        .select("id, stock, is_published")
+        .in("id", allProductIds)
+      data = retry.data
+      error = retry.error
+    }
 
     if (error) {
       console.error("[stock] fetchLiveStock:", error.message)
@@ -78,7 +89,7 @@ export async function fetchLiveStock(
     for (const row of data ?? []) {
       map[row.id] = {
         stock: Number(row.stock) || 0,
-        published: row.is_published !== false,
+        published: row.is_published !== false && row.is_archived !== true,
       }
     }
   }

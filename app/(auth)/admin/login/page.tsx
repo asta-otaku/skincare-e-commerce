@@ -1,15 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Lock, Mail, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createAdminBrowserClient } from "@/lib/supabase/client"
-import {
-  saveAdminSession,
-  getAdminSession,
-} from "@/lib/auth"
+import { saveAdminSession } from "@/lib/auth"
+import { SuspendedAccountDialog } from "@/components/suspended-account-dialog"
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -18,8 +16,23 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [suspendedOpen, setSuspendedOpen] = useState(false)
   const [unconfirmed, setUnconfirmed] = useState(false)
   const [resendSent, setResendSent] = useState(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("suspended") !== "1") return
+    setSuspendedOpen(true)
+    void createAdminBrowserClient()?.auth.signOut()
+  }, [])
+
+  function closeSuspended() {
+    setSuspendedOpen(false)
+    const url = new URL(window.location.href)
+    url.searchParams.delete("suspended")
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -32,7 +45,7 @@ export default function AdminLoginPage() {
       // Mock path — no Supabase configured
       await new Promise(r => setTimeout(r, 800))
       if (email === "admin@haydaskinco.com" && password === "password") {
-        saveAdminSession({ email, name: "Admin", signedInAt: Date.now() })
+        saveAdminSession({ email, name: "Admin", role: "admin", signedInAt: Date.now() })
         router.push("/admin/dashboard")
       } else {
         setError("Invalid email or password. Try admin@haydaskinco.com / password")
@@ -56,11 +69,18 @@ export default function AdminLoginPage() {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, is_suspended")
       .eq("id", data.user.id)
       .single()
 
-    if (!profile || profile.role !== "admin") {
+    if (profile?.is_suspended) {
+      await supabase.auth.signOut()
+      setSuspendedOpen(true)
+      setLoading(false)
+      return
+    }
+
+    if (!profile || (profile.role !== "admin" && profile.role !== "sub_admin")) {
       await supabase.auth.signOut()
       setError("Access denied. This account does not have admin privileges.")
       setLoading(false)
@@ -90,6 +110,7 @@ export default function AdminLoginPage() {
 
       {/* Right: form */}
       <div className="flex flex-1 flex-col items-center justify-center px-5 py-12 md:px-12">
+        <SuspendedAccountDialog open={suspendedOpen} onClose={closeSuspended} />
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <Link href="/" className="mb-10 block font-serif text-2xl font-medium tracking-[0.25em] lg:hidden">

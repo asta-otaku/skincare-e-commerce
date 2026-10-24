@@ -15,7 +15,6 @@ import {
   Menu,
   X,
   ChevronRight,
-  Bell,
   Inbox,
   Store,
   FolderTree,
@@ -24,7 +23,14 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const NAV = [
+type NavItem = {
+  label: string
+  href: string
+  icon: typeof LayoutDashboard
+  fullAdmin?: boolean
+}
+
+const NAV: NavItem[] = [
   {
     label: "Dashboard",
     href: "/admin/dashboard",
@@ -59,16 +65,19 @@ const NAV = [
     label: "Users",
     href: "/admin/users",
     icon: Users,
+    fullAdmin: true,
   },
   {
     label: "Inbox",
     href: "/admin/inbox",
     icon: Inbox,
+    fullAdmin: true,
   },
   {
     label: "Deals",
     href: "/admin/deals",
     icon: Tag,
+    fullAdmin: true,
   },
   {
     label: "Journals",
@@ -86,6 +95,8 @@ export function AdminSidebar() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { session, signOut } = useAdminAuth()
+  const role = session?.role ?? "admin"
+  const nav = NAV.filter(item => !item.fullAdmin || role === "admin")
 
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : ""
@@ -109,26 +120,20 @@ export function AdminSidebar() {
         <Link href="/admin/dashboard" className="font-serif text-lg font-medium tracking-[0.2em] sm:text-xl sm:tracking-[0.25em]">
           HAYDA SKINCo.
         </Link>
-        <div className="flex items-center gap-2">
-          <button type="button" className="relative text-foreground/70 hover:text-foreground" aria-label="Notifications">
-            <Bell className="size-5" />
-            <span className="absolute -right-1 -top-1 size-2 rounded-full bg-gold" />
-          </button>
-          <button
-            type="button"
-            aria-label={mobileOpen ? "Close menu" : "Open menu"}
-            onClick={() => setMobileOpen((v) => !v)}
-            className="flex size-9 items-center justify-center text-foreground"
-          >
-            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-          </button>
-        </div>
+        <button
+          type="button"
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          onClick={() => setMobileOpen((v) => !v)}
+          className="flex size-9 items-center justify-center text-foreground"
+        >
+          {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+        </button>
       </div>
 
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-full w-[min(16rem,85vw)] flex-col border-r border-border bg-sidebar transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:sticky lg:w-64 lg:translate-x-0 lg:top-0 lg:h-screen",
+          "fixed left-0 top-0 z-50 flex h-full w-[min(16rem,85vw)] flex-col border-r border-border bg-sidebar transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:sticky lg:top-0 lg:h-full lg:w-64 lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -139,7 +144,7 @@ export function AdminSidebar() {
               HAYDA SKINCo.
             </Link>
             <p className="text-[10px] font-light uppercase tracking-[0.2em] text-muted-foreground mt-0.5">
-              Admin
+              {role === "sub_admin" ? "Sub Admin" : "Admin"}
             </p>
           </div>
           <button
@@ -156,7 +161,7 @@ export function AdminSidebar() {
             Management
           </p>
           <ul className="space-y-0.5">
-            {NAV.map((item) => {
+            {nav.map((item) => {
               const active = pathname === item.href || pathname.startsWith(item.href + "/")
               return (
                 <li key={item.href}>
@@ -197,7 +202,7 @@ export function AdminSidebar() {
               </div>
               <div>
                 <p className="text-xs font-medium">{session?.name ?? "Admin"}</p>
-                <p className="text-[10px] font-light text-muted-foreground">{session?.email ?? ""}</p>
+                <p className="text-[10px] font-light text-muted-foreground truncate">{session?.email ?? ""}</p>
               </div>
             </div>
             <button

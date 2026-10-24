@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     if (profile?.is_suspended) {
       return NextResponse.json({ error: "Account suspended." }, { status: 403 })
     }
-    if (profile?.role !== "admin" && profile?.role !== "staff") {
+    if (profile?.role !== "admin" && profile?.role !== "sub_admin" && profile?.role !== "staff") {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 })
     }
 

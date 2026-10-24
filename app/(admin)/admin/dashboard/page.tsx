@@ -104,7 +104,7 @@ export default function DashboardPage() {
   const customersSub = months === 1 ? "new this month" : `new in last ${months} months`
 
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-auto">
+    <div className="admin-page">
       <div className="admin-page-header">
         <div className="min-w-0">
           <h1 className="font-serif text-xl font-medium sm:text-2xl">Dashboard</h1>
@@ -319,7 +319,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="border border-border bg-card">
+            <div className="admin-table-panel border border-border bg-card">
               <div className="flex items-center justify-between border-b border-border px-6 py-4">
                 <div>
                   <h2 className="text-sm font-medium">Recent Orders</h2>
@@ -329,8 +329,8 @@ export default function DashboardPage() {
                   View all <ArrowUpRight className="size-3" />
                 </Link>
               </div>
-              <div className="overflow-x-auto hidden lg:block">
-                <table className="w-full text-xs">
+              <div className="admin-table-scroll hidden lg:block">
+                <table className="admin-data-table w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-secondary">
                       <th className="px-6 py-3 text-left font-medium uppercase tracking-[0.15em] text-muted-foreground">Order</th>
@@ -372,6 +372,9 @@ export default function DashboardPage() {
                         </tr>
                       ))
                     )}
+                    <tr className="admin-table-fill" aria-hidden="true">
+                      <td colSpan={5} />
+                    </tr>
                   </tbody>
                 </table>
               </div>

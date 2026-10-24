@@ -2,12 +2,30 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { Plus, Search, Edit2, Trash2, Eye, Package, RefreshCw } from "lucide-react"
+import { Plus, Search, Edit2, Trash2, Eye, Package, RefreshCw, Archive, ArchiveRestore } from "lucide-react"
 import { formatPrice, productTags, type Product } from "@/lib/products"
-import { getAdminProductsPage, deleteProduct } from "@/lib/supabase/products"
+import { getAdminProductsPage, deleteProduct, setProductArchived } from "@/lib/supabase/products"
 import { getCategoryTree } from "@/lib/supabase/categories"
 import { AdminPagination, ADMIN_PAGE_SIZE } from "@/components/admin-pagination"
 import { cn } from "@/lib/utils"
+
+function productListImage(image: string | undefined) {
+  const src = image?.trim()
+  if (!src || src === "/placeholder.svg") return null
+  return src
+}
+
+function ProductRowThumb({ image }: { image: string }) {
+  const src = productListImage(image)
+  return (
+    <div className="relative size-10 shrink-0 overflow-hidden border border-border bg-secondary">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" className="absolute inset-0 h-full w-full object-contain" />
+      ) : null}
+    </div>
+  )
+}
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -16,17 +34,19 @@ export default function AdminProductsPage() {
   const [search, setSearch] = useState("")
   const [searchDebounced, setSearchDebounced] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("All")
+  const [archiveFilter, setArchiveFilter] = useState<"active" | "archived" | "all">("active")
   const [categoryOptions, setCategoryOptions] = useState<string[]>(["All"])
   const [page, setPage] = useState(1)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  const [confirm, setConfirm] = useState<{ id: string; action: "delete" | "archive" | "restore" } | null>(null)
+  const [working, setWorking] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 300)
     return () => clearTimeout(t)
   }, [search])
 
-  useEffect(() => { setPage(1) }, [searchDebounced, categoryFilter])
+  useEffect(() => { setPage(1) }, [searchDebounced, categoryFilter, archiveFilter])
 
   useEffect(() => {
     getCategoryTree().then(tree => {
@@ -40,26 +60,35 @@ export default function AdminProductsPage() {
     const { products: rows, total: count } = await getAdminProductsPage({
       search: searchDebounced,
       category: categoryFilter,
+      archive: archiveFilter,
       page,
       pageSize: ADMIN_PAGE_SIZE,
     })
     setProducts(rows)
     setTotal(count)
     setLoading(false)
-  }, [searchDebounced, categoryFilter, page])
+  }, [searchDebounced, categoryFilter, archiveFilter, page])
 
   useEffect(() => { void load() }, [load])
 
-  async function confirmDelete(id: string) {
-    setDeleting(true)
+  async function confirmAction() {
+    if (!confirm) return
+    setWorking(true)
+    setActionError(null)
     try {
-      await deleteProduct(id)
+      if (confirm.action === "delete") {
+        await deleteProduct(confirm.id)
+      } else {
+        await setProductArchived(confirm.id, confirm.action === "archive")
+        const { revalidateProducts } = await import("@/app/actions/revalidate")
+        await revalidateProducts(confirm.id)
+      }
       await load()
     } catch (err) {
-      console.error("Delete failed:", err)
+      setActionError(err instanceof Error ? err.message : "Could not update this product.")
     }
-    setDeleting(false)
-    setDeleteId(null)
+    setWorking(false)
+    setConfirm(null)
   }
 
   function stockLabel(stock: number) {
@@ -69,7 +98,7 @@ export default function AdminProductsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-auto">
+    <div className="admin-page">
       {/* Header */}
       <div className="admin-page-header">
         <div>
@@ -98,6 +127,11 @@ export default function AdminProductsPage() {
       </div>
 
       <div className="admin-page-body">
+        {actionError && (
+          <p className="mb-4 border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-light text-destructive">
+            {actionError}
+          </p>
+        )}
         {/* Filters */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-xs">
@@ -111,6 +145,15 @@ export default function AdminProductsPage() {
             />
           </div>
           <select
+            value={archiveFilter}
+            onChange={e => setArchiveFilter(e.target.value as "active" | "archived" | "all")}
+            className="border border-border bg-background px-3 py-2.5 text-xs font-light outline-none focus:border-foreground"
+          >
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+            <option value="all">All products</option>
+          </select>
+          <select
             value={categoryFilter}
             onChange={e => setCategoryFilter(e.target.value)}
             className="border border-border bg-background px-3 py-2.5 text-xs font-light outline-none focus:border-foreground max-w-xs"
@@ -123,10 +166,10 @@ export default function AdminProductsPage() {
 
         {/* Loading skeleton */}
         {loading ? (
-          <div className="border border-border divide-y divide-border">
+            <div className="admin-table-panel border border-border divide-y divide-border">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-6 py-4">
-                <div className="size-12 shrink-0 bg-muted/50 animate-pulse" />
+              <div key={i} className="flex items-center gap-2.5 px-3 py-2">
+                <div className="size-10 shrink-0 bg-secondary animate-pulse" />
                 <div className="flex-1 space-y-2">
                   <div className="h-3 w-48 bg-muted/50 animate-pulse" />
                   <div className="h-2.5 w-32 bg-muted/30 animate-pulse" />
@@ -135,26 +178,26 @@ export default function AdminProductsPage() {
             ))}
           </div>
         ) : products.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-border">
+          <div className="admin-table-panel flex flex-col items-center justify-center py-20 text-center border border-dashed border-border">
             <Package className="size-10 text-muted-foreground mb-3" />
             <p className="font-serif text-lg font-medium">No products found</p>
             <p className="mt-1 text-sm font-light text-muted-foreground">
-              {search || categoryFilter !== "All" ? "Try adjusting your search or filters." : "Add your first product to get started."}
+              {search || categoryFilter !== "All" || archiveFilter !== "active" ? "Try adjusting your search or filters." : "Add your first product to get started."}
             </p>
           </div>
         ) : (
-          <div className="border border-border">
+          <div className="admin-table-panel border border-border">
             {/* Desktop table */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
+            <div className="admin-table-scroll hidden md:block">
+              <table className="admin-data-table w-full">
                 <thead>
                   <tr className="border-b border-border bg-secondary">
-                    <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Product</th>
-                    <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Category</th>
-                    <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Price</th>
-                    <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Tag</th>
-                    <th className="px-6 py-3 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Stock</th>
-                    <th className="px-6 py-3 text-right text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Actions</th>
+                    <th className="px-3 py-2 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Product</th>
+                    <th className="px-3 py-2 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Category</th>
+                    <th className="px-3 py-2 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Price</th>
+                    <th className="px-3 py-2 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Tag</th>
+                    <th className="px-3 py-2 text-left text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Stock</th>
+                    <th className="px-3 py-2 text-right text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -162,29 +205,27 @@ export default function AdminProductsPage() {
                     const stock = stockLabel(product.stock)
                     return (
                       <tr key={product.id} className="hover:bg-secondary transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="relative size-12 shrink-0 overflow-hidden border border-border bg-muted">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={product.image || "/placeholder.svg"}
-                                alt={product.name}
-                                className="absolute inset-0 h-full w-full object-contain mix-blend-multiply"
-                              />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium">{product.name}</p>
-                              <p className="text-xs font-light text-muted-foreground">{product.brand}</p>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2.5">
+                            <ProductRowThumb image={product.image} />
+                            <div className="min-w-0">
+                              <p className="max-w-[16rem] truncate text-sm font-medium leading-tight" title={product.name}>{product.name}</p>
+                              <p className="max-w-[16rem] truncate text-xs font-light text-muted-foreground">{product.brand}</p>
+                              {product.archived && (
+                                <span className="mt-1 inline-block border border-border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                                  Archived
+                                </span>
+                              )}
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-2">
                           <span className="text-xs font-light text-muted-foreground">{product.category}</span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-2">
                           <span className="text-sm font-medium">{formatPrice(product.price)}</span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-2">
                           {productTags(product).length > 0 ? (
                             <div className="flex flex-wrap gap-1">
                               {productTags(product).map(t => (
@@ -207,14 +248,14 @@ export default function AdminProductsPage() {
                             <span className="text-[10px] text-muted-foreground">—</span>
                           )}
                         </td>
-                        <td className="px-6 py-4">
-                          <span className={cn("flex items-center gap-1.5 text-[10px] font-medium", stock.className)}>
+                        <td className="px-3 py-2">
+                          <span className={cn("flex items-center gap-1.5 whitespace-nowrap text-[10px] font-medium", stock.className)}>
                             <span className={cn("size-1.5 rounded-full", stock.dot)} />
                             {stock.label}
                             <span className="text-muted-foreground font-light">({product.stock})</span>
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-2">
                           <div className="flex items-center justify-end gap-1">
                             <Link
                               href={`/product/${product.id}`}
@@ -233,7 +274,15 @@ export default function AdminProductsPage() {
                             </Link>
                             <button
                               type="button"
-                              onClick={() => setDeleteId(product.id)}
+                              onClick={() => setConfirm({ id: product.id, action: product.archived ? "restore" : "archive" })}
+                              className="flex size-8 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                              aria-label={product.archived ? "Restore product" : "Archive product"}
+                            >
+                              {product.archived ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirm({ id: product.id, action: "delete" })}
                               className="flex size-8 items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
                               aria-label="Delete product"
                             >
@@ -244,6 +293,9 @@ export default function AdminProductsPage() {
                       </tr>
                     )
                   })}
+                  <tr className="admin-table-fill" aria-hidden="true">
+                    <td colSpan={6} />
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -253,17 +305,13 @@ export default function AdminProductsPage() {
               {products.map(product => {
                 const stock = stockLabel(product.stock)
                 return (
-                  <div key={product.id} className="flex items-center gap-3 p-4">
-                    <div className="relative size-14 shrink-0 overflow-hidden border border-border bg-muted">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={product.image || "/placeholder.svg"}
-                        alt={product.name}
-                        className="absolute inset-0 h-full w-full object-contain mix-blend-multiply"
-                      />
-                    </div>
+                  <div key={product.id} className="flex items-center gap-2.5 px-3 py-2">
+                    <ProductRowThumb image={product.image} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{product.name}</p>
+                      {product.archived && (
+                        <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Archived</span>
+                      )}
                       <p className="text-xs font-light text-muted-foreground">{product.category}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <p className="text-sm font-medium">{formatPrice(product.price)}</p>
@@ -274,7 +322,15 @@ export default function AdminProductsPage() {
                       <Link href={`/admin/products/${product.id}/edit`} className="text-muted-foreground hover:text-foreground">
                         <Edit2 className="size-4" />
                       </Link>
-                      <button type="button" onClick={() => setDeleteId(product.id)} className="text-muted-foreground hover:text-destructive">
+                      <button
+                        type="button"
+                        onClick={() => setConfirm({ id: product.id, action: product.archived ? "restore" : "archive" })}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label={product.archived ? "Restore product" : "Archive product"}
+                      >
+                        {product.archived ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
+                      </button>
+                      <button type="button" onClick={() => setConfirm({ id: product.id, action: "delete" })} className="text-muted-foreground hover:text-destructive">
                         <Trash2 className="size-4" />
                       </button>
                     </div>
@@ -295,36 +351,61 @@ export default function AdminProductsPage() {
       </div>
 
       {/* Delete confirmation modal */}
-      {deleteId && (
+      {confirm && (
         <>
-          <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-[2px]" onClick={() => !deleting && setDeleteId(null)} />
+          <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-[2px]" onClick={() => !working && setConfirm(null)} />
           <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 bg-background border border-border p-6 shadow-2xl">
-            <h3 className="font-serif text-xl font-medium mb-2">Delete Product</h3>
+            <h3 className="font-serif text-xl font-medium mb-2">
+              {confirm.action === "delete" ? "Delete Product" : confirm.action === "archive" ? "Archive Product" : "Restore Product"}
+            </h3>
             <p className="text-sm font-light text-muted-foreground mb-6">
-              Are you sure you want to delete{" "}
-              <span className="font-medium text-foreground">
-                {products.find(p => p.id === deleteId)?.name}
-              </span>
-              ? This action cannot be undone.
+              {confirm.action === "delete" ? (
+                <>
+                  Are you sure you want to delete{" "}
+                  <span className="font-medium text-foreground">
+                    {products.find(p => p.id === confirm.id)?.name}
+                  </span>
+                  ? This action cannot be undone.
+                </>
+              ) : confirm.action === "archive" ? (
+                <>
+                  Archive{" "}
+                  <span className="font-medium text-foreground">
+                    {products.find(p => p.id === confirm.id)?.name}
+                  </span>
+                  ? It will be hidden from the store and can be restored later.
+                </>
+              ) : (
+                <>
+                  Restore{" "}
+                  <span className="font-medium text-foreground">
+                    {products.find(p => p.id === confirm.id)?.name}
+                  </span>
+                  {" "}to the store?
+                </>
+              )}
             </p>
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setDeleteId(null)}
-                disabled={deleting}
+                onClick={() => setConfirm(null)}
+                disabled={working}
                 className="flex-1 border border-border py-3 text-xs font-medium uppercase tracking-[0.15em] hover:border-foreground transition-colors disabled:opacity-40"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={() => confirmDelete(deleteId)}
-                disabled={deleting}
-                className="flex-1 bg-destructive py-3 text-xs font-medium uppercase tracking-[0.15em] text-background hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
+                onClick={() => void confirmAction()}
+                disabled={working}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-2 py-3 text-xs font-medium uppercase tracking-[0.15em] text-background transition-opacity disabled:opacity-60",
+                  confirm.action === "delete" ? "bg-destructive hover:opacity-90" : "bg-foreground hover:bg-gold hover:text-gold-foreground",
+                )}
               >
-                {deleting ? (
-                  <><span className="size-3.5 rounded-full border-2 border-background/30 border-t-background animate-spin" /> Deleting…</>
-                ) : "Delete"}
+                {working ? (
+                  <><span className="size-3.5 rounded-full border-2 border-background/30 border-t-background animate-spin" /> Working…</>
+                ) : confirm.action === "delete" ? "Delete" : confirm.action === "archive" ? "Archive" : "Restore"}
               </button>
             </div>
           </div>

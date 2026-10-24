@@ -12,7 +12,7 @@ import { useUserAuth } from "@/components/user-auth-provider"
 const NAV = [
   { label: "Overview",  href: "/account",          icon: LayoutDashboard },
   { label: "Orders",    href: "/account/orders",    icon: ShoppingBag },
-  { label: "Favorites", href: "/account/favorites", icon: Heart },
+  { label: "Favourites", href: "/account/favorites", icon: Heart },
   { label: "Rewards",   href: "/account/rewards",   icon: Gift },
   { label: "Reviews",   href: "/account/reviews",   icon: Star },
   { label: "Settings",  href: "/account/settings",  icon: Settings },

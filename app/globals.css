@@ -59,30 +59,33 @@
 
 :root {
   color-scheme: light;
-  /* HAYDA SKINCo. palette — light crimson + dark grey-blue */
-  --background: oklch(1 0 0);                    /* #FFFFFF */
-  --foreground: oklch(0.15 0 0);                 /* #1A1A1A near-black */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0 0);
+  /* HAYDA SKINCo. light brand only.
+     ink = near-black text, paper = white background,
+     navy = #293049, blush = pink surfaces.
+     --gold stays the navy token so text-gold does not break. */
+  --background: oklch(1 0 0);                    /* paper */
+  --foreground: oklch(0.15 0 0);                 /* ink */
+  --card: oklch(1 0 0);                          /* paper */
+  --card-foreground: oklch(0.15 0 0);            /* ink */
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.15 0 0);
-  --primary: oklch(0.15 0 0);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: #FDF0F3;                          /* soft crimson wash */
-  --secondary-foreground: oklch(0.15 0 0);
-  --muted: #F8DCE2;                              /* light crimson tint */
+  --primary: oklch(0.15 0 0);                    /* ink */
+  --primary-foreground: oklch(1 0 0);            /* paper */
+  --secondary: #FDF0F3;                          /* blush */
+  --secondary-foreground: oklch(0.15 0 0);       /* ink */
+  --muted: #F8DCE2;                              /* blush tint */
   --muted-foreground: oklch(0.66 0 0);           /* #A8A8A8 silver-grey */
-  --accent: #FACBD3;
-  --accent-foreground: #293049;
+  --accent: #FACBD3;                             /* blush */
+  --accent-foreground: #293049;                  /* navy */
   --destructive: oklch(0.577 0.245 27.325);
-  --border: #F0B8C3;                             /* crimson border */
+  --border: #F0B8C3;                             /* blush border */
   --input: #F0B8C3;
-  --ring: #293049;
-  /* Brand accents */
-  --gold: #293049;                               /* dark grey-blue */
-  --gold-foreground: #FFFFFF;
-  --lavender: #FACBD3;                           /* light crimson surface */
-  --lavender-foreground: #293049;                /* dark grey-blue text */
+  --ring: #293049;                               /* navy */
+  /* navy lives on --gold so existing text-gold / bg-gold classes stay correct */
+  --gold: #293049;                               /* navy */
+  --gold-foreground: #FFFFFF;                    /* paper */
+  --lavender: #FACBD3;                           /* blush */
+  --lavender-foreground: #293049;                /* navy */
   /* Complements */
   --mustard: #EAB308;
   --mustard-foreground: #422006;
@@ -136,43 +139,6 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) {
-    color-scheme: dark;
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
-  }
 }
 
 @layer base {
@@ -247,7 +213,39 @@
   }
 }
 
-/* Admin page chrome — unlayered so spacing always wins over preflight/utilities */
+/* Admin page chrome — unlayered so spacing always wins over preflight/utilities.
+   Keep these selectors free of Tailwind utility names (for example .border);
+   the Tailwind compiler drops those rules. */
+.admin-shell {
+  display: flex;
+  height: 100dvh;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--background);
+}
+.admin-main {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.admin-page {
+  display: flex;
+  min-height: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2rem;
+}
+@media (min-width: 1024px) {
+  .admin-shell {
+    flex-direction: row;
+  }
+}
 .admin-page-header {
   position: sticky;
   z-index: 20;
@@ -263,9 +261,39 @@
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06);
 }
 .admin-page-body {
-  flex: 1;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   min-width: 0;
   padding: 0 1rem 1.5rem;
+}
+.admin-page-body.grid {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+.admin-table-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* table-scroll-v2: the table itself fills the panel, and the last row absorbs leftover height */
+.admin-table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.admin-data-table {
+  width: 100%;
+  height: 100%;
+}
+.admin-table-fill {
+  height: 100%;
+}
+.admin-table-fill td {
+  height: 100%;
+  padding: 0;
+  border-top-width: 0;
 }
 @media (min-width: 640px) {
   .admin-page-header {

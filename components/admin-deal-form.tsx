@@ -298,7 +298,7 @@ export function AdminDealForm({ deal }: { deal?: Deal }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-8 overflow-auto">
+    <form onSubmit={handleSubmit} className="admin-page">
       <div className="admin-page-header">
         <div className="flex items-center gap-4">
           <Link

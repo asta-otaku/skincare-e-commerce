@@ -51,7 +51,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
   if (loading) {
     return (
-      <div className="flex flex-1 flex-col gap-8 overflow-auto">
+      <div className="admin-page">
         <div className="admin-page-body">
           <div className="h-8 w-48 bg-muted/50 animate-pulse mb-6" />
           <div className="h-64 w-full bg-muted/30 animate-pulse" />
@@ -103,7 +103,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-auto" onClick={() => setStatusOpen(false)}>
+    <div className="admin-page" onClick={() => setStatusOpen(false)}>
       <div className="admin-page-header sm:items-start lg:items-center">
         <div className="flex min-w-0 items-start gap-3 sm:gap-4">
           <Link
@@ -146,7 +146,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="admin-page-body grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+        <div className="flex min-h-0 flex-col gap-6 lg:col-span-2">
           {/* Timeline */}
           <div className="border border-border p-6">
             <h2 className="mb-5 text-xs font-medium uppercase tracking-[0.15em]">Status</h2>
@@ -172,7 +172,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           </div>
 
           {/* Items */}
-          <div className="border border-border">
+          <div className="admin-table-panel border border-border">
             <div className="border-b border-border px-6 py-4">
               <h2 className="text-xs font-medium uppercase tracking-[0.15em]">Items</h2>
             </div>

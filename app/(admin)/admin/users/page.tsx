@@ -7,11 +7,13 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatPrice } from "@/lib/products"
+import { AnchoredMenu } from "@/components/admin-anchored-menu"
 import {
   bulkSetSuspended,
   getAdminUsers,
   updateUserRole,
   updateUserSuspended,
+  ADMIN_ROLE_LABEL,
   type AdminUser,
   type AdminUserRole,
   type AdminUserStatus,
@@ -24,8 +26,70 @@ const STATUS_STYLES: Record<AdminUserStatus, string> = {
 
 const ROLE_STYLES: Record<AdminUserRole, string> = {
   admin: "bg-lavender text-lavender-foreground border-lavender-foreground/20",
-  staff: "bg-lavender text-gold border-gold/30",
+  sub_admin: "bg-lavender text-gold border-gold/30",
+  staff: "bg-muted text-muted-foreground border-border",
   customer: "bg-muted text-muted-foreground border-border",
+}
+
+const ROLE_OPTIONS: { role: AdminUserRole; label: string }[] = [
+  { role: "admin", label: "Make Admin" },
+  { role: "sub_admin", label: "Make Sub Admin" },
+  { role: "customer", label: "Make User" },
+]
+
+function UserActions({
+  user,
+  open,
+  onToggle,
+  onToggleStatus,
+  onSetRole,
+  buttonClassName,
+}: {
+  user: AdminUser
+  open: boolean
+  onToggle: () => void
+  onToggleStatus: () => void
+  onSetRole: (role: AdminUserRole) => void
+  buttonClassName: string
+}) {
+  return (
+    <AnchoredMenu
+      open={open}
+      onToggle={onToggle}
+      label="User actions"
+      className={buttonClassName}
+      icon={<MoreHorizontal className="size-4" />}
+    >
+      <button
+        type="button"
+        onClick={onToggleStatus}
+        className={cn(
+          "flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-light transition-colors hover:bg-muted",
+          user.status === "active" ? "text-destructive hover:text-destructive" : "text-green-600 hover:text-green-600",
+        )}
+      >
+        {user.status === "active" ? <ShieldOff className="size-3.5" /> : <ShieldCheck className="size-3.5" />}
+        {user.status === "active" ? "Suspend User" : "Activate User"}
+      </button>
+      {ROLE_OPTIONS.filter(option => option.role !== user.role).map(option => (
+        <button
+          key={option.role}
+          type="button"
+          onClick={() => onSetRole(option.role)}
+          className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-light text-foreground transition-colors hover:bg-muted"
+        >
+          <ChevronDown className="size-3.5" />
+          {option.label}
+        </button>
+      ))}
+      <a
+        href={`mailto:${user.email}`}
+        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-light text-foreground transition-colors hover:bg-muted"
+      >
+        <Mail className="size-3.5" /> Send Email
+      </a>
+    </AnchoredMenu>
+  )
 }
 
 export default function AdminUsersPage() {
@@ -69,11 +133,8 @@ export default function AdminUsersPage() {
     await load()
   }
 
-  async function toggleRole(id: string) {
-    const user = users.find(u => u.id === id)
-    if (!user) return
-    const nextRole: AdminUserRole = user.role === "admin" ? "customer" : "admin"
-    const error = await updateUserRole(id, nextRole)
+  async function setRole(id: string, role: AdminUserRole) {
+    const error = await updateUserRole(id, role)
     setOpenMenu(null)
     if (error) {
       setMessage(error)
@@ -103,7 +164,7 @@ export default function AdminUsersPage() {
   const admins = users.filter((u) => u.role === "admin").length
 
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-auto" onClick={() => setOpenMenu(null)}>
+    <div className="admin-page" onClick={() => setOpenMenu(null)}>
       <div className="admin-page-header">
         <div>
           <h1 className="font-serif text-2xl font-medium">Users</h1>
@@ -151,19 +212,19 @@ export default function AdminUsersPage() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <SlidersHorizontal className="size-3.5 text-muted-foreground" />
-            {(["all", "customer", "admin", "staff"] as const).map((r) => (
+            {(["all", "customer", "admin", "sub_admin"] as const).map((r) => (
               <button
                 key={r}
                 type="button"
                 onClick={() => setRoleFilter(r)}
                 className={cn(
-                  "border px-3 py-1.5 text-[11px] font-light uppercase tracking-[0.12em] transition-all capitalize",
+                  "border px-3 py-1.5 text-[11px] font-light uppercase tracking-[0.12em] transition-all",
                   roleFilter === r
                     ? "border-foreground bg-foreground text-background"
                     : "border-border text-muted-foreground hover:border-foreground hover:text-foreground",
                 )}
               >
-                {r === "all" ? "All Roles" : r}
+                {r === "all" ? "All Roles" : ADMIN_ROLE_LABEL[r]}
               </button>
             ))}
             <span className="text-border">|</span>
@@ -222,13 +283,13 @@ export default function AdminUsersPage() {
           </div>
         )}
 
-        <div className="border border-border">
+        <div className="admin-table-panel border border-border">
           {loading ? (
             <div className="h-48 bg-muted/20 animate-pulse" />
           ) : (
             <>
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full">
+              <div className="admin-table-scroll hidden lg:block">
+                <table className="admin-data-table w-full">
                   <thead>
                     <tr className="border-b border-border bg-secondary">
                       <th className="px-4 py-3 text-left w-10">
@@ -275,8 +336,8 @@ export default function AdminUsersPage() {
                           </div>
                         </td>
                         <td className="px-4 py-4">
-                          <span className={cn("border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] capitalize", ROLE_STYLES[user.role])}>
-                            {user.role}
+                          <span className={cn("border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em]", ROLE_STYLES[user.role])}>
+                            {ADMIN_ROLE_LABEL[user.role]}
                           </span>
                         </td>
                         <td className="px-4 py-4">
@@ -291,52 +352,21 @@ export default function AdminUsersPage() {
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex justify-end">
-                            <div className="relative">
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === user.id ? null : user.id) }}
-                                className="flex size-8 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                              >
-                                <MoreHorizontal className="size-4" />
-                              </button>
-                              {openMenu === user.id && (
-                                <div
-                                  className="absolute right-0 top-9 z-30 min-w-44 border border-border bg-background shadow-md"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleStatus(user.id)}
-                                    className={cn(
-                                      "flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-light transition-colors hover:bg-muted",
-                                      user.status === "active" ? "text-destructive hover:text-destructive" : "text-green-600 hover:text-green-600",
-                                    )}
-                                  >
-                                    {user.status === "active" ? <ShieldOff className="size-3.5" /> : <ShieldCheck className="size-3.5" />}
-                                    {user.status === "active" ? "Suspend User" : "Activate User"}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleRole(user.id)}
-                                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-light text-foreground transition-colors hover:bg-muted"
-                                  >
-                                    <ChevronDown className="size-3.5" />
-                                    {user.role === "admin" ? "Remove Admin" : "Make Admin"}
-                                  </button>
-                                  <a
-                                    href={`mailto:${user.email}`}
-                                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-light text-foreground transition-colors hover:bg-muted"
-                                    onClick={() => setOpenMenu(null)}
-                                  >
-                                    <Mail className="size-3.5" /> Send Email
-                                  </a>
-                                </div>
-                              )}
-                            </div>
+                            <UserActions
+                              user={user}
+                              open={openMenu === user.id}
+                              onToggle={() => setOpenMenu(openMenu === user.id ? null : user.id)}
+                              onToggleStatus={() => toggleStatus(user.id)}
+                              onSetRole={(role) => setRole(user.id, role)}
+                              buttonClassName="flex size-8 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                            />
                           </div>
                         </td>
                       </tr>
                     ))}
+                    <tr className="admin-table-fill" aria-hidden="true">
+                      <td colSpan={8} />
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -355,53 +385,18 @@ export default function AdminUsersPage() {
                           {user.status}
                         </span>
                         <span className={cn("border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.1em]", ROLE_STYLES[user.role])}>
-                          {user.role}
+                          {ADMIN_ROLE_LABEL[user.role]}
                         </span>
                       </div>
                     </div>
-                    <div className="relative shrink-0">
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === user.id ? null : user.id) }}
-                        className="flex size-9 items-center justify-center text-muted-foreground hover:text-foreground"
-                        aria-label="User actions"
-                      >
-                        <MoreHorizontal className="size-4" />
-                      </button>
-                      {openMenu === user.id && (
-                        <div
-                          className="absolute right-0 top-full z-30 mt-1 min-w-44 border border-border bg-background shadow-md"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => toggleStatus(user.id)}
-                            className={cn(
-                              "flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-light transition-colors hover:bg-muted",
-                              user.status === "active" ? "text-destructive" : "text-green-600",
-                            )}
-                          >
-                            {user.status === "active" ? <ShieldOff className="size-3.5" /> : <ShieldCheck className="size-3.5" />}
-                            {user.status === "active" ? "Suspend User" : "Activate User"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => toggleRole(user.id)}
-                            className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-light text-foreground transition-colors hover:bg-muted"
-                          >
-                            <ChevronDown className="size-3.5" />
-                            {user.role === "admin" ? "Remove Admin" : "Make Admin"}
-                          </button>
-                          <a
-                            href={`mailto:${user.email}`}
-                            className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-light text-foreground transition-colors hover:bg-muted"
-                            onClick={() => setOpenMenu(null)}
-                          >
-                            <Mail className="size-3.5" /> Send Email
-                          </a>
-                        </div>
-                      )}
-                    </div>
+                    <UserActions
+                      user={user}
+                      open={openMenu === user.id}
+                      onToggle={() => setOpenMenu(openMenu === user.id ? null : user.id)}
+                      onToggleStatus={() => toggleStatus(user.id)}
+                      onSetRole={(role) => setRole(user.id, role)}
+                      buttonClassName="flex size-9 items-center justify-center text-muted-foreground hover:text-foreground"
+                    />
                   </div>
                 ))}
               </div>

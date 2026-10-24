@@ -445,7 +445,7 @@ export default function CheckoutPage() {
             HAYDA <span className="text-gold">SKINCo.</span>
           </Link>
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Lock className="size-3" /> Secure checkout
+            <Lock className="size-3" /> Pay securely with Paystack
           </div>
         </div>
       </div>
@@ -706,7 +706,7 @@ function PaystackPaymentStep({
       {/* Payment method selector */}
       <div className="mb-6">
         <p className="mb-3 text-[11px] font-light uppercase tracking-[0.15em] text-muted-foreground">
-          Select Payment Method
+          Pay with Paystack
         </p>
         <div className="space-y-2">
           {PAYMENT_METHODS.map((m) => (
@@ -815,7 +815,9 @@ function ReviewStep({
           </p>
           <p className="text-sm font-light text-muted-foreground">{shipping.country}</p>
           <p className="mt-2 text-xs font-light text-muted-foreground">
-            {shipping.shippingMethod === "express" ? "Express Shipping (2–3 days)" : "Standard Shipping (5–7 days)"}
+            {shipping.shippingMethod === "express"
+              ? "Express Shipping · 2–3 business days"
+              : "Standard Shipping · Free · 5–7 business days"}
           </p>
         </div>
 
@@ -849,7 +851,10 @@ function ReviewStep({
               className="text-green-700"
             />
           )}
-          <LineItem label={shippingCost === 0 ? "Shipping (Free)" : "Express Shipping"} value={shippingCost === 0 ? "Free" : formatPrice(shippingCost)} />
+          <LineItem label={shippingCost === 0 ? "Standard Shipping" : "Express Shipping"} value={shippingCost === 0 ? "Free" : formatPrice(shippingCost)} />
+          <p className="-mt-1 text-[11px] font-light text-muted-foreground">
+            {shippingCost === 0 ? "5–7 business days" : "2–3 business days"}
+          </p>
           <LineItem label="Estimated Tax" value={formatPrice(tax)} />
           <div className="border-t border-border pt-2.5">
             <LineItem label="Total" value={formatPrice(total)} bold />
@@ -1104,7 +1109,10 @@ function OrderSummary({
           {discount > 0 && appliedPromos.length > 1 && (
             <LineItem label="Total discounts" value={`-${formatPrice(discount)}`} small className="text-green-700" />
           )}
-          <LineItem label="Shipping" value={shippingCost === 0 ? "Free" : formatPrice(shippingCost)} small />
+          <LineItem label={shippingCost === 0 ? "Standard Shipping" : "Express Shipping"} value={shippingCost === 0 ? "Free" : formatPrice(shippingCost)} small />
+          <p className="-mt-1 text-[10px] font-light text-muted-foreground">
+            {shippingCost === 0 ? "5–7 business days" : "2–3 business days"}
+          </p>
           <LineItem label="VAT (7.5%)" value={formatPrice(tax)} small />
           <div className="border-t border-border pt-2 mt-2">
             <LineItem label="Total" value={formatPrice(total)} bold />
@@ -1115,9 +1123,11 @@ function OrderSummary({
       {/* Trust badges */}
       <div className="mt-4 flex flex-col gap-2 text-center text-[10px] font-light uppercase tracking-[0.18em] text-muted-foreground">
         <span className="flex items-center justify-center gap-1.5">
-          <Lock className="size-3" /> Secure & encrypted checkout
+          <Lock className="size-3" /> Payments secured by Paystack
         </span>
-        <span>Free returns within 30 days</span>
+        <Link href="/returns" className="underline-offset-2 hover:text-foreground hover:underline">
+          Easy returns
+        </Link>
       </div>
     </aside>
   )

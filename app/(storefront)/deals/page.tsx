@@ -9,6 +9,7 @@ import { getActiveDeals } from "@/lib/supabase/deals"
 import { useCart } from "@/components/cart-provider"
 import { cn } from "@/lib/utils"
 import { whatsAppHref } from "@/lib/whatsapp"
+import { FREE_STANDARD_DELIVERY } from "@/lib/storefront-copy"
 
 export default function DealsPage() {
   const [activeDeals, setActiveDeals] = useState<Deal[]>([])
@@ -30,10 +31,24 @@ export default function DealsPage() {
           Expertly curated skincare bundles at discounted prices. All products are authentic and sourced directly from authorised distributors.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          {["Free delivery on all bundles", "Authentic guaranteed", "Same-day dispatch"].map(b => (
-            <span key={b} className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-[11px] font-light text-muted-foreground">
-              <Tag className="size-3 text-gold" /> {b}
-            </span>
+          {([
+            { label: FREE_STANDARD_DELIVERY },
+            { label: "100% authentic" },
+            { label: "Easy returns", href: "/returns" },
+          ] as { label: string; href?: string }[]).map(b => (
+            b.href ? (
+              <Link
+                key={b.label}
+                href={b.href}
+                className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-[11px] font-light text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Tag className="size-3 text-gold" /> {b.label}
+              </Link>
+            ) : (
+              <span key={b.label} className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-[11px] font-light text-muted-foreground">
+                <Tag className="size-3 text-gold" /> {b.label}
+              </span>
+            )
           ))}
         </div>
       </div>

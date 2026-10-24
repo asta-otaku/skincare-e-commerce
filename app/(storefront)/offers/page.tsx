@@ -4,6 +4,7 @@ import Link from "next/link"
 import { countProducts } from "@/lib/supabase/products"
 import { PageHeader } from "@/components/page-header"
 import { OffersGrid } from "./offers-grid"
+import { FREE_STANDARD_DELIVERY } from "@/lib/storefront-copy"
 
 export const metadata: Metadata = {
   title: "Offers — HAYDA SKINCo.",
@@ -26,8 +27,18 @@ export default async function OffersPage() {
       {/* Banner strip */}
       <div className="bg-foreground text-background">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-10 gap-y-2 px-5 py-4 text-center lg:px-8">
-          {["Free delivery on orders over ₦20,000", "Authentic products guaranteed", "Easy 7-day returns"].map(text => (
-            <p key={text} className="text-xs font-light uppercase tracking-[0.15em]">{text}</p>
+          {([
+            { text: FREE_STANDARD_DELIVERY },
+            { text: "100% authentic" },
+            { text: "Easy returns", href: "/returns" },
+          ] as { text: string; href?: string }[]).map(item => (
+            item.href ? (
+              <Link key={item.text} href={item.href} className="text-xs font-light uppercase tracking-[0.15em] underline-offset-2 hover:underline">
+                {item.text}
+              </Link>
+            ) : (
+              <p key={item.text} className="text-xs font-light uppercase tracking-[0.15em]">{item.text}</p>
+            )
           ))}
         </div>
       </div>

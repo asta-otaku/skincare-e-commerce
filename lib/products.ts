@@ -65,6 +65,8 @@ export type Product = {
   /** Suitable skin types from pinned catalog (+ custom). */
   skinTypes?: string[]
   stock: number
+  /** Hidden from the storefront. Still listed in admin. */
+  archived?: boolean
   rating: number
   reviewCount: number
   size?: string

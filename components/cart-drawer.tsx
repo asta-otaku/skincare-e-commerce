@@ -8,6 +8,7 @@ import { useCart } from "@/components/cart-provider"
 import { bareDealId, isDealCartId } from "@/lib/deals"
 import { formatPrice, getProductMoq, getUnitPriceForQuantity } from "@/lib/products"
 import { cn } from "@/lib/utils"
+import { FREE_STANDARD_DELIVERY } from "@/lib/storefront-copy"
 
 export function CartDrawer() {
   const {
@@ -131,7 +132,7 @@ export function CartDrawer() {
                     <Link
                       href={isDealCartId(item.id) ? `/deal/${bareDealId(item.id)}` : `/product/${item.id}`}
                       onClick={closeCart}
-                      className="relative size-20 shrink-0 overflow-hidden border border-border bg-muted"
+                      className="relative size-20 shrink-0 overflow-hidden border border-border bg-[#f6f4f1]"
                     >
                       {item.image && item.image !== "/product-bundle.png" ? (
                         <Image
@@ -151,7 +152,7 @@ export function CartDrawer() {
                           alt={item.name}
                           fill
                           sizes="80px"
-                          className="object-contain mix-blend-multiply"
+                          className="object-contain"
                         />
                       )}
                     </Link>
@@ -262,7 +263,7 @@ export function CartDrawer() {
                 <span className="font-serif text-lg font-medium">{formatPrice(subtotal)}</span>
               </div>
               <p className="text-[11px] font-light text-muted-foreground">
-                Shipping &amp; taxes calculated at checkout.
+                {FREE_STANDARD_DELIVERY}. Express is ₦3,000 at checkout.
               </p>
               {hasStockIssues ? (
                 <button

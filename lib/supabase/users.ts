@@ -1,6 +1,13 @@
 import { createAdminBrowserClient } from "@/lib/supabase/client"
 
-export type AdminUserRole = "customer" | "admin" | "staff"
+export type AdminUserRole = "customer" | "admin" | "sub_admin" | "staff"
+
+export const ADMIN_ROLE_LABEL: Record<AdminUserRole, string> = {
+  customer: "User",
+  admin: "Admin",
+  sub_admin: "Sub Admin",
+  staff: "Staff",
+}
 export type AdminUserStatus = "active" | "suspended"
 
 export type AdminUser = {
@@ -71,7 +78,9 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
         p.first_name?.trim() ||
         (p.email ? p.email.split("@")[0] : "User")
       const stats = spend.get(p.id) ?? { orders: 0, total: 0 }
-      const role = (p.role === "admin" || p.role === "staff" ? p.role : "customer") as AdminUserRole
+      const role = (
+        p.role === "admin" || p.role === "sub_admin" || p.role === "staff" ? p.role : "customer"
+      ) as AdminUserRole
       return {
         id: p.id,
         name,
@@ -95,7 +104,11 @@ export async function updateUserRole(id: string, role: AdminUserRole): Promise<s
     .update({ role, updated_at: new Date().toISOString() })
     .eq("id", id)
 
-  return error?.message ?? null
+  if (!error) return null
+  if (role === "sub_admin" && /check constraint|profiles_role_check/i.test(error.message)) {
+    return "Sub Admin is not available yet. Apply supabase/migrations/030_archive_and_sub_admin.sql in Supabase, then try again."
+  }
+  return error.message
 }
 
 export async function updateUserSuspended(id: string, suspended: boolean): Promise<string | null> {

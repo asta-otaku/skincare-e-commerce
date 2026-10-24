@@ -23,8 +23,7 @@ export function Newsletter() {
           Join the ritual
         </h2>
         <p className="mt-4 max-w-md text-pretty text-base font-light leading-relaxed text-muted-foreground">
-          Receive early access to new launches, considered skincare notes, and 10% off your first
-          order.
+          Receive early access to new arrivals and considered skincare notes.
         </p>
 
         <form

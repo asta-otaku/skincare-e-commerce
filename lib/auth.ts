@@ -5,6 +5,7 @@ import type { Session, User } from "@supabase/supabase-js"
 export type AdminSession = {
   email: string
   name: string
+  role: "admin" | "sub_admin"
   signedInAt: number
 }
 
@@ -13,6 +14,11 @@ export type UserSession = {
   name: string
   firstName: string
   signedInAt: number
+  role?: string | null
+}
+
+export function isStoreManagerRole(role: string | null | undefined) {
+  return role === "admin" || role === "sub_admin"
 }
 
 // --- Utility ---
@@ -42,12 +48,16 @@ export function supabaseUserToUserSession(user: User): UserSession {
   }
 }
 
-export function supabaseSessionToAdminSession(session: Session): AdminSession {
+export function supabaseSessionToAdminSession(
+  session: Session,
+  role: AdminSession["role"],
+): AdminSession {
   const user = session.user
   const meta = user.user_metadata ?? {}
   return {
     email: user.email ?? "",
-    name: meta.full_name ?? meta.name ?? "Admin",
+    name: meta.full_name ?? meta.name ?? (role === "sub_admin" ? "Sub Admin" : "Admin"),
+    role,
     signedInAt: new Date(user.created_at ?? Date.now()).getTime(),
   }
 }

@@ -118,7 +118,7 @@ export default function AdminOrdersPage() {
   const monthsLabel = MONTH_RANGE_OPTIONS.find(o => o.value === months)?.label ?? "Last month"
 
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-auto" onClick={() => setShowSort(false)}>
+    <div className="admin-page" onClick={() => setShowSort(false)}>
       {/* Header */}
       <div className="admin-page-header">
         <div>
@@ -235,21 +235,21 @@ export default function AdminOrdersPage() {
 
         {/* Orders table */}
         {loading && orders.length === 0 ? (
-          <div className="border border-border divide-y divide-border">
+          <div className="admin-table-panel border border-border divide-y divide-border">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="h-16 animate-pulse bg-muted/20" />
             ))}
           </div>
         ) : orders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center border border-dashed border-border py-20 text-center">
+          <div className="admin-table-panel flex flex-col items-center justify-center border border-dashed border-border py-20 text-center">
             <XCircle className="size-10 text-muted-foreground mb-3" />
             <p className="font-serif text-lg font-medium">No orders found</p>
             <p className="mt-1 text-sm font-light text-muted-foreground">Try adjusting your search or filters.</p>
           </div>
         ) : (
-          <div className="border border-border">
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full">
+          <div className="admin-table-panel border border-border">
+            <div className="admin-table-scroll hidden lg:block">
+              <table className="admin-data-table w-full">
                 <thead>
                   <tr className="border-b border-border bg-secondary">
                     {["Order", "Customer", "Items", "Total", "Payment", "Status", "Date", ""].map(h => (
@@ -263,6 +263,9 @@ export default function AdminOrdersPage() {
                   {orders.map(order => (
                     <OrderRow key={order.id} order={order} onStatusChange={updateStatus} />
                   ))}
+                  <tr className="admin-table-fill" aria-hidden="true">
+                    <td colSpan={8} />
+                  </tr>
                 </tbody>
               </table>
             </div>

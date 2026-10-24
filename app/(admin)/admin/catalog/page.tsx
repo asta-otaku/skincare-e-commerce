@@ -126,7 +126,7 @@ function CatalogPanel({
         />
       </div>
 
-      <ul className="divide-y divide-border">
+      <ul className="admin-table-panel divide-y divide-border">
         {filtered.length === 0 ? (
           <li className="px-4 py-10 text-center text-xs font-light text-muted-foreground">
             {loading ? "Loading…" : "No entries yet."}
@@ -245,7 +245,7 @@ function CatalogPanel({
 
 export default function AdminCatalogPage() {
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-auto">
+    <div className="admin-page">
       <div className="admin-page-header">
         <div>
           <h1 className="font-serif text-2xl font-medium">Catalog Tags</h1>

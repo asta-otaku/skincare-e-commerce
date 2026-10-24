@@ -10,6 +10,7 @@ import {
   clearAdminSession,
   supabaseSessionToAdminSession,
 } from "@/lib/auth"
+import { SUSPENDED_AUTH_CODE } from "@/components/suspended-account-dialog"
 
 /* ─── Context ────────────────────────────────────────────────── */
 type AdminAuthCtx = {
@@ -70,14 +71,20 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         .eq("id", s.user.id)
         .single()
 
-      if (!profile || profile.role !== "admin" || profile.is_suspended) {
+      if (profile?.is_suspended) {
+        await supabase.auth.signOut()
+        setChecked(true)
+        router.replace(`/admin/login?suspended=1`)
+        return
+      }
+      if (!profile || (profile.role !== "admin" && profile.role !== "sub_admin")) {
         await supabase.auth.signOut()
         setChecked(true)
         router.replace("/admin/login")
         return
       }
 
-      setSession(supabaseSessionToAdminSession(s))
+      setSession(supabaseSessionToAdminSession(s, profile.role === "sub_admin" ? "sub_admin" : "admin"))
       setChecked(true)
     })
 
@@ -96,12 +103,19 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         .eq("id", s.user.id)
         .single()
 
-      if (!profile || profile.role !== "admin" || profile.is_suspended) {
+      if (profile?.is_suspended) {
         await supabase.auth.signOut()
         setSession(null)
+        router.replace("/admin/login?suspended=1")
         return
       }
-      setSession(supabaseSessionToAdminSession(s))
+      if (!profile || (profile.role !== "admin" && profile.role !== "sub_admin")) {
+        await supabase.auth.signOut()
+        setSession(null)
+        router.replace("/admin/login")
+        return
+      }
+      setSession(supabaseSessionToAdminSession(s, profile.role === "sub_admin" ? "sub_admin" : "admin"))
     })
 
     return () => subscription.unsubscribe()
@@ -118,7 +132,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       // Mock path (local only)
       await new Promise(r => setTimeout(r, 800))
       if (email === "admin@haydaskinco.com" && password === "password") {
-        const s: AdminSession = { email, name: "Admin", signedInAt: Date.now() }
+        const s: AdminSession = { email, name: "Admin", role: "admin", signedInAt: Date.now() }
         saveAdminSession(s)
         setSession(s)
         return null
@@ -137,16 +151,16 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       .eq("id", data.user.id)
       .single()
 
-    if (!profile || profile.role !== "admin") {
+    if (!profile || profile.is_suspended) {
+      await supabase.auth.signOut()
+      return profile?.is_suspended ? SUSPENDED_AUTH_CODE : "Access denied. This account does not have admin privileges."
+    }
+    if (profile.role !== "admin" && profile.role !== "sub_admin") {
       await supabase.auth.signOut()
       return "Access denied. This account does not have admin privileges."
     }
-    if (profile.is_suspended) {
-      await supabase.auth.signOut()
-      return "This account has been suspended."
-    }
 
-    setSession(supabaseSessionToAdminSession(data.session))
+    setSession(supabaseSessionToAdminSession(data.session!, profile.role === "sub_admin" ? "sub_admin" : "admin"))
     return null
   }
 
